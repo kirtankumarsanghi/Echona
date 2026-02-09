@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Test - ECHONA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            background: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background: #7f1d1d;
+            border: 1px solid #ef4444;
+        }
+        .info {
+            background: #1e3a8a;
+            border: 1px solid #3b82f6;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 ECHONA Login Debug Tool</h1>
+        
+        <div class="info">
+            <strong>Backend URL:</strong> http://localhost:5000<br>
+            <strong>Default Credentials:</strong><br>
+            Email: admin@echona.com<br>
+            Password: admin123
+        </div>
+
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email" value="admin@echona.com" required>
+            <input type="password" id="password" placeholder="Password" value="admin123" required>
+            <button type="submit">Test Login</button>
+        </form>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Testing connection...';
+            resultDiv.className = 'result info';
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                console.log('Sending login request...');
+                
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+✅ <strong>LOGIN SUCCESSFUL!</strong>
+
+<strong>Token:</strong> ${data.token ? data.token.substring(0, 50) + '...' : 'None'}
+
+<strong>User:</strong>
+${JSON.stringify(data.user, null, 2)}
+
+<strong>Full Response:</strong>
+${JSON.stringify(data, null, 2)}
+
+<strong>Next Steps:</strong>
+1. Token is valid ✓
+2. You can now use this token in your app
+3. Store it in localStorage as "echona_token"
+                    `;
+
+                    // Store in localStorage for testing
+                    localStorage.setItem('echona_token', data.token);
+                    localStorage.setItem('echona_user', JSON.stringify(data.user));
+                    
+                    console.log('Token stored in localStorage');
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+❌ <strong>LOGIN FAILED</strong>
+
+<strong>Status:</strong> ${response.status}
+
+<strong>Error:</strong> ${data.message || 'Unknown error'}
+
+<strong>Full Response:</strong>
+${JSON.stringify(data, null, 2)}
+                    `;
+                }
+            } catch (error) {
+                console.error('Request error:', error);
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+❌ <strong>REQUEST ERROR</strong>
+
+<strong>Error:</strong> ${error.message}
+
+<strong>Possible Issues:</strong>
+1. Backend not running on port 5000
+2. CORS issue
+3. Network connectivity problem
+
+<strong>Check console for more details</strong>
+                `;
+            }
+        });
+
+        // Test backend connection on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:5000/');
+                const data = await response.json();
+                console.log('✅ Backend is reachable:', data);
+            } catch (error) {
+                console.error('❌ Backend connection failed:', error);
+            }
+        });
+    </script>
+</body>
+</html>
