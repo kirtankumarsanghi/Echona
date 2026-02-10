@@ -7,13 +7,14 @@ export default function Login() {
 
   async function handleLogin() {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const res = await axios.post("http://localhost:5001/api/auth/login", {
         email,
         password,
       });
 
       if (res.data.token) {
-        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("echona_token", res.data.token);
+        localStorage.setItem("echona_user", JSON.stringify(res.data.user));
         window.location.href = "/dashboard";
       } else {
         alert(res.data.message);

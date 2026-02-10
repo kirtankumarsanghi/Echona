@@ -21,42 +21,11 @@ function App() {
       <Route path="/login" element={<Auth />} />
       <Route path="/register" element={<Auth />} />
 
-      {/* Private Routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/detect"
-        element={
-          <ProtectedRoute>
-            <MoodDetect />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/mood-detect"
-        element={
-          <ProtectedRoute>
-            <MoodDetect />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/music"
-        element={
-          <ProtectedRoute>
-            <Music />
-          </ProtectedRoute>
-        }
-      />
+      {/* Public Routes - No Login Required */}
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/detect" element={<MoodDetect />} />
+      <Route path="/mood-detect" element={<MoodDetect />} />
+      <Route path="/music" element={<Music />} />
 
       {/* Catch all */}
       <Route path="*" element={<h1>404 - Page Not Found</h1>} />
