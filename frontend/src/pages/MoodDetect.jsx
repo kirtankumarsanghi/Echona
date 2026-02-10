@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { analyzeWithFlask } from "../api/flask";
 import { useToast } from "../components/Toast";
+import Navbar from "../components/Navbar";
 
 function MoodDetect() {
   const navigate = useNavigate();
@@ -285,6 +286,9 @@ const capturePhoto = async () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-neutral-950 text-white overflow-hidden relative">
       
+      {/* Navbar */}
+      <Navbar />
+      
       {/* Animated Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div
@@ -328,23 +332,8 @@ const capturePhoto = async () => {
         ))}
       </div>
 
-      <div className="relative z-10 p-6 md:p-8 pt-24 md:pt-28">
+      <div className="relative z-10 p-6 md:p-8 pt-28 md:pt-32">
         
-        {/* Back Button */}
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          whileHover={{ x: -5, scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 mb-8 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-2xl font-semibold transition-all duration-300 group"
-        >
-          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span>Back to Home</span>
-        </motion.button>
-
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

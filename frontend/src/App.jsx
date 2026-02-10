@@ -14,21 +14,21 @@ function App() {
   return (
     <Routes>
 
-      {/* Public */}
+      {/* Public Routes */}
       <Route path="/" element={<Home />} />
-      <Route path="/home" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/login" element={<Auth />} />
-      <Route path="/register" element={<Auth />} />
-
-      {/* Public Routes - No Login Required */}
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/detect" element={<MoodDetect />} />
       <Route path="/mood-detect" element={<MoodDetect />} />
+      <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/music" element={<Music />} />
 
+      {/* Redirects for backwards compatibility */}
+      <Route path="/home" element={<Home />} />
+      <Route path="/login" element={<Auth />} />
+      <Route path="/register" element={<Auth />} />
+      <Route path="/detect" element={<MoodDetect />} />
+
       {/* Catch all */}
-      <Route path="*" element={<h1>404 - Page Not Found</h1>} />
+      <Route path="*" element={<Home />} />
     </Routes>
   );
 }

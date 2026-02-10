@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
+import Navbar from "../components/Navbar";
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -171,12 +172,17 @@ function Auth() {
         </p>
 
         {/* Back Button */}
-        <p
+        <motion.button
+          whileHover={{ x: -5, scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => navigate("/")}
-          className="text-center mt-4 cursor-pointer text-gray-300 hover:text-white"
+          className="flex items-center gap-2 mx-auto mt-6 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-2xl font-semibold transition-all duration-300 group"
         >
-          ← Back to Home
-        </p>
+          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Back to Home</span>
+        </motion.button>
       </motion.div>
     </div>
   );

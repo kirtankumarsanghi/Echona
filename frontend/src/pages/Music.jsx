@@ -8,6 +8,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import QuickActions from "../components/QuickActions";
 import BreathingExercise from "../components/BreathingExercise";
 import MeditationTimer from "../components/MeditationTimer";
+import Navbar from "../components/Navbar";
 
 // ===============================
 // YOUTUBE THUMBNAIL (always works)
@@ -309,7 +310,10 @@ function Music() {
   // UI START
   // =======================================================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-black text-white overflow-hidden pt-28">
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-black text-white overflow-hidden">
+
+      {/* Navbar */}
+      <Navbar />
 
       {/* Animated Background Blobs */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none">
@@ -332,17 +336,21 @@ function Music() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 p-6 md:p-12">
+      <div className="relative z-10 p-6 md:p-12 pt-28 md:pt-32">
 
-        {/* Back Button */}
+        {/* Back Button - Only show when not on mood detection flow */}
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          whileHover={{ x: -5 }}
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-gray-300 hover:text-cyan-400 text-lg font-medium mb-10 transition-colors"
+          whileHover={{ x: -5, scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate("/mood-detect")}
+          className="flex items-center gap-2 mb-8 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-2xl font-semibold transition-all duration-300 group"
         >
-          ← Back to Home
+          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Back to Detect Mood</span>
         </motion.button>
 
         {loading ? (
