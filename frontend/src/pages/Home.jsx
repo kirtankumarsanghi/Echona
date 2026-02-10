@@ -6,48 +6,49 @@ import QuickActions from "../components/QuickActions";
 import BreathingExercise from "../components/BreathingExercise";
 import MeditationTimer from "../components/MeditationTimer";
 import Logo from "../components/Logo";
+import UserGuide from "../components/UserGuide";
 
 function Home() {
   const navigate = useNavigate();
 
   const features = [
     {
-      icon: "🎭",
+      icon: "TRACK",
       title: "Mood Tracking",
       description: "Track your emotional journey with multiple detection methods",
       gradient: "from-amber-500 to-orange-500",
       path: "/mood-detect"
     },
     {
-      icon: "📊",
+      icon: "ANALYZE",
       title: "Analytics & Insights",
       description: "Visualize patterns and trends in your emotional wellbeing",
       gradient: "from-teal-500 to-emerald-500",
       path: "/dashboard"
     },
     {
-      icon: "🎵",
+      icon: "LISTEN",
       title: "Personalized Music",
       description: "Get music recommendations based on your current mood",
       gradient: "from-orange-500 to-rose-500",
       path: "/music"
     },
     {
-      icon: "📝",
+      icon: "JOURNAL",
       title: "Mood Journal",
       description: "Add notes and reflect on your emotional experiences",
       gradient: "from-amber-500 to-yellow-500",
       path: "/mood-detect"
     },
     {
-      icon: "🔥",
+      icon: "STREAK",
       title: "Streak Tracking",
       description: "Build healthy habits with daily mood check-in streaks",
       gradient: "from-rose-500 to-pink-500",
       path: "/dashboard"
     },
     {
-      icon: "🤖",
+      icon: "DETECT",
       title: "AI Detection",
       description: "Use camera, voice, or text to automatically detect your mood",
       gradient: "from-teal-500 to-cyan-500",
@@ -197,7 +198,7 @@ function Home() {
               whileHover={{ y: -4 }}
               className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-amber-500/50 transition-all duration-300"
             >
-              <div className="text-4xl mb-3">🧠</div>
+              <div className="text-xs font-black tracking-widest mb-3 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">AI</div>
               <h3 className="text-lg font-semibold mb-2 text-white">AI Detection</h3>
               <p className="text-sm text-gray-400 font-light">Advanced mood analysis using AI</p>
             </motion.div>
@@ -206,7 +207,7 @@ function Home() {
               whileHover={{ y: -4 }}
               className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-orange-500/50 transition-all duration-300"
             >
-              <div className="text-4xl mb-3">📊</div>
+              <div className="text-xs font-black tracking-widest mb-3 bg-gradient-to-r from-orange-400 to-rose-400 bg-clip-text text-transparent">DATA</div>
               <h3 className="text-lg font-semibold mb-2 text-white">Analytics</h3>
               <p className="text-sm text-gray-400 font-light">Track your emotional journey</p>
             </motion.div>
@@ -215,7 +216,7 @@ function Home() {
               whileHover={{ y: -4 }}
               className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-teal-500/50 transition-all duration-300"
             >
-              <div className="text-4xl mb-3">🎵</div>
+              <div className="text-xs font-black tracking-widest mb-3 bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">AUDIO</div>
               <h3 className="text-lg font-semibold mb-2 text-white">Music</h3>
               <p className="text-sm text-gray-400 font-light">Personalized playlists for you</p>
             </motion.div>
@@ -284,7 +285,9 @@ function Home() {
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity`} />
                 <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 group-hover:border-white/30 rounded-2xl p-6 transition-all">
-                  <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{feature.icon}</div>
+                  <div className={`text-xs font-black tracking-widest mb-4 bg-gradient-to-r ${feature.gradient} bg-clip-text text-transparent group-hover:scale-110 transition-transform`}>
+                    {feature.icon}
+                  </div>
                   <h3 className="text-xl font-bold mb-2 text-white">{feature.title}</h3>
                   <p className="text-sm text-gray-400 leading-relaxed">{feature.description}</p>
                   <div className="mt-4 flex items-center text-xs text-gray-400 group-hover:text-orange-400 transition-colors">
@@ -310,15 +313,14 @@ function Home() {
               <div className="relative text-center">
                 <motion.div
                   animate={{ 
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 180, 360]
+                    scale: [1, 1.1, 1],
                   }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                  className="text-5xl mb-6 inline-block"
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="text-sm font-black tracking-widest mb-6 text-orange-400"
                 >
-                  🌟
+                  INSPIRATION
                 </motion.div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-4">Inspiration</p>
+                <p className="text-xs text-gray-500 uppercase tracking-widest mb-4">Daily Motivation</p>
                 <p className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-teal-400 italic leading-relaxed mb-6">
                   "Take care of your mind, your body will thank you. Take care of your body, your mind will thank you."
                 </p>
@@ -339,11 +341,12 @@ function Home() {
         </motion.div>
       </div>
 
-      {/* Theme Toggle */}
+      {/* Theme Toggle & User Guide */}
       <ThemeToggle />
       <QuickActions />
       <BreathingExercise />
       <MeditationTimer />
+      <UserGuide />
     </div>
   );
 }

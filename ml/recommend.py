@@ -1,9 +1,14 @@
-songs = {
-    "happy": ["Happy Song 1", "Happy Song 2"],
-    "sad": ["Sad Song 1", "Sad Song 2"],
-    "neutral": ["Chill Song 1"],
-    "angry": ["Rock Song 1"]
-}
+import random
+from ml.music_library import MUSIC_LIBRARY
 
-def recommend_song(emotion):
-    return songs.get(emotion, ["Default Song"])
+def recommend_songs(emotion, count=3):
+    if not emotion:
+        return []
+
+    if emotion not in MUSIC_LIBRARY:
+        return []
+
+    return random.sample(
+        MUSIC_LIBRARY[emotion],
+        min(count, len(MUSIC_LIBRARY[emotion]))
+    )

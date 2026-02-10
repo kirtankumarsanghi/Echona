@@ -10,11 +10,11 @@ function Navbar() {
   const navigate = useNavigate();
 
   const inspirationalQuotes = [
-    { text: "Your mental health matters", icon: "💚", gradient: "from-teal-500 to-emerald-500" },
-    { text: "Take time to understand yourself", icon: "🧠", gradient: "from-amber-500 to-orange-500" },
-    { text: "Every emotion is valid", icon: "🌈", gradient: "from-orange-500 to-rose-500" },
-    { text: "Self-care isn't selfish", icon: "✨", gradient: "from-rose-500 to-pink-500" },
-    { text: "You're doing better than you think", icon: "🌟", gradient: "from-amber-500 to-yellow-500" }
+    { text: "Your mental health matters", icon: "•", gradient: "from-teal-500 to-emerald-500" },
+    { text: "Take time to understand yourself", icon: "•", gradient: "from-amber-500 to-orange-500" },
+    { text: "Every emotion is valid", icon: "•", gradient: "from-orange-500 to-rose-500" },
+    { text: "Self-care isn't selfish", icon: "•", gradient: "from-rose-500 to-pink-500" },
+    { text: "You're doing better than you think", icon: "•", gradient: "from-amber-500 to-yellow-500" }
   ];
 
   useEffect(() => {
@@ -82,10 +82,10 @@ function Navbar() {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-gray-300 text-lg">
-          <Link className="hover:text-white" to="/">Home</Link>
-          <Link className="hover:text-white" to="/detect">Detect Mood</Link>
-          <Link className="hover:text-white" to="/dashboard">Dashboard</Link>
-          <Link className="hover:text-white" to="/music">Music</Link>
+          <Link className="hover:text-white transition-colors" to="/">Home</Link>
+          <Link className="hover:text-white transition-colors" to="/mood-detect">Detect Mood</Link>
+          <Link className="hover:text-white transition-colors" to="/dashboard">Dashboard</Link>
+          <Link className="hover:text-white transition-colors" to="/music">Music</Link>
         </div>
 
         {/* Mobile Menu Button */}
@@ -106,10 +106,15 @@ function Navbar() {
             exit={{ opacity: 0, y: -10 }}
             className="md:hidden bg-gray-800 border-t border-gray-700 px-6 py-4 space-y-3 text-gray-300 text-lg"
           >
-            <Link className="block hover:text-white" to="/" onClick={() => setOpen(false)}>Home</Link>
-            <Link className="block hover:text-white" to="/detect" onClick={() => setOpen(false)}>Detect Mood</Link>
-            <Link className="block hover:text-white" to="/dashboard" onClick={() => setOpen(false)}>Dashboard</Link>
-            <Link className="block hover:text-white" to="/music" onClick={() => setOpen(false)}>Music</Link>
+            <Link className="block hover:text-white" to="/" onClick={() => setOpen(false)}>🏠 Home</Link>
+            <Link className="block hover:text-white" to="/mood-detect" onClick={() => setOpen(false)}>🎭 Detect Mood</Link>
+            <Link className="block hover:text-white" to="/dashboard" onClick={() => setOpen(false)}>📊 Dashboard</Link>
+            <Link className="block hover:text-white" to="/music" onClick={() => setOpen(false)}>🎵 Music</Link>
+            {loggedIn ? (
+              <button className="block hover:text-red-400 text-left" onClick={() => { handleLogout(); setOpen(false); }}>🚪 Logout</button>
+            ) : (
+              <Link className="block hover:text-white" to="/auth" onClick={() => setOpen(false)}>🔐 Sign In</Link>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
