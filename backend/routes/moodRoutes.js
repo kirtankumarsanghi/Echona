@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const Mood = require("../models/Mood.js");
-const { authMiddleware } = require("../middleware/authMiddleware");
+// const Mood = require("../models/Mood.js");
 
-// Add mood log
-router.post("/add", authMiddleware, async (req, res) => {
+// In-memory storage for demo mode
+let moods = [];
+let moodIdCounter = 1;
+
+// Add mood log (no authentication required)
+router.post("/add", async (req, res) => {
   try {
     console.log("[MoodRoutes] POST /add called");
-    console.log("[MoodRoutes] User:", req.user);
     console.log("[MoodRoutes] Body:", req.body);
     
     const { mood, score } = req.body;
@@ -16,11 +18,17 @@ router.post("/add", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "Mood is required" });
     }
 
-    const log = await Mood.create({
-      userId: req.user.id,
+    // Use in-memory storage
+    const log = {
+      _id: moodIdCounter++,
+      userId: "anonymous",
       mood,
-      score,
-    });
+      score: score || 5,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    moods.push(log);
 
     console.log("[MoodRoutes] Mood created:", log);
     res.json({ message: "Mood saved", log });
@@ -30,26 +38,22 @@ router.post("/add", authMiddleware, async (req, res) => {
   }
 });
 
-// Get all moods for user
-router.get("/history", authMiddleware, async (req, res) => {
+// Get all moods (no authentication required)
+router.get("/history", async (req, res) => {
   try {
-    const history = await Mood.find({ userId: req.user.id }).sort({
-      createdAt: 1,
-    });
-
+    // Return in-memory moods sorted by creation date
+    const history = moods.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.json(history);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get mood statistics
-router.get("/stats", authMiddleware, async (req, res) => {
+// Get mood statistics (no authentication required)
+router.get("/stats", async (req, res) => {
   try {
-    const userId = req.user.id;
-    
-    // Get all moods
-    const allMoods = await Mood.find({ userId }).sort({ createdAt: -1 });
+    // Get all moods from memory
+    const allMoods = moods.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
     // Calculate stats
     const total = allMoods.length;
@@ -97,8 +101,8 @@ router.get("/stats", authMiddleware, async (req, res) => {
   }
 });
 
-// Add mood with note
-router.post("/add-note", authMiddleware, async (req, res) => {
+// Add mood with note (no authentication required)
+router.post("/add-note", async (req, res) => {
   try {
     const { mood, note, score, intensity, tags } = req.body;
 
@@ -106,14 +110,19 @@ router.post("/add-note", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "Mood is required" });
     }
 
-    const log = await Mood.create({
-      userId: req.user.id,
+    const log = {
+      _id: moodIdCounter++,
+      userId: "anonymous",
       mood,
       note: note || "",
       score: score || 5,
       intensity: intensity || 5,
       tags: tags || [],
-    });
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    moods.push(log);
 
     res.json({ message: "Mood with note saved", log });
   } catch (err) {
@@ -122,17 +131,18 @@ router.post("/add-note", authMiddleware, async (req, res) => {
   }
 });
 
-// Delete mood
-router.delete("/:id", authMiddleware, async (req, res) => {
+// Delete mood (no authentication required)
+router.delete("/:id", async (req, res) => {
   try {
-    const mood = await Mood.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user.id,
-    });
-
-    if (!mood) {
+    const moodId = parseInt(req.params.id);
+    const moodIndex = moods.findIndex(m => m._id === moodId);
+    
+    if (moodIndex === -1) {
       return res.status(404).json({ error: "Mood not found" });
     }
+    
+    const mood = moods[moodIndex];
+    moods.splice(moodIndex, 1);
 
     res.json({ message: "Mood deleted", mood });
   } catch (err) {
@@ -141,8 +151,8 @@ router.delete("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// Analyze text and detect mood using AI
-router.post("/analyze-text", authMiddleware, async (req, res) => {
+// Analyze text and detect mood using AI (no authentication required)
+router.post("/analyze-text", async (req, res) => {
   try {
     const { text } = req.body;
 

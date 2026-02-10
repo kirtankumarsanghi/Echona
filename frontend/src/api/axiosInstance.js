@@ -1,9 +1,9 @@
 import axios from "axios";
 
-// Resolve API base URL: prefer Vite env var, fallback to localhost:5000
+// Resolve API base URL: prefer Vite env var, fallback to localhost:5001
 const API_BASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL)
   ? import.meta.env.VITE_API_URL
-  : "http://localhost:5000";
+  : "http://localhost:5001";
 
 console.log("[AxiosInstance] API_BASE_URL:", API_BASE_URL);
 

@@ -85,17 +85,6 @@ function Navbar() {
           <Link className="hover:text-white" to="/detect">Detect Mood</Link>
           <Link className="hover:text-white" to="/dashboard">Dashboard</Link>
           <Link className="hover:text-white" to="/music">Music</Link>
-
-          {!loggedIn ? (
-            <Link className="hover:text-white" to="/auth">Login</Link>
-          ) : (
-            <button
-              className="text-red-400 hover:text-red-300"
-              onClick={handleLogout}
-            >
-              Logout
-            </button>
-          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -120,20 +109,6 @@ function Navbar() {
             <Link className="block hover:text-white" to="/detect" onClick={() => setOpen(false)}>Detect Mood</Link>
             <Link className="block hover:text-white" to="/dashboard" onClick={() => setOpen(false)}>Dashboard</Link>
             <Link className="block hover:text-white" to="/music" onClick={() => setOpen(false)}>Music</Link>
-
-            {!loggedIn ? (
-              <Link className="block hover:text-white" to="/auth" onClick={() => setOpen(false)}>Login</Link>
-            ) : (
-              <button
-                className="block text-left text-red-400 hover:text-red-300"
-                onClick={() => {
-                  handleLogout();
-                  setOpen(false);
-                }}
-              >
-                Logout
-              </button>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
