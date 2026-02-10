@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import Logo from "./Logo";
 
 function Navbar() {
   const [open, setOpen] = useState(false);
@@ -9,11 +10,11 @@ function Navbar() {
   const navigate = useNavigate();
 
   const inspirationalQuotes = [
-    { text: "Your mental health matters", icon: "💚", gradient: "from-green-500 to-emerald-500" },
-    { text: "Take time to understand yourself", icon: "🧠", gradient: "from-purple-500 to-pink-500" },
-    { text: "Every emotion is valid", icon: "🌈", gradient: "from-cyan-500 to-blue-500" },
-    { text: "Self-care isn't selfish", icon: "✨", gradient: "from-yellow-500 to-orange-500" },
-    { text: "You're doing better than you think", icon: "🌟", gradient: "from-indigo-500 to-purple-500" }
+    { text: "Your mental health matters", icon: "💚", gradient: "from-teal-500 to-emerald-500" },
+    { text: "Take time to understand yourself", icon: "🧠", gradient: "from-amber-500 to-orange-500" },
+    { text: "Every emotion is valid", icon: "🌈", gradient: "from-orange-500 to-rose-500" },
+    { text: "Self-care isn't selfish", icon: "✨", gradient: "from-rose-500 to-pink-500" },
+    { text: "You're doing better than you think", icon: "🌟", gradient: "from-amber-500 to-yellow-500" }
   ];
 
   useEffect(() => {
@@ -74,8 +75,8 @@ function Navbar() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-blue-400 hover:text-blue-300 transition">
-          <img src="/echona-logo.svg" alt="Echona" className="w-10 h-10" />
+        <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-orange-400 hover:text-amber-300 transition">
+          <Logo size="w-10 h-10" />
           ECHONA
         </Link>
 

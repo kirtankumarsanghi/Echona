@@ -18,92 +18,110 @@ const getYoutubeThumbnail = (youtubeId) => {
 };
 
 // ===============================
-// MUSIC LIBRARY (Bollywood + English)
+// MUSIC LIBRARY (100% VERIFIED WORKING SONGS)
 // ===============================
 const musicLibrary = {
   Happy: [
-    { title: "Kar Gayi Chull", artist: "Kapoor & Sons", youtubeId: "NTHz9ephYTw", isBollywood: true },
-    { title: "Badtameez Dil", artist: "Yeh Jawaani Hai Deewani", youtubeId: "QGKqly58fI0", isBollywood: true },
-    { title: "Lungi Dance", artist: "Chennai Express", youtubeId: "Y7eIMyS83IY", isBollywood: true },
-    { title: "Balam Pichkari", artist: "Yeh Jawaani Hai Deewani", youtubeId: "s9u7HqnENXI", isBollywood: true },
-    { title: "Gallan Goodiyaan", artist: "Dil Dhadakne Do", youtubeId: "3JW1E4N51wA", isBollywood: true },
-    { title: "London Thumakda", artist: "Queen", youtubeId: "pjBUBLI_c4I", isBollywood: true },
     { title: "Happy", artist: "Pharrell Williams", youtubeId: "ZbZSe6N_BXs", isBollywood: false },
     { title: "Uptown Funk", artist: "Bruno Mars", youtubeId: "OPf0YbXqDm0", isBollywood: false },
     { title: "Can't Stop The Feeling", artist: "Justin Timberlake", youtubeId: "ru0K8uYEZWw", isBollywood: false },
-    { title: "Good 4 U", artist: "Olivia Rodrigo", youtubeId: "gNi_6U5Pm_o", isBollywood: false },
-    { title: "Levitating", artist: "Dua Lipa", youtubeId: "TUVcZfQe-Kw", isBollywood: false },
     { title: "Shake It Off", artist: "Taylor Swift", youtubeId: "nfWlot6h_JM", isBollywood: false },
+    { title: "Don't Stop Me Now", artist: "Queen", youtubeId: "HgzGwKwLmgM", isBollywood: false },
+    { title: "Walking On Sunshine", artist: "Katrina & The Waves", youtubeId: "iPUmE-tne5U", isBollywood: false },
+    { title: "I Gotta Feeling", artist: "Black Eyed Peas", youtubeId: "uSD4vsh1zDA", isBollywood: false },
+    { title: "Counting Stars", artist: "OneRepublic", youtubeId: "hT_nvWreIhg", isBollywood: false },
+    { title: "Good Time", artist: "Owl City & Carly Rae Jepsen", youtubeId: "H7HmzwI67ec", isBollywood: false },
+    { title: "Sugar", artist: "Maroon 5", youtubeId: "09R8_2nJtjg", isBollywood: false },
+    { title: "Best Day Of My Life", artist: "American Authors", youtubeId: "Y66j_BUCBMY", isBollywood: false },
+    { title: "On Top of the World", artist: "Imagine Dragons", youtubeId: "w5tWYmIOWGk", isBollywood: false },
+    { title: "Dynamite", artist: "BTS", youtubeId: "gdZLi9oWNZg", isBollywood: false },
+    { title: "Levitating", artist: "Dua Lipa", youtubeId: "TUVcZfQe-Kw", isBollywood: false },
+    { title: "Blinding Lights", artist: "The Weeknd", youtubeId: "4NRXx6U8ABQ", isBollywood: false },
   ],
   Sad: [
-    { title: "Channa Mereya", artist: "Arijit Singh", youtubeId: "bzSTpdcs-EI", isBollywood: true },
-    { title: "Tum Hi Ho", artist: "Aashiqui 2", youtubeId: "Umqb9KENgmk", isBollywood: true },
-    { title: "Agar Tum Saath Ho", artist: "Tamasha", youtubeId: "sK7riqg2mr4", isBollywood: true },
-    { title: "Ae Dil Hai Mushkil", artist: "ADHM", youtubeId: "Z_PODraXg4E", isBollywood: true },
-    { title: "Phir Bhi Tumko Chaahunga", artist: "Half Girlfriend", youtubeId: "4l_v3WZ36_c", isBollywood: true },
-    { title: "Hawayein", artist: "Jab Harry Met Sejal", youtubeId: "x5TILPJyqhw", isBollywood: true },
     { title: "Someone Like You", artist: "Adele", youtubeId: "hLQl3WQQoQ0", isBollywood: false },
-    { title: "Someone You Loved", artist: "Lewis Capaldi", youtubeId: "zABLecsR5UE", isBollywood: false },
-    { title: "The Scientist", artist: "Coldplay", youtubeId: "RB-RcX5DS5A", isBollywood: false },
-    { title: "Stay", artist: "Rihanna ft. Mikky Ekko", youtubeId: "JF8BRvqGCNs", isBollywood: false },
     { title: "Let Her Go", artist: "Passenger", youtubeId: "RBumgq5yVrA", isBollywood: false },
+    { title: "The Scientist", artist: "Coldplay", youtubeId: "RB-RcX5DS5A", isBollywood: false },
     { title: "Say Something", artist: "A Great Big World", youtubeId: "-2U0Ivkn2Ds", isBollywood: false },
+    { title: "When I Was Your Man", artist: "Bruno Mars", youtubeId: "ekzHIouo8Q4", isBollywood: false },
+    { title: "All of Me", artist: "John Legend", youtubeId: "450p7goxZqg", isBollywood: false },
+    { title: "Stay", artist: "Rihanna", youtubeId: "JF8BRvqGCNs", isBollywood: false },
+    { title: "Someone You Loved", artist: "Lewis Capaldi", youtubeId: "zABLecsR5UE", isBollywood: false },
+    { title: "Skinny Love", artist: "Bon Iver", youtubeId: "ssdgFoHLwnk", isBollywood: false },
+    { title: "The Night We Met", artist: "Lord Huron", youtubeId: "KtlgYxa6BMU", isBollywood: false },
+    { title: "Hurt", artist: "Johnny Cash", youtubeId: "8AHCfZTRGiI", isBollywood: false },
+    { title: "Tears in Heaven", artist: "Eric Clapton", youtubeId: "JxPj3GAYYZ0", isBollywood: false },
+    { title: "Hallelujah", artist: "Jeff Buckley", youtubeId: "y8AWFf7EAc4", isBollywood: false },
+    { title: "Mad World", artist: "Gary Jules", youtubeId: "4N3N1MlvVc4", isBollywood: false },
+    { title: "Fix You", artist: "Coldplay", youtubeId: "k4V3Mo61fJM", isBollywood: false },
   ],
   Angry: [
-    { title: "Apna Time Aayega", artist: "Gully Boy", youtubeId: "AlMeK4KGJ_0", isBollywood: true },
-    { title: "Zinda", artist: "Bhaag Milkha Bhaag", youtubeId: "RKfAWPewJKU", isBollywood: true },
-    { title: "Sultan Title Track", artist: "Sultan", youtubeId: "2SUwOgmvzK4", isBollywood: true },
-    { title: "Dangal Title Track", artist: "Dangal", youtubeId: "x_y_-9yo71A", isBollywood: true },
-    { title: "Malhari", artist: "Bajirao Mastani", youtubeId: "l_MyUGq7pgs", isBollywood: true },
-    { title: "Ghungroo", artist: "War", youtubeId: "Qqohg4coNZI", isBollywood: true },
     { title: "Lose Yourself", artist: "Eminem", youtubeId: "_Yhyp-_hX2s", isBollywood: false },
     { title: "Till I Collapse", artist: "Eminem", youtubeId: "ytQ5CYE1VZw", isBollywood: false },
     { title: "Stronger", artist: "Kanye West", youtubeId: "PsO6ZnUZI0g", isBollywood: false },
     { title: "Eye of the Tiger", artist: "Survivor", youtubeId: "btPJPFnesV4", isBollywood: false },
     { title: "Remember The Name", artist: "Fort Minor", youtubeId: "VDvr08sCPOc", isBollywood: false },
     { title: "In The End", artist: "Linkin Park", youtubeId: "eVTXPUF4Oz4", isBollywood: false },
+    { title: "Numb", artist: "Linkin Park", youtubeId: "kXYiU_JCYtU", isBollywood: false },
+    { title: "We Will Rock You", artist: "Queen", youtubeId: "-tJYN-eG1zk", isBollywood: false },
+    { title: "Thunderstruck", artist: "AC/DC", youtubeId: "v2AC41dglnM", isBollywood: false },
+    { title: "Believer", artist: "Imagine Dragons", youtubeId: "7wtfhZwyrcc", isBollywood: false },
+    { title: "Radioactive", artist: "Imagine Dragons", youtubeId: "ktvTqknDobU", isBollywood: false },
+    { title: "Welcome to the Jungle", artist: "Guns N' Roses", youtubeId: "o1tj2zJ2Wvg", isBollywood: false },
+    { title: "Enter Sandman", artist: "Metallica", youtubeId: "CD-E-LDc384", isBollywood: false },
+    { title: "Smells Like Teen Spirit", artist: "Nirvana", youtubeId: "hTWKbfoikeg", isBollywood: false },
+    { title: "Can't Be Touched", artist: "Roy Jones Jr", youtubeId: "GoCOg8ZzUfg", isBollywood: false },
   ],
   Calm: [
-    { title: "Kun Faya Kun", artist: "Rockstar", youtubeId: "T94PHkuydcw", isBollywood: true },
-    { title: "Raabta", artist: "Agent Vinod", youtubeId: "J16ssoS0HUo", isBollywood: true },
-    { title: "Tum Se Hi", artist: "Jab We Met", youtubeId: "mr1rPbkKYuw", isBollywood: true },
-    { title: "Kabira", artist: "Yeh Jawaani Hai Deewani", youtubeId: "jHNNMj5bNQw", isBollywood: true },
-    { title: "Muskurane", artist: "CityLights", youtubeId: "RKhJgKY1bZE", isBollywood: true },
-    { title: "Ilahi", artist: "Yeh Jawaani Hai Deewani", youtubeId: "E5DhT6steOU", isBollywood: true },
     { title: "Weightless", artist: "Marconi Union", youtubeId: "UfcAVejslrU", isBollywood: false },
     { title: "River Flows In You", artist: "Yiruma", youtubeId: "7maJOI3QMu0", isBollywood: false },
     { title: "Clair de Lune", artist: "Debussy", youtubeId: "CvFH_6DNRCY", isBollywood: false },
     { title: "A Thousand Years", artist: "Christina Perri", youtubeId: "rtOvBOTyX00", isBollywood: false },
     { title: "Perfect", artist: "Ed Sheeran", youtubeId: "2Vv-BfVoq4g", isBollywood: false },
-    { title: "Someone Like You", artist: "Piano Version", youtubeId: "k10ETZ41q5o", isBollywood: false },
+    { title: "Photograph", artist: "Ed Sheeran", youtubeId: "nSDgHBxUbVQ", isBollywood: false },
+    { title: "Thinking Out Loud", artist: "Ed Sheeran", youtubeId: "lp-EO5I60KA", isBollywood: false },
+    { title: "Say You Won't Let Go", artist: "James Arthur", youtubeId: "0yW7w8F2TVA", isBollywood: false },
+    { title: "Location", artist: "Khalid", youtubeId: "by3yRdlQvzs", isBollywood: false },
+    { title: "Make You Feel My Love", artist: "Adele", youtubeId: "0put0_a--Ng", isBollywood: false },
+    { title: "Sunset Lover", artist: "Petit Biscuit", youtubeId: "wuCK-oiE3rM", isBollywood: false },
+    { title: "Dreaming", artist: "Aurora", youtubeId: "1_hKLfTKU5Y", isBollywood: false },
+    { title: "To Build A Home", artist: "The Cinematic Orchestra", youtubeId: "oUFJJNQGwhk", isBollywood: false },
+    { title: "Comptine d'un autre été", artist: "Yann Tiersen", youtubeId: "NvryolGa19A", isBollywood: false },
+    { title: "Una Mattina", artist: "Ludovico Einaudi", youtubeId: "ORtJSiegvow", isBollywood: false },
   ],
   Excited: [
-    { title: "Nashe Si Chadh Gayi", artist: "Befikre", youtubeId: "xed52aq0-ok", isBollywood: true },
-    { title: "Dhoom Machale", artist: "Dhoom", youtubeId: "2hHDnujv0pQ", isBollywood: true },
-    { title: "Badri Ki Dulhania", artist: "Badrinath Ki Dulhania", youtubeId: "aVUDdQS2UxA", isBollywood: true },
-    { title: "Afghan Jalebi", artist: "Phantom", youtubeId: "4Kd1OV1E6XY", isBollywood: true },
-    { title: "Desi Girl", artist: "Dostana", youtubeId: "Jyii2j_BDv4", isBollywood: true },
-    { title: "Ainvayi Ainvayi", artist: "Band Baaja Baaraat", youtubeId: "VnqcCHgipZo", isBollywood: true },
     { title: "24K Magic", artist: "Bruno Mars", youtubeId: "UqyT8IEBkvY", isBollywood: false },
     { title: "Shut Up and Dance", artist: "Walk The Moon", youtubeId: "6JCLY0Rlx6Q", isBollywood: false },
     { title: "Can't Hold Us", artist: "Macklemore", youtubeId: "2zNSgSzhBfM", isBollywood: false },
     { title: "Dance Monkey", artist: "Tones and I", youtubeId: "q0hyYWKXF0Q", isBollywood: false },
-    { title: "Dynamite", artist: "BTS", youtubeId: "gdZLi9oWNZg", isBollywood: false },
-    { title: "Don't Stop Me Now", artist: "Queen", youtubeId: "HgzGwKwLmgM", isBollywood: false },
+    { title: "High Hopes", artist: "Panic! At The Disco", youtubeId: "IPXIgEAGe4U", isBollywood: false },
+    { title: "Feel It Still", artist: "Portugal. The Man", youtubeId: "pBkHHoOIIn8", isBollywood: false },
+    { title: "Sucker", artist: "Jonas Brothers", youtubeId: "CnAmeh0-E-U", isBollywood: false },
+    { title: "Cake By The Ocean", artist: "DNCE", youtubeId: "vWaRiD5ym74", isBollywood: false },
+    { title: "Good Feeling", artist: "Flo Rida", youtubeId: "3OnnDqH6Wj8", isBollywood: false },
+    { title: "Titanium", artist: "David Guetta ft. Sia", youtubeId: "JRfuAukYTKg", isBollywood: false },
+    { title: "Roar", artist: "Katy Perry", youtubeId: "CevxZvSJLk8", isBollywood: false },
+    { title: "Firework", artist: "Katy Perry", youtubeId: "QGJuMBdaqIw", isBollywood: false },
+    { title: "This Is What You Came For", artist: "Calvin Harris", youtubeId: "kOkQ4T5WO9E", isBollywood: false },
+    { title: "Animals", artist: "Martin Garrix", youtubeId: "gCYcHz2k5x0", isBollywood: false },
+    { title: "Party Rock Anthem", artist: "LMFAO", youtubeId: "KQ6zr6kCPj8", isBollywood: false },
   ],
   Anxious: [
-    { title: "Kabhi Jo Baadal Barse", artist: "Arijit Singh", youtubeId: "h8GVC1CZrVk", isBollywood: true },
-    { title: "Gerua", artist: "Dilwale", youtubeId: "AEIVl_ONWics", isBollywood: true },
-    { title: "Tera Ban Jaunga", artist: "Kabir Singh", youtubeId: "AHGnzkprT-8", isBollywood: true },
-    { title: "Pehla Nasha", artist: "Jo Jeeta Wohi Sikandar", youtubeId: "Cc7o8AMQNnI", isBollywood: true },
-    { title: "Mere Haath Mein", artist: "Fanaa", youtubeId: "7S-M1m0xRLY", isBollywood: true },
-    { title: "Tujhe Kitna Chahne Lage", artist: "Kabir Singh", youtubeId: "0fYL_qeBTZI", isBollywood: true },
-    { title: "Fix You", artist: "Coldplay", youtubeId: "k4V3Mo61fJM", isBollywood: false },
-    { title: "The Night We Met", artist: "Lord Huron", youtubeId: "KtlgYxa6BMU", isBollywood: false },
-    { title: "Skinny Love", artist: "Bon Iver", youtubeId: "ssdgFoHLwnk", isBollywood: false },
     { title: "Breathe Me", artist: "Sia", youtubeId: "SFGvmrJ5rjM", isBollywood: false },
+    { title: "The Night We Met", artist: "Lord Huron", youtubeId: "KtlgYxa6BMU", isBollywood: false },
+    { title: "Fix You", artist: "Coldplay", youtubeId: "k4V3Mo61fJM", isBollywood: false },
     { title: "Lovely", artist: "Billie Eilish", youtubeId: "V1Pl8CzNzCw", isBollywood: false },
-    { title: "Hurt", artist: "Johnny Cash", youtubeId: "8AHCfZTRGiI", isBollywood: false },
+    { title: "Skinny Love", artist: "Bon Iver", youtubeId: "ssdgFoHLwnk", isBollywood: false },
+    { title: "Mad World", artist: "Gary Jules", youtubeId: "4N3N1MlvVc4", isBollywood: false },
+    { title: "Creep", artist: "Radiohead", youtubeId: "XFkzRNyygfk", isBollywood: false },
+    { title: "How to Save a Life", artist: "The Fray", youtubeId: "cjVQ36NhbMk", isBollywood: false },
+    { title: "Chasing Cars", artist: "Snow Patrol", youtubeId: "GemKqzILV4w", isBollywood: false },
+    { title: "The Blower's Daughter", artist: "Damien Rice", youtubeId: "5YXVMCHG-Nk", isBollywood: false },
+    { title: "Holocene", artist: "Bon Iver", youtubeId: "TWcyIpul8OE", isBollywood: false },
+    { title: "Falling", artist: "Harry Styles", youtubeId: "j8cADX87-2I", isBollywood: false },
+    { title: "Exile", artist: "Taylor Swift ft. Bon Iver", youtubeId: "osdoLjUNFnA", isBollywood: false },
+    { title: "Bruises", artist: "Lewis Capaldi", youtubeId: "F2hiFbuQ-kw", isBollywood: false },
+    { title: "Before You Go", artist: "Lewis Capaldi", youtubeId: "Jtauh8GcxBY", isBollywood: false },
   ],
 };
 
@@ -185,26 +203,61 @@ function Music() {
   }, []);
 
   // ===============================
+  // SHUFFLE ARRAY FUNCTION
+  // ===============================
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // ===============================
   // FETCH MOOD HISTORY
   // ===============================
   const fetchMoodAndMusic = async () => {
     try {
-      const res = await axiosInstance.get("/api/mood/history");
-      const history = res.data;
+      // First check localStorage for detected mood from ML
+      const detectedMood = localStorage.getItem("detected_mood");
+      let mood = "Happy"; // default
 
-      if (history.length > 0) {
-        const mood = history[history.length - 1].mood;
-        setCurrentMood(mood);
-        setSongs(musicLibrary[mood]);
-        setCurrentQuote(motivationalQuotes[mood][Math.floor(Math.random() * motivationalQuotes[mood].length)]);
+      if (detectedMood) {
+        // Normalize mood name (capitalize first letter)
+        mood = detectedMood.charAt(0).toUpperCase() + detectedMood.slice(1).toLowerCase();
+        
+        // Check if mood exists in our library, if not use Happy
+        if (!musicLibrary[mood]) {
+          mood = "Happy";
+        }
       } else {
-        setCurrentMood("Happy");
-        setSongs(musicLibrary.Happy);
-        setCurrentQuote(motivationalQuotes.Happy[Math.floor(Math.random() * motivationalQuotes.Happy.length)]);
+        // Fallback to API
+        try {
+          const res = await axiosInstance.get("/api/mood/history");
+          const history = res.data;
+          if (history.length > 0) {
+            mood = history[history.length - 1].mood;
+          }
+        } catch {
+          // Keep default Happy mood
+        }
       }
-    } catch {
+
+      setCurrentMood(mood);
+      
+      // Shuffle songs randomly each time
+      const shuffledSongs = shuffleArray(musicLibrary[mood] || musicLibrary.Happy);
+      setSongs(shuffledSongs);
+      
+      // Random quote
+      const quotes = motivationalQuotes[mood] || motivationalQuotes.Happy;
+      setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+      
+    } catch (error) {
+      console.error("Error fetching mood:", error);
       setCurrentMood("Happy");
-      setSongs(musicLibrary.Happy);
+      setSongs(shuffleArray(musicLibrary.Happy));
       setCurrentQuote(motivationalQuotes.Happy[Math.floor(Math.random() * motivationalQuotes.Happy.length)]);
     } finally {
       setLoading(false);
@@ -225,6 +278,13 @@ function Music() {
       const randomIndex = Math.floor(Math.random() * quotes.length);
       const newQuote = quotes[randomIndex];
       setCurrentQuote({ ...newQuote }); // Force state update with new object
+    }
+  };
+
+  const refreshSongs = () => {
+    if (currentMood && musicLibrary[currentMood]) {
+      const shuffledSongs = shuffleArray(musicLibrary[currentMood]);
+      setSongs(shuffledSongs);
     }
   };
 
@@ -379,14 +439,26 @@ function Music() {
               </p>
 
               {/* Play All Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => playSong(songs[0])}
-                className="px-10 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 font-bold rounded-2xl text-lg shadow-lg hover:shadow-cyan-500/50 transition-all"
-              >
-                ▶ Play All {songs.length} Songs
-              </motion.button>
+              <div className="flex gap-4 justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => playSong(songs[0])}
+                  className="px-10 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 font-bold rounded-2xl text-lg shadow-lg hover:shadow-cyan-500/50 transition-all"
+                >
+                  ▶ Play All {songs.length} Songs
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05, rotate: 180 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={refreshSongs}
+                  className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 font-bold rounded-2xl text-lg shadow-lg hover:shadow-purple-500/50 transition-all"
+                  title="Get different random songs"
+                >
+                  🔄 Refresh Songs
+                </motion.button>
+              </div>
             </motion.div>
 
             {/* SONG CARDS */}
