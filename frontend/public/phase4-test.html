@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 4 Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .primary { background: #4CAF50; color: white; }
+        .secondary { background: #2196F3; color: white; }
+        .danger { background: #f44336; color: white; }
+        .info { background: #FF9800; color: white; }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success { background: #e8f5e9; color: #2e7d32; }
+        .status.error { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <h1>🎭 ECHONA Phase 4 Debug Test</h1>
+    <p>This page tests the complete Phase 4 flow independently of React</p>
+
+    <!-- Backend Test -->
+    <div class="test-section">
+        <h2>1️⃣ Backend Health Check</h2>
+        <button class="primary" onclick="testBackend()">Test Backend Connection</button>
+        <div id="backend-result"></div>
+    </div>
+
+    <!-- Phase 3 Test -->
+    <div class="test-section">
+        <h2>2️⃣ Phase 3 Test (No Emotion)</h2>
+        <button class="secondary" onclick="testPhase3()">Test Context-Only Recommendation</button>
+        <div id="phase3-result"></div>
+    </div>
+
+    <!-- Emotion Storage Test -->
+    <div class="test-section">
+        <h2>3️⃣ Emotion Storage Test</h2>
+        <button class="info" onclick="setEmotion('happy')">Set: Happy</button>
+        <button class="info" onclick="setEmotion('sad')">Set: Sad</button>
+        <button class="info" onclick="setEmotion('anxious')">Set: Anxious</button>
+        <button class="danger" onclick="clearEmotion()">Clear Emotion</button>
+        <div id="emotion-status"></div>
+    </div>
+
+    <!-- Phase 4 Test -->
+    <div class="test-section">
+        <h2>4️⃣ Phase 4 Test (WITH Emotion)</h2>
+        <p><em>First set an emotion above, then test Phase 4</em></p>
+        <button class="primary" onclick="testPhase4()">Test Emotion-Aware Recommendation</button>
+        <div id="phase4-result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5001';
+
+        function log(elementId, message, type = 'info') {
+            const el = document.getElementById(elementId);
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : '';
+            el.innerHTML = `<div class="status ${className}">${message}</div>`;
+        }
+
+        function logPre(elementId, data) {
+            const el = document.getElementById(elementId);
+            el.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
+        async function testBackend() {
+            log('backend-result', '⏳ Testing backend connection...');
+            try {
+                const response = await fetch(`${API_URL}/`);
+                const data = await response.json();
+                log('backend-result', `✅ Backend is running! Status: ${data.status}`, 'success');
+                logPre('backend-result', data);
+            } catch (error) {
+                log('backend-result', `❌ Backend connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPhase3() {
+            log('phase3-result', '⏳ Testing Phase 3 (context-only)...');
+            try {
+                const response = await fetch(`${API_URL}/api/surprise`);
+                const data = await response.json();
+                if (data.success) {
+                    log('phase3-result', `✅ Phase 3 Working! Mood: ${data.context.moodUsed}, Song: ${data.track.title} by ${data.track.artist}`, 'success');
+                    logPre('phase3-result', data);
+                } else {
+                    log('phase3-result', `❌ Phase 3 failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log('phase3-result', `❌ Phase 3 request failed: ${error.message}`, 'error');
+            }
+        }
+
+        function setEmotion(emotion) {
+            localStorage.setItem('detected_mood', emotion);
+            updateEmotionStatus();
+            log('emotion-status', `✅ Emotion set to: ${emotion}`, 'success');
+        }
+
+        function clearEmotion() {
+            localStorage.removeItem('detected_mood');
+            updateEmotionStatus();
+            log('emotion-status', `🗑️ Emotion cleared`, 'success');
+        }
+
+        function updateEmotionStatus() {
+            const emotion = localStorage.getItem('detected_mood');
+            const statusEl = document.getElementById('emotion-status');
+            if (emotion) {
+                statusEl.innerHTML = `<div class="status success">📦 Current Emotion: <strong>${emotion}</strong></div>`;
+            } else {
+                statusEl.innerHTML = `<div class="status">📦 No emotion stored</div>`;
+            }
+        }
+
+        async function testPhase4() {
+            const emotion = localStorage.getItem('detected_mood');
+            
+            if (!emotion) {
+                log('phase4-result', '⚠️ No emotion set! Please set an emotion first using buttons above.', 'error');
+                return;
+            }
+
+            log('phase4-result', `⏳ Testing Phase 4 with emotion: ${emotion}...`);
+            
+            try {
+                const response = await fetch(`${API_URL}/api/surprise`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ mlEmotion: emotion })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log('phase4-result', `✅ Phase 4 Working! Detected: ${data.mlEmotion}, Context: ${data.contextMood}, Final: ${data.context.moodUsed}, Song: ${data.track.title} by ${data.track.artist}`, 'success');
+                    logPre('phase4-result', data);
+                } else {
+                    log('phase4-result', `❌ Phase 4 failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log('phase4-result', `❌ Phase 4 request failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize emotion status on load
+        updateEmotionStatus();
+    </script>
+</body>
+</html>

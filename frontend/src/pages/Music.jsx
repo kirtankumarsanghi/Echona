@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
@@ -9,6 +9,7 @@ import QuickActions from "../components/QuickActions";
 import BreathingExercise from "../components/BreathingExercise";
 import MeditationTimer from "../components/MeditationTimer";
 import Navbar from "../components/Navbar";
+import MusicChallenges from "../components/MusicChallenges";
 
 // ===============================
 // YOUTUBE THUMBNAIL (always works)
@@ -306,51 +307,54 @@ function Music() {
     playSong(prev);
   };
 
+  // Song list visibility state
+  const [showSongList, setShowSongList] = useState(false);
+
   // =======================================================================
   // UI START
   // =======================================================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-black text-white overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black dark:from-slate-900 dark:via-gray-900 dark:to-black light-mode:from-slate-50 light-mode:via-gray-50 light-mode:to-white text-[var(--text-primary)] overflow-hidden transition-colors duration-300">
 
       {/* Navbar */}
       <Navbar />
 
-      {/* Animated Background Blobs */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none">
+      {/* Animated Background */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-30">
         <motion.div
           animate={{
-            x: [0, 50, -30, 0],
-            y: [0, -50, 30, 0],
+            x: [0, 100, -50, 0],
+            y: [0, -100, 50, 0],
           }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15"
+          className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full mix-blend-screen filter blur-3xl"
         />
         <motion.div
           animate={{
-            x: [0, -50, 30, 0],
-            y: [0, 50, -30, 0],
+            x: [0, -100, 50, 0],
+            y: [0, 100, -50, 0],
           }}
           transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-20 -right-40 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15"
+          className="absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-full mix-blend-screen filter blur-3xl"
         />
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 p-6 md:p-12 pt-28 md:pt-32">
+      <div className="relative z-10 px-6 pt-36 pb-12 max-w-6xl mx-auto">
 
-        {/* Back Button - Only show when not on mood detection flow */}
+        {/* Back Button */}
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          whileHover={{ x: -5, scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => navigate("/mood-detect")}
-          className="flex items-center gap-2 mb-8 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-2xl font-semibold transition-all duration-300 group"
+          className="inline-flex items-center gap-2 mb-8 px-4 py-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-full text-sm text-white/90 transition-all group"
         >
-          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          <span>Back to Detect Mood</span>
+          <span className="font-medium">Back</span>
         </motion.button>
 
         {loading ? (
@@ -361,207 +365,222 @@ function Music() {
           >
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-16 h-16 border-4 border-purple-500 border-t-cyan-400 rounded-full mx-auto mb-4"
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 border-4 border-white/20 border-t-amber-500 rounded-full mx-auto mb-4"
             />
-            <p className="text-gray-400 text-xl">Loading Music...</p>
+            <p className="text-white/90 text-xl font-semibold">Loading your music...</p>
           </motion.div>
         ) : (
           <>
-            {/* Motivational Quote Section */}
-            {currentQuote && (
-              <motion.div
-                initial={{ opacity: 0, y: -30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="max-w-4xl mx-auto mb-16"
-              >
-                <div className="relative p-10 bg-gradient-to-br from-purple-600/15 to-pink-600/15 border border-purple-500/40 rounded-3xl backdrop-blur-xl overflow-hidden group hover:border-purple-400/60 transition-all duration-300">
-                  {/* Glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-pink-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  
-                  <div className="relative">
-                    <svg className="absolute -top-8 -left-6 w-10 h-10 text-cyan-400 opacity-40" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-4.021-5-7-5S0 3.75 0 5v10c0 5 3 8 7 8z" />
-                    </svg>
-                    <motion.p
-                      key={currentQuote.quote}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="text-2xl md:text-3xl font-bold text-white italic leading-relaxed pl-8 pr-4"
-                    >
-                      {currentQuote.quote}
-                    </motion.p>
-                    <motion.p
-                      key={currentQuote.author}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                      className="text-right text-cyan-300 mt-5 text-lg font-medium"
-                    >
-                      — {currentQuote.author}
-                    </motion.p>
+            {/* Hero Player Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-2xl p-8 mb-6 overflow-hidden"
+            >
+              {/* Current Mood Badge */}
+              <div className="absolute top-4 right-4">
+                <span className={`px-4 py-2 rounded-full font-bold text-sm shadow-lg ${
+                  currentMood === "Happy" ? "bg-amber-500 text-white" :
+                  currentMood === "Sad" ? "bg-blue-500 text-white" :
+                  currentMood === "Angry" ? "bg-rose-600 text-white" :
+                  currentMood === "Calm" ? "bg-teal-500 text-white" :
+                  currentMood === "Excited" ? "bg-orange-500 text-white" :
+                  "bg-purple-500 text-white"
+                }`}>
+                  {currentMood}
+                </span>
+              </div>
+
+              {/* Quote Section */}
+              {currentQuote && (
+                <div className="mb-8 max-w-2xl">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-8 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full" />
+                    <span className="text-amber-400 font-bold text-sm tracking-wider uppercase">Daily Inspiration</span>
                   </div>
-                  
+                  <motion.p
+                    key={currentQuote.quote}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-2xl font-bold text-white mb-2 leading-relaxed"
+                  >
+                    "{currentQuote.quote}"
+                  </motion.p>
+                  <p className="text-white/60 text-sm">— {currentQuote.author}</p>
                   <motion.button
-                    type="button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={changeQuote}
-                    className="mt-8 w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-semibold transition-all shadow-lg hover:shadow-purple-500/50"
+                    className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-sm font-semibold transition-all"
                   >
-                    💭 Get New Inspiration
+                    Next Quote →
                   </motion.button>
                 </div>
-              </motion.div>
-            )}
+              )}
 
-            {/* Header Section */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="max-w-5xl mx-auto text-center mb-16"
-            >
-              <div className="inline-block mb-4 px-4 py-2 bg-cyan-500/20 border border-cyan-500/40 rounded-full">
-                <p className="text-cyan-300 text-sm font-semibold">🎵 PERSONALIZED FOR YOU</p>
-              </div>
-              
-              <h1 className="text-5xl md:text-6xl font-black mb-4">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400">
-                  Your Music Mood
-                </span>
-              </h1>
-              
-              <p className="text-xl text-gray-300 mb-8">
-                Curated tracks perfect for when you're feeling
-                <span className={`ml-2 font-bold text-2xl inline-block px-4 py-2 rounded-lg`}>
-                  {currentMood === "Happy" && "😊 Happy"}
-                  {currentMood === "Sad" && "😢 Sad"}
-                  {currentMood === "Angry" && "😠 Angry"}
-                  {currentMood === "Calm" && "😌 Calm"}
-                  {currentMood === "Excited" && "🤩 Excited"}
-                  {currentMood === "Anxious" && "😰 Anxious"}
-                </span>
-              </p>
-
-              {/* Play All Button */}
-              <div className="flex gap-4 justify-center">
+              {/* Player Controls */}
+              <div className="flex flex-wrap items-center gap-3">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => playSong(songs[0])}
-                  className="px-10 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 font-bold rounded-2xl text-lg shadow-lg hover:shadow-cyan-500/50 transition-all"
+                  className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                 >
-                  ▶ Play All {songs.length} Songs
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                  Play All
                 </motion.button>
                 
                 <motion.button
-                  whileHover={{ scale: 1.05, rotate: 180 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={refreshSongs}
-                  className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 font-bold rounded-2xl text-lg shadow-lg hover:shadow-purple-500/50 transition-all"
-                  title="Get different random songs"
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-full transition-all flex items-center gap-2"
                 >
-                  🔄 Refresh Songs
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Shuffle
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowSongList(!showSongList)}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-full transition-all flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  {showSongList ? 'Hide' : 'View'} Playlist ({songs.length})
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/mood-detect')}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-full transition-all"
+                >
+                  Change Mood
                 </motion.button>
               </div>
             </motion.div>
 
-            {/* SONG CARDS */}
-            <div className="max-w-5xl mx-auto mb-16">
-              <motion.h2
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-2xl font-bold mb-8 flex items-center gap-3"
-              >
-                <span className="w-1 h-8 bg-gradient-to-b from-cyan-400 to-purple-400 rounded-full" />
-                Featured Tracks
-              </motion.h2>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                {songs.map((song, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.08 }}
-                    whileHover={{ y: -8 }}
-                    className="group relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                    
-                    <div className="relative flex items-center gap-5 bg-gray-800/50 backdrop-blur-xl p-5 rounded-2xl border border-gray-700/50 group-hover:border-cyan-500/50 transition-all duration-300 shadow-xl">
-                      
-                      {/* Thumbnail */}
-                      <div className="relative flex-shrink-0">
-                        <img
-                          loading="lazy"
-                          src={getYoutubeThumbnail(song.youtubeId)}
-                          className="w-24 h-24 rounded-xl object-cover shadow-lg"
-                          alt={song.title}
-                          onError={(e) => { e.target.src = "/default-thumb.jpg" }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-transparent rounded-xl" />
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <p className="text-lg font-bold text-white truncate flex-1">
-                            {song.title}
-                          </p>
-                          {song.isBollywood ? (
-                            <span className="text-xs bg-red-500/80 px-3 py-1 rounded-full font-semibold flex-shrink-0">🎬 Bollywood</span>
-                          ) : (
-                            <span className="text-xs bg-blue-500/80 px-3 py-1 rounded-full font-semibold flex-shrink-0">🎵 English</span>
-                          )}
-                        </div>
-                        <p className="text-gray-400 text-sm truncate">{song.artist}</p>
-                      </div>
-
-                      {/* Play Button */}
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => playSong(song)}
-                        className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg hover:shadow-cyan-500/50 transition-all"
-                      >
-                        ▶
-                      </motion.button>
+            {/* Collapsible Song List */}
+            <AnimatePresence>
+              {showSongList && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-6 overflow-hidden"
+                >
+                  <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-white">Your Playlist</h3>
+                      <span className="text-white/60 text-sm">{songs.length} songs</span>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                      {songs.map((song, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.02 }}
+                          whileHover={{ x: 4 }}
+                          className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all cursor-pointer group"
+                          onClick={() => playSong(song)}
+                        >
+                          <span className="text-white/40 text-sm font-mono w-6">{String(index + 1).padStart(2, '0')}</span>
+                          <img
+                            src={getYoutubeThumbnail(song.youtubeId)}
+                            className="w-12 h-12 rounded object-cover"
+                            alt={song.title}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-semibold text-sm truncate">{song.title}</p>
+                            <p className="text-white/60 text-xs truncate">{song.artist}</p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded ${song.isBollywood ? 'bg-rose-500/20 text-rose-300' : 'bg-teal-500/20 text-teal-300'}`}>
+                            {song.isBollywood ? 'Hindi' : 'English'}
+                          </span>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Integrated Features Grid */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {/* Mini Challenge Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-lg border border-purple-500/30 rounded-2xl p-6"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Mini Challenge</h3>
+                </div>
+                <p className="text-white/80 mb-4">Listen to 3 songs today to unlock special rewards!</p>
+                <div className="flex gap-2 mb-3">
+                  <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style={{width: '33%'}}></div>
+                  </div>
+                </div>
+                <p className="text-white/60 text-sm">1 of 3 songs completed</p>
+              </motion.div>
+
+              {/* Spotify Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 backdrop-blur-lg border border-emerald-500/30 rounded-2xl p-6"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.73 14.42c-.15.25-.42.39-.7.39-.13 0-.27-.03-.39-.1-1.41-.8-3.18-1.23-5.12-1.23-.97 0-1.9.11-2.76.33-.38.09-.77-.14-.86-.52-.09-.38.14-.77.52-.86.98-.25 2.03-.37 3.1-.37 2.15 0 4.11.5 5.83 1.48.35.2.48.65.28 1z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Extended Playlist</h3>
+                </div>
+                <p className="text-white/80 mb-4">Discover more {currentMood} songs on Spotify</p>
+                <motion.a
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  href={spotifyPlaylists[currentMood]}
+                  target="_blank"
+                  className="inline-block px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-full shadow-lg transition-all"
+                >
+                  Open Spotify →
+                </motion.a>
+              </motion.div>
             </div>
 
-            {/* Spotify Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="max-w-5xl mx-auto mb-16"
-            >
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-green-600/20 to-emerald-600/20 border border-green-500/40 p-12 text-center">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-emerald-500/10 to-green-500/0" />
-                
-                <div className="relative">
-                  <p className="text-gray-300 mb-4">Stream full playlists on</p>
-                  <motion.a
-                    whileHover={{ scale: 1.05 }}
-                    href={spotifyPlaylists[currentMood]}
-                    target="_blank"
-                    className="inline-block px-12 py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl font-bold text-lg shadow-lg hover:shadow-green-500/50 transition-all"
-                  >
-                    🎧 Listen on Spotify
-                  </motion.a>
-                </div>
-              </div>
-            </motion.div>
-
-            <SmartMoodFeature mood={currentMood} />
-            <SurpriseMe />
+            {/* Smart Features */}
+            <div className="space-y-6">
+              <SmartMoodFeature mood={currentMood} />
+              <SurpriseMe />
+            </div>
           </>
         )}
       </div>
@@ -571,27 +590,30 @@ function Music() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-50"
           onClick={closePlayer}
         >
           <motion.div
-            initial={{ scale: 0.8, y: 50 }}
+            initial={{ scale: 0.9, y: 30 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 50 }}
-            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-700"
+            exit={{ scale: 0.9, y: 30 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-6 flex justify-between items-start">
+            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 p-6 flex justify-between items-start">
               <div className="flex-1">
-                <p className="text-cyan-100 text-sm font-semibold mb-2">NOW PLAYING</p>
-                <h2 className="text-3xl font-bold text-white mb-2">{currentlyPlaying.title}</h2>
-                <p className="text-gray-100 text-lg">{currentlyPlaying.artist}</p>
+                <div className="inline-block px-3 py-1 bg-white/20 rounded-full mb-2">
+                  <span className="text-white text-xs font-bold tracking-wider">NOW PLAYING</span>
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-1 leading-tight">{currentlyPlaying.title}</h2>
+                <p className="text-white/90 text-base">{currentlyPlaying.artist}</p>
               </div>
               <motion.button
-                whileHover={{ rotate: 90 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={closePlayer}
-                className="text-white text-4xl font-bold flex-shrink-0 w-12 h-12 flex items-center justify-center hover:bg-white/10 rounded-lg transition"
+                className="text-white flex-shrink-0 w-10 h-10 flex items-center justify-center hover:bg-white/20 rounded-lg transition font-bold text-2xl"
               >
                 ×
               </motion.button>
@@ -608,22 +630,22 @@ function Music() {
             </div>
 
             {/* Controls */}
-            <div className="bg-gray-800 p-6 flex justify-between gap-4">
+            <div className="bg-gray-50 p-6 flex gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={playPrev}
-                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-semibold transition-all text-lg"
+                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-all"
               >
-                ⏮ Previous
+                PREVIOUS
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={playNext}
-                className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-semibold transition-all text-lg"
+                className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-bold transition-all shadow-lg"
               >
-                Next ⏭
+                NEXT
               </motion.button>
             </div>
           </motion.div>
@@ -635,6 +657,9 @@ function Music() {
       <QuickActions />
       <BreathingExercise />
       <MeditationTimer />
+      
+      {/* Music Challenges */}
+      <MusicChallenges currentSong={currentlyPlaying} mood={currentMood} />
     </div>
   );
 }

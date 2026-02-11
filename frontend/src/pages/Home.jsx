@@ -1,352 +1,231 @@
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import ThemeToggle from "../components/ThemeToggle";
 import QuickActions from "../components/QuickActions";
 import BreathingExercise from "../components/BreathingExercise";
 import MeditationTimer from "../components/MeditationTimer";
-import Logo from "../components/Logo";
 import UserGuide from "../components/UserGuide";
+import ThemeToggle from "../components/ThemeToggle";
+import Logo from "../components/Logo";
 
 function Home() {
   const navigate = useNavigate();
+  const { scrollYProgress } = useScroll();
 
   const features = [
     {
-      icon: "TRACK",
-      title: "Mood Tracking",
-      description: "Track your emotional journey with multiple detection methods",
-      gradient: "from-amber-500 to-orange-500",
+      icon: "🧠",
+      title: "AI Mood Analysis",
+      description: "Advanced algorithms detect your emotional state via text, voice, or camera.",
+      gradient: "from-indigo-500 to-purple-500",
       path: "/mood-detect"
     },
     {
-      icon: "ANALYZE",
-      title: "Analytics & Insights",
-      description: "Visualize patterns and trends in your emotional wellbeing",
-      gradient: "from-teal-500 to-emerald-500",
-      path: "/dashboard"
-    },
-    {
-      icon: "LISTEN",
-      title: "Personalized Music",
-      description: "Get music recommendations based on your current mood",
-      gradient: "from-orange-500 to-rose-500",
+      icon: "🎵",
+      title: "Sonic Resonance",
+      description: "Curated soundscapes and playlists that perfectly match your vibrational energy.",
+      gradient: "from-fuchsia-500 to-pink-500",
       path: "/music"
     },
     {
-      icon: "JOURNAL",
-      title: "Mood Journal",
-      description: "Add notes and reflect on your emotional experiences",
-      gradient: "from-amber-500 to-yellow-500",
-      path: "/mood-detect"
-    },
-    {
-      icon: "STREAK",
-      title: "Streak Tracking",
-      description: "Build healthy habits with daily mood check-in streaks",
-      gradient: "from-rose-500 to-pink-500",
+      icon: "📊",
+      title: "Emotional Intelligence",
+      description: "Visual insights into your mood patterns, helping you understand yourself better.",
+      gradient: "from-cyan-500 to-blue-500",
       path: "/dashboard"
-    },
-    {
-      icon: "DETECT",
-      title: "AI Detection",
-      description: "Use camera, voice, or text to automatically detect your mood",
-      gradient: "from-teal-500 to-cyan-500",
-      path: "/mood-detect"
     }
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.8, ease: "easeOut" },
-    },
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white px-6 overflow-hidden relative">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] selection:bg-purple-500/30 dark:selection:bg-purple-500/30 selection:light:bg-indigo-500/30 overflow-hidden relative font-sans transition-colors duration-300">
       
-      {/* Enhanced Animated Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Multiple Gradient Orbs */}
-        <motion.div
-          animate={{
-            x: [0, 100, -50, 0],
-            y: [0, -100, 50, 0],
-            scale: [1, 1.3, 1.1, 1],
-            rotate: [0, 180, 360, 0],
-          }}
-          transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-gradient-to-br from-cyan-500/40 via-blue-500/30 to-transparent rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            x: [0, -120, 60, 0],
-            y: [0, 100, -60, 0],
-            scale: [1, 1.4, 1.2, 1],
-            rotate: [0, -180, -360, 0],
-          }}
-          transition={{ duration: 35, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -bottom-40 -right-40 w-[700px] h-[700px] bg-gradient-to-tl from-purple-500/40 via-pink-500/30 to-transparent rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            x: [0, 80, -40, 0],
-            y: [0, -80, 40, 0],
-            scale: [1, 1.5, 1.3, 1],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -bottom-40 -right-40 w-[700px] h-[700px] bg-gradient-to-tl from-teal-500/40 via-emerald-500/30 to-transparent rounded-full blur-3xl"
-        />
+      {/* Cinematic Background */}
+      <div className="fixed inset-0 pointer-events-none">
         
-        {/* Animated Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f46e508_1px,transparent_1px),linear-gradient(to_bottom,#4f46e508_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_40%,transparent)]" />
+        {/* Deep Space Gradients - Adjusted for Professional Look */}
+        <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-indigo-900/20 rounded-full blur-[120px] mix-blend-screen animate-pulse-slow" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-purple-900/10 rounded-full blur-[100px] mix-blend-screen" />
         
-        {/* Floating Particles */}
-        {[...Array(30)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white/40 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -40, 0],
-              opacity: [0.2, 1, 0.2],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 4,
-              repeat: Infinity,
-              delay: Math.random() * 3,
-            }}
-          />
-        ))}
+        {/* Animated Digital Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black,transparent)]" />
+        
+        {/* Floating Abstract Notes/Shapes */}
+        <motion.div 
+          animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/4 right-[15%] w-24 h-24 border border-white/5 rounded-full blur-sm"
+        />
+        <motion.div 
+          animate={{ y: [0, 30, 0], rotate: [0, -10, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-1/3 left-[10%] w-32 h-32 border border-purple-500/10 rounded-full blur-md"
+        />
       </div>
 
-      {/* Navbar */}
       <Navbar />
 
-      {/* Main Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen pt-28">
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex flex-col items-center justify-center"
-        >
-
-          {/* Minimalist Logo */}
+      {/* Main Content Container */}
+      <div className="relative z-10 pt-32 pb-20 px-6 max-w-7xl mx-auto">
+        
+        {/* HERO SECTION */}
+        <div className="flex flex-col items-center justify-center min-h-[70vh] text-center mb-24">
+          
+          {/* Badge */}
           <motion.div
-            variants={itemVariants}
-            className="relative mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
           >
-            <div className="relative flex items-center justify-center">
-              {/* Modern Minimal Logo */}
-              <div className="relative">
-                {/* Subtle glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-400/20 via-orange-500/20 to-teal-500/20 rounded-full blur-3xl" />
-                
-                {/* Logo Component */}
-                <div className="relative">
-                  <Logo size="w-32 h-32 md:w-40 md:h-40" />
-                </div>
-              </div>
-            </div>
+            <span className="text-sm font-medium bg-gradient-to-r from-indigo-400 to-pink-400 bg-clip-text text-transparent tracking-wide">
+              AI-POWERED EMOTIONAL INTELLIGENCE
+            </span>
           </motion.div>
 
-          {/* Modern Title */}
-          <motion.div variants={itemVariants} className="text-center mb-6">
-            <h1 className="text-7xl md:text-9xl font-bold tracking-tight mb-3">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-orange-200">
-                ECHONA
-              </span>
-            </h1>
-            <div className="h-px w-32 bg-gradient-to-r from-transparent via-orange-400 to-transparent mx-auto" />
-          </motion.div>
-
-          {/* Subtitle */}
-          <motion.div variants={itemVariants} className="mb-16">
-            <p className="text-base md:text-lg text-gray-400 text-center font-light max-w-xl mx-auto">
-              Your emotional AI companion
-            </p>
-            <p className="text-sm md:text-base text-gray-500 text-center font-light mt-3 max-w-2xl mx-auto">
-              Detect your mood • Track your feelings • Discover personalized music
-            </p>
-          </motion.div>
-
-          {/* Feature Cards */}
+          {/* Logo & Headline */}
           <motion.div
-            variants={itemVariants}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-16"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="mb-8 relative"
           >
-            <motion.div
-              whileHover={{ y: -4 }}
-              className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-amber-500/50 transition-all duration-300"
-            >
-              <div className="text-xs font-black tracking-widest mb-3 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">AI</div>
-              <h3 className="text-lg font-semibold mb-2 text-white">AI Detection</h3>
-              <p className="text-sm text-gray-400 font-light">Advanced mood analysis using AI</p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4 }}
-              className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-orange-500/50 transition-all duration-300"
-            >
-              <div className="text-xs font-black tracking-widest mb-3 bg-gradient-to-r from-orange-400 to-rose-400 bg-clip-text text-transparent">DATA</div>
-              <h3 className="text-lg font-semibold mb-2 text-white">Analytics</h3>
-              <p className="text-sm text-gray-400 font-light">Track your emotional journey</p>
-            </motion.div>
-
-            <motion.div
-              whileHover={{ y: -4 }}
-              className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-teal-500/50 transition-all duration-300"
-            >
-              <div className="text-xs font-black tracking-widest mb-3 bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">AUDIO</div>
-              <h3 className="text-lg font-semibold mb-2 text-white">Music</h3>
-              <p className="text-sm text-gray-400 font-light">Personalized playlists for you</p>
-            </motion.div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -z-10" />
+            <Logo size="w-32 h-32 md:w-40 md:h-40" />
           </motion.div>
 
-          {/* CTA Buttons */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col sm:flex-row gap-4 items-center"
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6"
           >
-            <motion.button
+            Your Rhythm
+            <span className="block mt-2 bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
+              Your Emotion
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="max-w-2xl text-lg md:text-xl text-gray-400 leading-relaxed mb-10"
+          >
+            Echona is your AI companion that harmonizes your mood with the perfect soundtrack. experience musical therapy tailored to your vibrational energy.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
+          >
+            <button
               onClick={() => navigate("/mood-detect")}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-10 py-4 bg-white text-slate-900 rounded-full font-semibold text-base hover:bg-gray-100 transition-colors shadow-lg shadow-white/20"
+              className="px-8 py-4 bg-white text-black rounded-full font-bold hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)]"
             >
-              Start Detecting →
-            </motion.button>
+              Start Session
+            </button>
+            <button
+              onClick={() => navigate("/music")}
+              className="px-8 py-4 bg-transparent border border-white/20 text-white rounded-full font-semibold hover:bg-white/10 transition-colors backdrop-blur-sm"
+            >
+              Explore Library
+            </button>
+          </motion.div>
+        </div>
 
-            <motion.button
-              onClick={() => navigate("/auth")}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-10 py-4 bg-white/5 backdrop-blur-sm border border-white/20 text-white rounded-full font-semibold text-base hover:bg-white/10 transition-all"
-            >
-              Sign In
-            </motion.button>
+        {/* STATS SECTION */}
+        <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-8 py-12 border-y border-white/5 mb-32"
+          >
+            {[
+              { label: "Active Users", value: "10k+" },
+              { label: "Moods Analyzed", value: "500k+" },
+              { label: "Songs Curated", value: "5k+" },
+              { label: "Stress Reduced", value: "94%" },
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-white mb-1">{stat.value}</div>
+                <div className="text-sm text-gray-500 uppercase tracking-widest">{stat.label}</div>
+              </div>
+            ))}
+        </motion.div>
+
+        {/* FEATURES GRID */}
+        <div className="mb-32">
+          <motion.div 
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">Science of Sound</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              Our triple-layer detection system ensures we understand closer than anyone else.
+            </p>
           </motion.div>
 
-          {/* Stats Section */}
-          <motion.div
-            variants={itemVariants}
-            className="mt-24 flex items-center justify-center gap-12 md:gap-16"
-          >
-            <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-white mb-1">6</p>
-              <p className="text-xs md:text-sm text-gray-500 font-light">Mood Types</p>
-            </div>
-            <div className="w-px h-12 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
-            <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-white mb-1">50+</p>
-              <p className="text-xs md:text-sm text-gray-500 font-light">Songs</p>
-            </div>
-            <div className="w-px h-12 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
-            <div className="text-center">
-              <p className="text-4xl md:text-5xl font-bold text-white mb-1">AI</p>
-              <p className="text-xs md:text-sm text-gray-500 font-light">Powered</p>
-            </div>
-          </motion.div>
-
-          {/* Features Grid */}
-          <motion.div
-            variants={itemVariants}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16 w-full max-w-6xl"
-          >
-            {features.map((feature, index) => (
+          <div className="grid md:grid-cols-3 gap-6">
+            {features.map((feature, i) => (
               <motion.div
-                key={feature.title}
+                key={i}
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 + index * 0.1 }}
-                whileHover={{ y: -5, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
                 onClick={() => navigate(feature.path)}
-                className="group relative cursor-pointer"
+                className="group relative p-8 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all cursor-pointer overflow-hidden"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity`} />
-                <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 group-hover:border-white/30 rounded-2xl p-6 transition-all">
-                  <div className={`text-xs font-black tracking-widest mb-4 bg-gradient-to-r ${feature.gradient} bg-clip-text text-transparent group-hover:scale-110 transition-transform`}>
+                {/* Hover Gradient */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+                
+                <div className="relative z-10">
+                  <div className="text-4xl mb-6 bg-white/5 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-300">
                     {feature.icon}
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-white">{feature.title}</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">{feature.description}</p>
-                  <div className="mt-4 flex items-center text-xs text-gray-400 group-hover:text-orange-400 transition-colors">
-                    <span>Explore</span>
-                    <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                  <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
+                  <p className="text-gray-400 leading-relaxed mb-6">
+                    {feature.description}
+                  </p>
+                  <div className="flex items-center text-sm font-semibold tracking-wide uppercase opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all">
+                    Discover <span className="ml-2">→</span>
                   </div>
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
+        </div>
 
-          {/* Motivational Quote Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2 }}
-            className="mt-24 mb-16 w-full max-w-4xl"
-          >
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-teal-500/10 border border-white/10 backdrop-blur-xl p-12">
-              <div className="absolute inset-0">
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-orange-500/5 to-amber-500/0" />
-              </div>
-              <div className="relative text-center">
-                <motion.div
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                  }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="text-sm font-black tracking-widest mb-6 text-orange-400"
-                >
-                  INSPIRATION
-                </motion.div>
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-4">Daily Motivation</p>
-                <p className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-teal-400 italic leading-relaxed mb-6">
-                  "Take care of your mind, your body will thank you. Take care of your body, your mind will thank you."
-                </p>
-                <p className="text-orange-400 font-semibold text-lg">— Start Your Wellness Journey Today</p>
-                
-                <motion.button
-                  onClick={() => navigate("/mood-detect")}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="mt-8 px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full font-bold text-white shadow-lg hover:shadow-orange-500/50 transition-all"
-                >
-                  Begin Now →
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
+        {/* TESTIMONIAL / QUOTE */}
+        <div className="relative rounded-[2.5rem] bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-white/10 p-12 md:p-20 text-center overflow-hidden mb-20">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+          <div className="relative z-10 max-w-4xl mx-auto">
+            <span className="text-6xl text-white/20 font-serif leading-none">“</span>
+            <h3 className="text-2xl md:text-4xl font-light italic leading-relaxed text-white/90 my-6">
+              Music produces a kind of pleasure which human nature cannot do without.
+              Echona brings this pleasure to your daily life.
+            </h3>
+            <p className="text-white/50 font-medium tracking-widest uppercase">— Confucius (Adapted)</p>
+          </div>
+        </div>
 
-        </motion.div>
       </div>
 
-      {/* Theme Toggle & User Guide */}
-      <ThemeToggle />
+      {/* Floating Helpers */}
       <QuickActions />
       <BreathingExercise />
       <MeditationTimer />
       <UserGuide />
+      <ThemeToggle />
+      
+      {/* Scroll indicator */}
+      <motion.div 
+        style={{ scaleX: scrollYProgress, transformOrigin: "0%" }}
+        className="fixed top-0 left-0 right-0 h-1 bg-indigo-500 z-50"
+      />
     </div>
   );
 }

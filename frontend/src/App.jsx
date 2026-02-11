@@ -6,6 +6,7 @@ import Auth from "./pages/Auth.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import MoodDetect from "./pages/MoodDetect.jsx";
 import Music from "./pages/Music.jsx";
+import TodoPlanner from "./pages/TodoPlanner.jsx";
 
 // Protection
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -19,6 +20,7 @@ function App() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/mood-detect" element={<MoodDetect />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/todo" element={<TodoPlanner />} />
       <Route path="/music" element={<Music />} />
 
       {/* Redirects for backwards compatibility */}
