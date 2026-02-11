@@ -1,77 +1,114 @@
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
 require("dotenv").config();
+const surpriseRoutes = require("./routes/surpriseRoutes");
+const gameRoutes = require("./routes/gameRoutes");
+
+
+
+const SpotifyWebApi = require("spotify-web-api-node");
 
 const app = express();
 
-// Middleware
+/* ===========================
+   MIDDLEWARE
+=========================== */
 app.use(cors());
 app.use(express.json());
+app.use("/api/surprise", surpriseRoutes);
+app.use("/api/game", gameRoutes);
 
-// MongoDB Connection - Disabled for demo (no login required)
-// const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/echona";
-// let mongoConnected = false;
-// mongoose
-//   .connect(MONGODB_URI)
-//   .then(() => {
-//     console.log("✅ MongoDB connected");
-//     mongoConnected = true;
-//   })
-//   .catch((err) => {
-//     console.error("❌ MongoDB connection error:", err.message);
-//     console.warn("⚠️  Server will run without MongoDB. Authentication features will not work.");
-//     console.warn("⚠️  To fix: Start MongoDB or use MongoDB Atlas connection string");
-//   });
 
-// In-memory storage for demo (no database needed)
-let moodsStorage = [];
 
-// Routes
-// const authRoutes = require("./routes/authRoutes"); // Disabled for demo
+/* ===========================
+   SPOTIFY CONFIG
+=========================== */
+const spotifyApi = new SpotifyWebApi({
+  clientId: process.env.SPOTIFY_CLIENT_ID,
+  clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+});
+
+/* ===========================
+   EXISTING ROUTES
+=========================== */
 const moodRoutes = require("./routes/moodRoutes");
-
-// app.use("/api/auth", authRoutes); // Disabled for demo
 app.use("/api/mood", moodRoutes);
 
-// Health check
+/* ===========================
+   PHASE 1: SPOTIFY AUTH ROUTES
+=========================== */
+
+// Step 1: Redirect user to Spotify login
+app.get("/api/spotify/login", (req, res) => {
+  const scopes = ["user-read-email", "user-read-private"];
+  const authURL = spotifyApi.createAuthorizeURL(scopes);
+  res.redirect(authURL);
+});
+
+// Step 2: Spotify callback
+app.get("/api/spotify/callback", async (req, res) => {
+  const code = req.query.code;
+
+  try {
+    const data = await spotifyApi.authorizationCodeGrant(code);
+
+    spotifyApi.setAccessToken(data.body.access_token);
+    spotifyApi.setRefreshToken(data.body.refresh_token);
+
+    res.json({
+      success: true,
+      message: "Spotify connected successfully",
+    });
+  } catch (err) {
+    console.error("Spotify error:", err.message);
+    res.status(500).json({ error: "Spotify authentication failed" });
+  }
+});
+
+/* ===========================
+   HEALTH CHECK
+=========================== */
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     message: "ECHONA Backend API",
     status: "running",
-    timestamp: new Date().toISOString()
+    phase: "PHASE 1 - Spotify Integration",
+    timestamp: new Date().toISOString(),
   });
 });
 
-// Error handling
+/* ===========================
+   ERROR HANDLING
+=========================== */
 app.use((err, req, res, next) => {
   console.error("[Server Error]:", err);
-  res.status(500).json({ error: "Internal server error", message: err.message });
+  res.status(500).json({
+    error: "Internal server error",
+    message: err.message,
+  });
 });
 
-// Start server on port 5001
+/* ===========================
+   SERVER START
+=========================== */
 const PORT = 5001;
-const mongoConnected = false; // MongoDB disabled for demo
 
-try {
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 ECHONA Backend running on http://localhost:${PORT}`);
-    console.log(`ℹ️  Running in DEMO mode without database`);
-  });
+app.listen(PORT, () => {
+  console.log(`🚀 ECHONA Backend running on http://localhost:${PORT}`);
+  console.log("🎧 PHASE 1: Spotify Integration active");
+});
 
-  server.on('error', (err) => {
-    console.error('❌ Server error:', err);
-    process.exit(1);
-  });
-} catch (err) {
-  console.error('❌ Failed to start server:', err);
-  process.exit(1);
-}
+// Keep process alive
+setInterval(() => {
+  // This prevents the process from exiting
+}, 1000);
 
-process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught exception:', err);
+// Error handling
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });

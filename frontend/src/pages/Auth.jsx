@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import Navbar from "../components/Navbar";
+import Logo from "../components/Logo";
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -96,7 +97,7 @@ function Auth() {
       >
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <img src="/echona-logo.svg" alt="Echona" className="w-16 h-16" />
+          <Logo size="w-20 h-20" />
         </div>
 
         {/* Title */}

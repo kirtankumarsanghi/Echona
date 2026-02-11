@@ -71,13 +71,15 @@ function Navbar() {
       </motion.div>
 
       {/* Main Navigation */}
-      <nav className="bg-gray-900/80 backdrop-blur-lg border-b border-gray-700 fixed top-10 left-0 w-full z-50 shadow-lg">
+      <nav className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-600 fixed top-10 left-0 w-full z-50 shadow-xl">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 text-2xl font-bold text-orange-400 hover:text-amber-300 transition">
+        <Link to="/" className="flex items-center gap-2 group">
           <Logo size="w-10 h-10" />
-          ECHONA
+          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 group-hover:opacity-80 transition-opacity">
+            ECHONA
+          </span>
         </Link>
 
         {/* Desktop Menu */}
@@ -85,6 +87,7 @@ function Navbar() {
           <Link className="hover:text-white transition-colors" to="/">Home</Link>
           <Link className="hover:text-white transition-colors" to="/mood-detect">Detect Mood</Link>
           <Link className="hover:text-white transition-colors" to="/dashboard">Dashboard</Link>
+          <Link className="hover:text-white transition-colors" to="/todo">To-Do</Link>
           <Link className="hover:text-white transition-colors" to="/music">Music</Link>
         </div>
 
@@ -109,6 +112,7 @@ function Navbar() {
             <Link className="block hover:text-white" to="/" onClick={() => setOpen(false)}>🏠 Home</Link>
             <Link className="block hover:text-white" to="/mood-detect" onClick={() => setOpen(false)}>🎭 Detect Mood</Link>
             <Link className="block hover:text-white" to="/dashboard" onClick={() => setOpen(false)}>📊 Dashboard</Link>
+            <Link className="block hover:text-white" to="/todo" onClick={() => setOpen(false)}>✓ To-Do</Link>
             <Link className="block hover:text-white" to="/music" onClick={() => setOpen(false)}>🎵 Music</Link>
             {loggedIn ? (
               <button className="block hover:text-red-400 text-left" onClick={() => { handleLogout(); setOpen(false); }}>🚪 Logout</button>

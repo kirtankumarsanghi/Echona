@@ -1,6 +1,9 @@
 
 import { useEffect, useState } from "react";
 import axiosInstance from "./api/axiosInstance";
+import MiniChallenge from "../components/MiniChallenge";
+
+
 
 
 export default function Dashboard() {
@@ -18,6 +21,10 @@ export default function Dashboard() {
       })
       .finally(() => setLoading(false));
   }, []);
+  const mockTrack = {
+  mood: "happy"
+};
+
 
   const getMoodColor = (mood) => {
     const colors = {
@@ -36,6 +43,10 @@ export default function Dashboard() {
       <div className="max-w-5xl mx-auto mt-20">
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-10 shadow-2xl mb-6">
           <h1 className="text-4xl font-bold mb-4">Dashboard</h1>
+          <div className="mt-6">
+  <MiniChallenge correctMood={mockTrack.mood} />
+</div>
+
           <p className="text-xl mb-6">Welcome! Mood history is now public for demo purposes.</p>
         </div>
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-10 shadow-2xl">

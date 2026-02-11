@@ -1,163 +1,147 @@
 import { motion } from "framer-motion";
 
-function Logo({ size = "w-32 h-32" }) {
+function Logo({ size = "w-12 h-12" }) {
+  // Animation for the equalizer bars
+  const barVariants = {
+    initial: { scaleX: 1 },
+    animate: (custom) => ({
+      scaleX: [1, 1.1, 1, 0.9, 1], // Subtle horizontal breathe
+      opacity: [1, 0.8, 1],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        repeatType: "reverse",
+        delay: custom * 0.2,
+        ease: "easeInOut",
+      },
+    }),
+  };
+
   return (
-    <motion.svg
-      className={size}
-      viewBox="0 0 200 200"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      whileHover={{ scale: 1.05 }}
-      transition={{ type: "spring", stiffness: 400, damping: 20 }}
-    >
-      {/* Outer glow circle */}
-      <motion.circle
-        cx="100"
-        cy="100"
-        r="90"
-        fill="url(#glow)"
-        opacity="0.3"
-        animate={{
-          scale: [1, 1.05, 1],
-          opacity: [0.3, 0.4, 0.3],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-
-      {/* Main circular background */}
-      <circle
-        cx="100"
-        cy="100"
-        r="75"
-        fill="url(#bgGradient)"
-        opacity="0.9"
-      />
-
-      {/* Abstract brain/emotion waves - Left side */}
-      <motion.path
-        d="M 50 80 Q 40 90 50 100 Q 40 110 50 120"
-        stroke="url(#waveGradient1)"
-        strokeWidth="4"
-        strokeLinecap="round"
+    <div className={`relative flex items-center justify-center ${size}`}>
+      <motion.svg
+        viewBox="0 0 100 100"
         fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 2, ease: "easeInOut" }}
-      />
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full drop-shadow-xl"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <defs>
+          <linearGradient id="mainGradient" x1="0" y1="0" x2="100" y2="100">
+            <stop offset="0%" stopColor="#818cf8" /> {/* Indigo-400 */}
+            <stop offset="50%" stopColor="#c084fc" /> {/* Purple-400 */}
+            <stop offset="100%" stopColor="#f472b6" /> {/* Pink-400 */}
+          </linearGradient>
+          <linearGradient id="glowGradient" x1="0" y1="0" x2="100" y2="100">
+            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#d946ef" stopOpacity="0.5" />
+          </linearGradient>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
 
-      {/* Center flowing lines */}
-      <motion.path
-        d="M 70 70 Q 90 80 100 90 Q 110 80 130 70"
-        stroke="url(#waveGradient2)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 2, delay: 0.2, ease: "easeInOut" }}
-      />
+        {/* Background Shape - Soft Hexagon/Circle Hybrid */}
+        <motion.path
+          d="M 50 10 
+             L 85 25 
+             L 85 75 
+             L 50 90 
+             L 15 75 
+             L 15 25 
+             Z"
+          fill="url(#mainGradient)"
+          fillOpacity="0.15"
+          stroke="url(#mainGradient)"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          initial={{ opacity: 0, rotate: -10, scale: 0.8 }}
+          animate={{ opacity: 1, rotate: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          style={{ vectorEffect: "non-scaling-stroke" }}
+        />
 
-      <motion.path
-        d="M 70 100 Q 85 105 100 100 Q 115 105 130 100"
-        stroke="url(#waveGradient3)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 2, delay: 0.4, ease: "easeInOut" }}
-      />
+        {/* Rotating Dashed Ring */}
+        <motion.circle
+          cx="50"
+          cy="50"
+          r="35"
+          stroke="url(#glowGradient)"
+          strokeWidth="1.5"
+          strokeDasharray="6 4"
+          initial={{ rotate: 0, opacity: 0 }}
+          animate={{ rotate: 360, opacity: 0.7 }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        />
 
-      <motion.path
-        d="M 70 130 Q 90 120 100 110 Q 110 120 130 130"
-        stroke="url(#waveGradient1)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 2, delay: 0.6, ease: "easeInOut" }}
-      />
+        {/* The 'E' Shape - Stylized as Abstract Audio Waves */}
+        <g transform="translate(28, 30)">
+          {/* Top Bar */}
+          <motion.rect
+            x="0"
+            y="0"
+            width="44"
+            height="8"
+            rx="4"
+            fill="url(#mainGradient)"
+            custom={0}
+            variants={barVariants}
+            initial="initial"
+            animate="animate"
+          />
+          
+          {/* Middle Bar (Short + Indented) */}
+          <motion.rect
+            x="0"
+            y="16"
+            width="32"
+            height="8"
+            rx="4"
+            fill="url(#mainGradient)"
+            custom={1}
+            variants={barVariants}
+            initial="initial"
+            animate="animate"
+          />
 
-      {/* Abstract brain/emotion waves - Right side */}
-      <motion.path
-        d="M 150 80 Q 160 90 150 100 Q 160 110 150 120"
-        stroke="url(#waveGradient2)"
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 2, delay: 0.8, ease: "easeInOut" }}
-      />
+          {/* Bottom Bar */}
+          <motion.rect
+            x="0"
+            y="32"
+            width="44"
+            height="8"
+            rx="4"
+            fill="url(#mainGradient)"
+            custom={2}
+            variants={barVariants}
+            initial="initial"
+            animate="animate"
+          />
+        </g>
 
-      {/* Central pulse circle */}
-      <motion.circle
-        cx="100"
-        cy="100"
-        r="12"
-        fill="url(#pulseGradient)"
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [1, 0.7, 1],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-
-      {/* Inner decorative circles */}
-      <circle cx="80" cy="85" r="4" fill="#fbbf24" opacity="0.6" />
-      <circle cx="120" cy="85" r="4" fill="#14b8a6" opacity="0.6" />
-      <circle cx="90" cy="115" r="3" fill="#f97316" opacity="0.5" />
-      <circle cx="110" cy="115" r="3" fill="#10b981" opacity="0.5" />
-
-      {/* Gradient Definitions */}
-      <defs>
-        {/* Background gradient */}
-        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0f172a" stopOpacity="0.8" />
-          <stop offset="50%" stopColor="#1e293b" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#0f172a" stopOpacity="0.8" />
-        </linearGradient>
-
-        {/* Glow gradient */}
-        <radialGradient id="glow">
-          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.4" />
-          <stop offset="50%" stopColor="#f97316" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.1" />
-        </radialGradient>
-
-        {/* Wave gradients */}
-        <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#fbbf24" />
-          <stop offset="100%" stopColor="#f97316" />
-        </linearGradient>
-
-        <linearGradient id="waveGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#14b8a6" />
-        </linearGradient>
-
-        <linearGradient id="waveGradient3" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#14b8a6" />
-          <stop offset="100%" stopColor="#10b981" />
-        </linearGradient>
-
-        {/* Pulse gradient */}
-        <radialGradient id="pulseGradient">
-          <stop offset="0%" stopColor="#fbbf24" />
-          <stop offset="50%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#fb923c" />
-        </radialGradient>
-      </defs>
-    </motion.svg>
+        {/* Decorative Particles */}
+        <motion.circle
+          cx="78"
+          cy="28"
+          r="3"
+          fill="#f472b6"
+          fillOpacity="0.8"
+          animate={{ y: [-2, 2, -2], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.circle
+          cx="22"
+          cy="72"
+          r="2"
+          fill="#818cf8"
+          fillOpacity="0.8"
+          animate={{ y: [2, -2, 2], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        />
+      </motion.svg>
+    </div>
   );
 }
 

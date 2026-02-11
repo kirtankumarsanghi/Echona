@@ -84,17 +84,6 @@ function UserGuide() {
 
   return (
     <>
-      {/* Help Button - Always visible */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={resetGuide}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full shadow-lg flex items-center justify-center text-white font-black text-sm hover:shadow-2xl transition-shadow"
-        title="Show User Guide"
-      >
-        HELP
-      </motion.button>
-
       {/* Guide Modal */}
       <AnimatePresence>
         {showGuide && (
