@@ -3,6 +3,8 @@ const cors = require("cors");
 require("dotenv").config();
 const surpriseRoutes = require("./routes/surpriseRoutes");
 const gameRoutes = require("./routes/gameRoutes");
+const mongoose = require("mongoose");
+
 
 
 
