@@ -204,6 +204,23 @@ app.get("/", (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+// ─── Keep-Alive: Prevent Render free tier from sleeping ────────────────────
+if (config.nodeEnv === "production") {
+  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+  const BACKEND_URL = process.env.BACKEND_URL || "https://echona.onrender.com";
+  
+  setInterval(async () => {
+    try {
+      await axios.get(`${BACKEND_URL}/health`, { timeout: 5000 });
+      console.log(`🔄 Keep-alive ping sent at ${new Date().toISOString()}`);
+    } catch (error) {
+      console.warn("⚠️  Keep-alive ping failed:", error.message);
+    }
+  }, PING_INTERVAL);
+  
+  console.log("🔄 Keep-alive mechanism enabled (pings every 14 minutes)");
+}
+
 // ─── Server startup with port conflict detection ────────────────────────────
 const PORT = config.backendPort;
 let server;
