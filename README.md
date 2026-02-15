@@ -9,15 +9,24 @@
 
 **An intelligent mental wellness companion that combines emotion detection, music therapy, and personalized recommendations.**
 
+### 🚀 **Live Demo**
+
+[![Live Application](https://img.shields.io/badge/🌐_Live_Demo-Visit_App-8B5CF6?style=for-the-badge)](https://echona-qanj.vercel.app)
+
+**Production URLs:**
+- 🌐 **Frontend**: [https://echona-qanj.vercel.app](https://echona-qanj.vercel.app)
+- ⚙️ **Backend API**: [https://echona.onrender.com](https://echona.onrender.com)
+- 🤖 **ML Service**: [https://echona-ml.onrender.com](https://echona-ml.onrender.com)
+
 [Features](#features) • [Tech Stack](#tech-stack) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation)
 
 </div>
 
 ---
 
-## 🌟 Features
+##  Features
 
-### 🎭 **Multi-Modal Emotion Detection**
+###  **Multi-Modal Emotion Detection**
 - **Facial Emotion Recognition** - Real-time face emotion analysis using computer vision
 - **Voice Emotion Analysis** - Detect emotions from voice tone and patterns
 - **Text Sentiment Analysis** - Analyze emotional state from journal entries
@@ -29,20 +38,20 @@
 - **Context-Aware Suggestions** - Music recommendations based on time, weather, and context
 - **Surprise Me Feature** - Discover new music matched to your mood
 
-### 📊 **Wellness Dashboard**
+### **Wellness Dashboard**
 - **Mood Tracking** - Visualize your emotional journey over time
 - **Analytics & Insights** - Understand patterns in your mental wellness
 - **Progress Charts** - Track improvements and identify trends
 - **Activity History** - Review past mood entries and music sessions
 
-### 📝 **Productivity Tools**
+### **Productivity Tools**
 - **Smart Todo List** - Organize tasks with mood-aware prioritization
 - **Journal Integration** - Express yourself through writing
 - **Daily Challenges** - Personalized wellness activities
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 ### Frontend
 - **React 18** - Modern UI with hooks and functional components
@@ -71,7 +80,7 @@
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - **Node.js** 16.x or higher
@@ -79,25 +88,25 @@
 - **npm** or **yarn**
 - **Spotify Developer Account** (for music features)
 
-### 1️⃣ Clone the Repository
+### Clone the Repository
 ```bash
 git clone https://github.com/yourusername/echona-pro.git
 cd echona-pro
 ```
 
-### 2️⃣ Install Frontend Dependencies
+### Install Frontend Dependencies
 ```bash
 cd frontend
 npm install
 ```
 
-### 3️⃣ Install Backend Dependencies
+### Install Backend Dependencies
 ```bash
 cd ../backend
 npm install
 ```
 
-### 4️⃣ Setup Python Environment
+### Setup Python Environment
 ```bash
 cd ..
 python -m venv venv
@@ -112,7 +121,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 5️⃣ Environment Configuration
+### Environment Configuration
 
 Create `.env` file in the root directory:
 
@@ -137,7 +146,7 @@ ML_SERVICE_PORT=5000
 
 ---
 
-## 🚀 Usage
+##  Usage
 
 ### Quick Start (Windows)
 ```powershell
@@ -168,7 +177,7 @@ Access the application at: **http://localhost:5173**
 
 ---
 
-## 📖 Documentation
+##  Documentation
 
 Detailed documentation is available in the [`docs/`](./docs) folder:
 
@@ -179,7 +188,7 @@ Detailed documentation is available in the [`docs/`](./docs) folder:
 
 ---
 
-## 🏗️ Project Structure
+##  Project Structure
 
 ```
 echona-pro/
@@ -214,7 +223,7 @@ echona-pro/
 
 ---
 
-## 🎯 Key Features in Detail
+##  Key Features in Detail
 
 ### Emotion Detection System
 The platform uses a sophisticated multimodal approach:
@@ -231,7 +240,7 @@ The platform uses a sophisticated multimodal approach:
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome! Please read our contributing guidelines first.
 
@@ -251,7 +260,7 @@ Contributions are welcome! Please read our contributing guidelines first.
 
 ---
 
-## 📧 Contact
+##  Contact
 
 **Project Creator**: Your Name  
 **Email**: your.email@example.com  
@@ -261,7 +270,7 @@ Contributions are welcome! Please read our contributing guidelines first.
 
 <div align="center">
 
-**⭐ Star this repo if you find it helpful!**
+** Star this repo if you find it helpful!**
 
 Made with ❤️ for mental wellness
 
