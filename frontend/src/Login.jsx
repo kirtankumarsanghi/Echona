@@ -1,26 +1,38 @@
 import { useState } from "react";
-import axios from "axios";
+import axiosInstance from "./api/axiosInstance";
+import { login as authLogin } from "./utils/auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleLogin() {
+    if (!email.trim() || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     try {
-      const res = await axios.post("http://localhost:5001/api/auth/login", {
+      const res = await axiosInstance.post("/api/auth/login", {
         email,
         password,
       });
 
-      if (res.data.token) {
-        localStorage.setItem("echona_token", res.data.token);
-        localStorage.setItem("echona_user", JSON.stringify(res.data.user));
+      if (res.data?.token) {
+        authLogin(res.data.token, res.data.user);
         window.location.href = "/dashboard";
       } else {
-        alert(res.data.message);
+        setError(res.data?.message || "Login failed. Please try again.");
       }
     } catch (err) {
-      alert("Login failed. Try again.");
+      setError(err.message || "Login failed. Try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -30,6 +42,12 @@ export default function Login() {
         <h1 className="text-3xl font-bold text-white text-center mb-6">
           Welcome Back 👋
         </h1>
+
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-300/40 bg-red-500/20 px-3 py-2 text-sm text-red-100">
+            {error}
+          </div>
+        )}
 
         <input
           type="email"
@@ -47,9 +65,10 @@ export default function Login() {
 
         <button
           onClick={handleLogin}
-          className="w-full bg-white text-purple-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition"
+          disabled={loading}
+          className="w-full bg-white text-purple-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         <p className="text-center text-gray-200 mt-4">

@@ -150,14 +150,14 @@ function SurpriseMe() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="bg-white border-2 border-amber-400 p-8 rounded-2xl shadow-xl mt-10 max-w-4xl mx-auto text-center"
+        className="bg-neutral-900/80 backdrop-blur-sm border border-neutral-700/50 p-8 rounded-2xl shadow-2xl mt-10 max-w-4xl mx-auto text-center"
       >
         <div className="inline-block px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full mb-4">
           <span className="text-white font-bold text-xs tracking-wider">INTELLIGENT RECOMMENDATION</span>
         </div>
         
-        <h3 className="text-3xl font-bold text-gray-800 mb-3">Context-Aware Music</h3>
-        <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+        <h3 className="text-3xl font-bold text-neutral-100 mb-3">Context-Aware Music</h3>
+        <p className="text-neutral-400 mb-6 max-w-2xl mx-auto">
           {localStorage.getItem('detected_mood') 
             ? "🎭 Using your detected emotion + current environment (time & weather) to recommend the perfect song."
             : "🌍 Analyzing your current environment (time of day & weather) to recommend the perfect song for this moment."
@@ -166,32 +166,32 @@ function SurpriseMe() {
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
           {localStorage.getItem('detected_mood') && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-lg border-2 border-purple-400">
-              <span className="text-purple-700 font-bold text-sm">🎭 YOUR EMOTION</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-purple-900/40 backdrop-blur-sm rounded-lg border border-purple-500/40">
+              <span className="text-purple-300 font-bold text-sm">🎭 YOUR EMOTION</span>
             </div>
           )}
-          <div className="flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-lg">
-            <span className="text-gray-700 font-bold text-sm">TIME</span>
+          <div className="flex items-center gap-2 px-4 py-2 bg-neutral-800/60 backdrop-blur-sm rounded-lg border border-neutral-600/30">
+            <span className="text-neutral-300 font-bold text-sm">TIME</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
-            <span className="text-gray-700 font-bold text-sm">WEATHER</span>
+          <div className="flex items-center gap-2 px-4 py-2 bg-neutral-800/60 backdrop-blur-sm rounded-lg border border-neutral-600/30">
+            <span className="text-neutral-300 font-bold text-sm">WEATHER</span>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-rose-50 rounded-lg">
-            <span className="text-gray-700 font-bold text-sm">MOOD</span>
+          <div className="flex items-center gap-2 px-4 py-2 bg-neutral-800/60 backdrop-blur-sm rounded-lg border border-neutral-600/30">
+            <span className="text-neutral-300 font-bold text-sm">MOOD</span>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-rose-100 border border-rose-300 rounded-lg">
-            <p className="text-rose-700 font-semibold">{error}</p>
+          <div className="mb-4 p-4 bg-rose-900/30 backdrop-blur-sm border border-rose-500/40 rounded-lg">
+            <p className="text-rose-300 font-semibold">{error}</p>
           </div>
         )}
 
         {/* Debug Info Panel */}
         {debugInfo && (
-          <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg text-left text-sm font-mono">
-            <div className="font-bold text-blue-800 mb-2">🔍 Debug Info:</div>
-            <div className="space-y-1">
+          <div className="mb-4 p-4 bg-blue-900/30 backdrop-blur-sm border border-blue-500/40 rounded-lg text-left text-sm font-mono">
+            <div className="font-bold text-blue-300 mb-2">🔍 Debug Info:</div>
+            <div className="space-y-1 text-neutral-300">
               <div><strong>Status:</strong> {debugInfo.status}</div>
               {debugInfo.emotion !== undefined && <div><strong>Emotion:</strong> {debugInfo.emotion}</div>}
               {debugInfo.phase && <div><strong>Phase:</strong> {debugInfo.phase}</div>}
@@ -201,8 +201,8 @@ function SurpriseMe() {
               {debugInfo.success !== undefined && <div><strong>Success:</strong> {debugInfo.success ? '✅ Yes' : '❌ No'}</div>}
               {debugInfo.mood && <div><strong>Mood Used:</strong> {debugInfo.mood}</div>}
               {debugInfo.song && <div><strong>Song:</strong> {debugInfo.song}</div>}
-              {debugInfo.error && <div className="text-red-600"><strong>Error:</strong> {debugInfo.error}</div>}
-              <div className="text-gray-500 text-xs mt-2 pt-2 border-t">{debugInfo.timestamp}</div>
+              {debugInfo.error && <div className="text-red-400"><strong>Error:</strong> {debugInfo.error}</div>}
+              <div className="text-neutral-500 text-xs mt-2 pt-2 border-t border-neutral-700">{debugInfo.timestamp}</div>
             </div>
           </div>
         )}
@@ -230,7 +230,7 @@ function SurpriseMe() {
           )}
         </motion.button>
 
-        <p className="text-gray-500 text-sm mt-4">
+        <p className="text-neutral-500 text-sm mt-4">
           No input required - Echona makes the choice for you
         </p>
       </motion.div>
@@ -250,12 +250,12 @@ function SurpriseMe() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.8, y: 50 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+              className="bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
             >
               {/* Header with Context */}
               <div className={`bg-gradient-to-r ${getMoodColor(surpriseData.context.moodUsed)} p-6`}>
                 <div className="text-white text-center">
-                  <div className="inline-block px-3 py-1 bg-white/20 rounded-full mb-2">
+                  <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full mb-2">
                     <span className="text-xs font-bold tracking-wider">
                       {surpriseData.mlEmotion ? "🎭 EMOTION + CONTEXT AWARE" : "🌍 CONTEXT AWARE"}
                     </span>
@@ -273,31 +273,31 @@ function SurpriseMe() {
               </div>
 
               {/* Song Details */}
-              <div className="p-8">
+              <div className="p-8 bg-neutral-900">
                 <div className="text-center mb-6">
                   <div className={`inline-block px-4 py-2 bg-gradient-to-r ${getMoodColor(surpriseData.context.moodUsed)} rounded-full mb-4`}>
                     <span className="text-white font-bold text-sm">{surpriseData.context.moodUsed.toUpperCase()} MOOD</span>
                   </div>
                   
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  <h2 className="text-2xl font-bold text-neutral-100 mb-2">
                     {surpriseData.track.title}
                   </h2>
-                  <p className="text-gray-600 text-lg">
+                  <p className="text-neutral-400 text-lg">
                     {surpriseData.track.artist}
                   </p>
-                  <span className="inline-block px-3 py-1 bg-gray-100 rounded-full text-gray-700 text-sm font-semibold mt-3">
+                  <span className="inline-block px-3 py-1 bg-neutral-800 border border-neutral-700 rounded-full text-neutral-300 text-sm font-semibold mt-3">
                     {surpriseData.track.genre}
                   </span>
                 </div>
 
                 {/* Context Explanation */}
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 mb-6">
-                  <h4 className="font-bold text-gray-800 mb-2">
+                <div className="bg-gradient-to-br from-neutral-800/80 to-neutral-900/80 backdrop-blur-sm border border-amber-500/30 rounded-xl p-4 mb-6">
+                  <h4 className="font-bold text-neutral-100 mb-2">
                     {surpriseData.mlEmotion ? "🎭 Why This Song?" : "🌍 Why This Song?"}
                   </h4>
-                  <p className="text-gray-700 text-sm leading-relaxed">
+                  <p className="text-neutral-300 text-sm leading-relaxed">
                     {surpriseData.mlEmotion && (
-                      <span className="block font-semibold text-purple-700 mb-1">
+                      <span className="block font-semibold text-purple-400 mb-1">
                         Your {surpriseData.mlEmotion} emotion guided this choice. 
                       </span>
                     )}
@@ -328,7 +328,7 @@ function SurpriseMe() {
                     onClick={closeResult}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"
+                    className="flex-1 py-3 bg-neutral-800 border border-neutral-700 text-neutral-300 rounded-xl font-bold hover:bg-neutral-700 transition-all"
                   >
                     CLOSE
                   </motion.button>
@@ -341,7 +341,7 @@ function SurpriseMe() {
                   }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full mt-3 py-3 border-2 border-teal-500 text-teal-600 rounded-xl font-bold hover:bg-teal-50 transition-all"
+                  className="w-full mt-3 py-3 border-2 border-teal-500/60 text-teal-400 rounded-xl font-bold hover:bg-teal-500/10 transition-all"
                 >
                   TRY ANOTHER
                 </motion.button>

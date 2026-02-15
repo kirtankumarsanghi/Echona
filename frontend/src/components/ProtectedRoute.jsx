@@ -3,7 +3,8 @@ import { isLoggedIn } from "../utils/auth";
 
 function ProtectedRoute({ children }) {
   if (!isLoggedIn()) {
-    return <Navigate to="/auth" replace />;
+    // Token missing or expired — redirect to auth
+    return <Navigate to="/auth" replace state={{ reason: "session_expired" }} />;
   }
   return children;
 }

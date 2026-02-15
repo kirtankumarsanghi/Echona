@@ -1,78 +1,154 @@
 import axios from "axios";
+import { getToken, logout as authLogout } from "../utils/auth";
 
-// Resolve API base URL: prefer Vite env var, fallback to localhost:5001
-const API_BASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL)
-  ? import.meta.env.VITE_API_URL
-  : "http://localhost:5001";
+// Use relative URLs so Vite proxy handles routing to backend
+// In production, set VITE_API_URL to the actual backend URL
+const API_BASE_URL =
+  typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL
+    : "";
 
-console.log("[AxiosInstance] API_BASE_URL:", API_BASE_URL);
+const MAX_RETRIES = 2;
+const RETRY_BASE_DELAY = 400;
 
-// Create axios instance with default config targeting backend
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getHeader(headers, key) {
+  if (!headers) return undefined;
+  return headers[key] || headers[key.toLowerCase()] || headers[key.toUpperCase()];
+}
+
+// Create axios instance — empty baseURL means requests go through Vite proxy
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000, // 10 second timeout
-  validateStatus: function (status) {
-    return status < 500; // Accept all responses below 500
-  }
+  timeout: 15000,
 });
 
-// Add token to every request
+// ─── Request interceptor: inject auth token ─────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("echona_token");
-    console.log("[Axios Interceptor] Request:", config.method?.toUpperCase(), config.url);
-    console.log("[Axios Interceptor] Token:", token ? "Found" : "Not found");
-    
+    const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    console.error("[Axios Interceptor] Request error:", error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add response error logging and handle 401
+// ─── Response interceptor: error normalization, retry, auto-logout ────────
 axiosInstance.interceptors.response.use(
-  (response) => {
-    console.log("[Axios Interceptor] Response:", response.status, response.config.url);
-    return response;
-  },
-  (error) => {
-    console.error("[Axios Interceptor] Response error:");
-    console.error("  - Message:", error.message);
-    console.error("  - Status:", error.response?.status);
-    console.error("  - Data:", error.response?.data);
-    console.error("  - URL:", error.config?.url);
-    
-    // Network error (backend not reachable)
-    if (!error.response) {
-      console.error("[Axios Interceptor] Network error - backend not reachable");
-      error.message = "Cannot connect to server. Please check if the backend is running on http://localhost:5000";
-      return Promise.reject(error);
-    }
-    
-    // If 401 Unauthorized, token is invalid or expired
-    if (error.response?.status === 401) {
-      console.error("[Axios Interceptor] 401 Unauthorized - Token invalid/expired");
-      
-      const errorMsg = error.response?.data?.error || error.response?.data?.message || "Invalid token";
-      if (errorMsg.includes("token") || errorMsg.includes("Token")) {
-        setTimeout(() => {
-          localStorage.removeItem("echona_token");
-          localStorage.removeItem("echona_user");
-          if (window.location.pathname !== "/auth") {
-            window.location.href = "/auth";
-          }
-        }, 1000);
+  (response) => response,
+  async (error) => {
+    const config = error.config || {};
+    const status = error.response?.status;
+    const responseData = error.response?.data || {};
+    const isNetworkError = !error.response;
+    const isTimeout = error.code === "ECONNABORTED";
+    const isServerError = status >= 500 && status < 600;
+    const isRateLimited = status === 429;
+    const isSafeMethod = ["get", "head", "options"].includes(
+      (config.method || "get").toLowerCase()
+    );
+    const isRetryableRoute = String(config.url || "").includes("/api/spotify/search");
+    const canRetryMethod = isSafeMethod || isRetryableRoute;
+
+    // ─── Automatic retry for transient failures ─────────────────────────
+    if (
+      (isNetworkError || isTimeout || isServerError || isRateLimited) &&
+      canRetryMethod
+    ) {
+      config.__retryCount = config.__retryCount || 0;
+      if (config.__retryCount < MAX_RETRIES) {
+        config.__retryCount += 1;
+
+        const retryAfter = Number(
+          getHeader(error.response?.headers, "retry-after")
+        );
+        const retryDelay =
+          Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter * 1000
+            : RETRY_BASE_DELAY * config.__retryCount;
+
+        await sleep(retryDelay);
+        return axiosInstance(config);
       }
     }
-    
+
+    // ─── Network error (backend unreachable) ────────────────────────────
+    if (isNetworkError) {
+      error.message =
+        "Cannot connect to server. Please check if the backend is running.";
+      error.userFriendly = true;
+      return Promise.reject(error);
+    }
+
+    // ─── Auto logout on 401 for protected routes ────────────────────────
+    if (status === 401) {
+      const url = String(config.url || "");
+      const isAuthRoute = url.includes("/api/auth/");
+      const isSpotifyRoute = url.includes("/api/spotify/");
+      const isMlRoute = url.includes("/api/ml/");
+      const isHealthRoute = url.includes("/health");
+
+      const isExpiredToken =
+        responseData.code === "TOKEN_EXPIRED" ||
+        responseData.error === "Session expired";
+
+      if (
+        !isAuthRoute &&
+        !isSpotifyRoute &&
+        !isMlRoute &&
+        !isHealthRoute
+      ) {
+        // Token is invalid/expired — clear entire session via centralized auth
+        authLogout();
+
+        if (
+          window.location.pathname !== "/auth" &&
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/"
+        ) {
+          window.location.href = "/auth";
+          return Promise.reject(error); // Don't continue processing
+        }
+      }
+
+      if (isExpiredToken) {
+        error.message = "Your session has expired. Please sign in again.";
+        error.userFriendly = true;
+      }
+    }
+
+    // ─── Normalize error messages from server ───────────────────────────
+    if ([400, 401, 403, 404, 409, 422, 429, 503].includes(status)) {
+      const requestId =
+        responseData.requestId ||
+        getHeader(error.response?.headers, "x-request-id");
+      const serverMessage = responseData.message || responseData.error;
+      if (serverMessage) {
+        error.message = serverMessage;
+        error.userFriendly = true;
+      }
+    }
+
+    if (status === 503) {
+      error.message =
+        responseData.message ||
+        "Service temporarily unavailable. Please try again in a moment.";
+      error.userFriendly = true;
+    }
+
+    if (status === 504) {
+      error.message = "Request timed out. Please try again.";
+      error.userFriendly = true;
+    }
+
     return Promise.reject(error);
   }
 );

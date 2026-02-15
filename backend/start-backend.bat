@@ -9,9 +9,9 @@ echo.
 
 cd /d "%~dp0"
 
-REM Kill any existing process on port 5001
-echo Checking for existing server on port 5001...
-for /f "tokens=5" %%a in ('netstat -aon ^| find ":5001" ^| find "LISTENING"') do (
+REM Kill any existing process on port 5000
+echo Checking for existing server on port 5000...
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":5000" ^| find "LISTENING"') do (
     if not "%%a"=="0" if not "%%a"=="4" (
         echo Found process %%a, killing it...
         taskkill /F /PID %%a > nul 2>&1
@@ -22,7 +22,7 @@ echo.
 
 :START
 echo [%TIME%] Starting backend server...
-node server-simple.js
+node server.js
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

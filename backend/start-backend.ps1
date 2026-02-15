@@ -12,10 +12,10 @@ Write-Host ""
 # Change to backend directory
 Set-Location -Path $PSScriptRoot
 
-# Kill any existing process on port 5001
-Write-Host "🔍 Checking for existing server on port 5001..." -ForegroundColor Yellow
+# Kill any existing process on port 5000
+Write-Host "Checking for existing server on port 5000..." -ForegroundColor Yellow
 try {
-    $connections = Get-NetTCPConnection -LocalPort 5001 -ErrorAction SilentlyContinue
+    $connections = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
     if ($connections) {
         $pids = $connections | Select-Object -ExpandProperty OwningProcess -Unique
         foreach ($pid in $pids) {
@@ -34,7 +34,7 @@ try {
         }
         Start-Sleep -Milliseconds 500
     } else {
-        Write-Host "✅ Port 5001 is free!" -ForegroundColor Green
+        Write-Host "Port 5000 is free!" -ForegroundColor Green
     }
 } catch {
     Write-Host "⚠️  Port check warning (continuing anyway)" -ForegroundColor Yellow
@@ -52,7 +52,7 @@ function Start-Backend {
     
     try {
         # Start the server
-        $process = Start-Process -FilePath "node" -ArgumentList "server-simple.js" -NoNewWindow -PassThru -Wait
+        $process = Start-Process -FilePath "node" -ArgumentList "server.js" -NoNewWindow -PassThru -Wait
         
         if ($process.ExitCode -ne 0) {
             Write-Host ""

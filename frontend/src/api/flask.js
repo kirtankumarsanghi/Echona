@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const FLASK_BASE_URL = "http://127.0.0.1:5000";
+import axiosInstance from "./axiosInstance";
 
 /**
  * Analyze mood using Flask ML backend
@@ -8,19 +6,26 @@ const FLASK_BASE_URL = "http://127.0.0.1:5000";
  */
 export async function analyzeWithFlask(payload) {
   try {
-    const res = await axios.post(
-      `${FLASK_BASE_URL}/analyze`,
-      payload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const res = await axiosInstance.post("/api/ml/analyze", payload);
 
-    return res.data;
+    return res.data || {};
   } catch (error) {
     console.error("[Flask API Error]", error.response?.data || error.message);
-    throw error;
+    throw new Error(
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      "ML service unavailable"
+    );
+  }
+}
+
+export async function checkFlaskHealth() {
+  try {
+    const res = await axiosInstance.get("/api/ml/health");
+    return res.data;
+  } catch (error) {
+    console.warn("[Flask Health] ML service unreachable:", error.message);
+    return { success: false, error: "ML service unavailable" };
   }
 }
