@@ -14,6 +14,9 @@ import { getSpotifyToken, clearSpotifyTokens } from "../utils/auth";
 import AppShell from "../components/AppShell";
 import OptionsMenu from "../components/OptionsMenu";
 
+// Get API base URL for Spotify OAuth (production or dev)
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
 // ===============================
 // YOUTUBE THUMBNAIL (always works)
 // ===============================
@@ -410,7 +413,7 @@ function Music() {
             </div>
           ) : (
             <a
-              href="/api/spotify/login"
+              href={`${API_BASE_URL}/api/spotify/login`}
               className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-full text-sm text-white font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:scale-105"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
