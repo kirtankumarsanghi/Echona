@@ -58,7 +58,11 @@ const config = {
 
   // URLs
   frontendUrl: process.env.FRONTEND_URL || `http://localhost:${defaultFrontendPort}`,
-  mlServiceUrl: process.env.ML_SERVICE_URL || `${defaultMlHost}:${defaultMlPort}`,
+  // Smart default: use production ML service if NODE_ENV is production
+  mlServiceUrl: process.env.ML_SERVICE_URL || 
+    (process.env.NODE_ENV === "production" 
+      ? "https://echona-ml.onrender.com" 
+      : `${defaultMlHost}:${defaultMlPort}`),
 
   // Database
   mongoUri: process.env.MONGODB_URI || "",
