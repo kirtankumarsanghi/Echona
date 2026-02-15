@@ -3,6 +3,9 @@ import sys
 import json
 import logging
 import socket
+import threading
+import time
+import requests
 from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -233,6 +236,22 @@ if __name__ == "__main__":
         logger.error(f"Fix: Run in PowerShell:")
         logger.error(f"  Get-NetTCPConnection -LocalPort {ml_port} -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}")
         sys.exit(1)
+
+    # Keep-alive mechanism for production (prevent Render from sleeping)
+    if is_production:
+        def keep_alive():
+            ml_service_url = os.getenv("ML_SERVICE_URL", "https://echona-ml.onrender.com")
+            while True:
+                time.sleep(14 * 60)  # 14 minutes
+                try:
+                    requests.get(f"{ml_service_url}/health", timeout=5)
+                    logger.info(f"🔄 Keep-alive ping sent at {datetime.now().isoformat()}")
+                except Exception as e:
+                    logger.warning(f"⚠️  Keep-alive ping failed: {e}")
+        
+        keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
+        keep_alive_thread.start()
+        logger.info("🔄 Keep-alive mechanism enabled (pings every 14 minutes)")
 
     logger.info("=" * 50)
     logger.info("  ECHONA ML Service Starting")
