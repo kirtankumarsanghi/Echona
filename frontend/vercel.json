@@ -9,7 +9,7 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "@vite_api_url",
-    "VITE_ML_API_URL": "@vite_ml_api_url"
+    "VITE_API_URL": "https://echona.onrender.com",
+    "VITE_ML_API_URL": "https://echona.onrender.com"
   }
 }
