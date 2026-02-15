@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Setup - ECHONA</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 1.8em;
+      margin-bottom: 15px;
+      color: #1DB954;
+    }
+
+    .step {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 15px 0;
+    }
+
+    .step-number {
+      display: inline-block;
+      background: #1DB954;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .code-box {
+      background: #1a1a2e;
+      color: #00ff88;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      margin: 10px 0;
+      overflow-x: auto;
+      border: 2px solid #1DB954;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #1DB954;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 10px 5px;
+      transition: all 0.3s;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .btn:hover {
+      background: #1ed760;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(29, 185, 84, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      font-weight: bold;
+    }
+
+    .status.success {
+      background: rgba(29, 185, 84, 0.2);
+      border: 2px solid #1DB954;
+    }
+
+    .status.error {
+      background: rgba(255, 68, 68, 0.2);
+      border: 2px solid #ff4444;
+    }
+
+    .status.info {
+      background: rgba(66, 153, 225, 0.2);
+      border: 2px solid #4299e1;
+    }
+
+    .center {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    ul {
+      margin: 15px 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 8px 0;
+      line-height: 1.6;
+    }
+
+    .spotify-logo {
+      width: 100px;
+      margin: 0 auto;
+      display: block;
+      margin-bottom: 20px;
+    }
+
+    #testResult {
+      display: none;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #1DB954;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .highlight {
+      background: rgba(255, 255, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <svg class="spotify-logo" viewBox="0 0 24 24" fill="#1DB954">
+        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+      </svg>
+      <h1>🎵 Spotify Setup Guide</h1>
+      <p style="text-align: center; font-size: 1.2em; opacity: 0.9;">Fix the "Invalid Redirect URI" error and enable embedded playback</p>
+    </div>
+
+    <div class="card">
+      <h2>🔍 Problem</h2>
+      <div class="status error">
+        ❌ INVALID_CLIENT: Invalid redirect URI
+      </div>
+      <p><strong>Why this happens:</strong> The redirect URI in your code doesn't match what's registered in your Spotify Developer Dashboard.</p>
+    </div>
+
+    <div class="card">
+      <h2>✅ Solution (5 Minutes)</h2>
+      
+      <div class="step">
+        <span class="step-number">1</span>
+        <strong>Go to Spotify Developer Dashboard</strong>
+        <div class="center">
+          <a href="https://developer.spotify.com/dashboard" target="_blank" class="btn">
+            Open Spotify Dashboard 🚀
+          </a>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-number">2</span>
+        <strong>Login</strong> with your Spotify account (create one if needed)
+      </div>
+
+      <div class="step">
+        <span class="step-number">3</span>
+        <strong>Click on your app</strong> (if you don't have one, click "Create App")
+        <ul>
+          <li>App Name: <span class="highlight">ECHONA Pro</span> (or any name)</li>
+          <li>App Description: <span class="highlight">Mood-based music recommendation app</span></li>
+          <li>Redirect URI: <span class="highlight">http://localhost:5000/api/spotify/callback</span></li>
+          <li>Check: Web API</li>
+        </ul>
+      </div>
+
+      <div class="step">
+        <span class="step-number">4</span>
+        <strong>Click "Edit Settings"</strong> (top right button)
+      </div>
+
+      <div class="step">
+        <span class="step-number">5</span>
+        <strong>Scroll down to "Redirect URIs"</strong> section
+      </div>
+
+      <div class="step">
+        <span class="step-number">6</span>
+        <strong>Add this EXACT URI:</strong>
+        <div class="code-box">http://localhost:5000/api/spotify/callback</div>
+        <p style="margin-top: 10px;">⚠️ Important: No trailing slash, no spaces, must be <strong>exactly</strong> as shown!</p>
+      </div>
+
+      <div class="step">
+        <span class="step-number">7</span>
+        <strong>Click the "ADD" button</strong> next to the text field
+      </div>
+
+      <div class="step">
+        <span class="step-number">8</span>
+        <strong>Scroll to the bottom and click "SAVE"</strong>
+      </div>
+
+      <div class="step">
+        <span class="step-number">9</span>
+        <strong>Copy your credentials:</strong>
+        <ul>
+          <li>Client ID (long string of letters and numbers)</li>
+          <li>Client Secret (click "View client secret" to reveal)</li>
+        </ul>
+      </div>
+
+      <div class="step">
+        <span class="step-number">10</span>
+        <strong>Update your backend/.env file:</strong>
+        <div class="code-box">
+SPOTIFY_CLIENT_ID=your_client_id_here<br>
+SPOTIFY_CLIENT_SECRET=your_client_secret_here<br>
+SPOTIFY_REDIRECT_URI=http://localhost:5000/api/spotify/callback
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-number">11</span>
+        <strong>Restart your backend server</strong>
+        <div class="center">
+          <button onclick="restartInstructions()" class="btn btn-secondary">Show Commands</button>
+        </div>
+        <div id="restartCommands" style="display: none; margin-top: 15px;">
+          <div class="code-box">
+cd backend<br>
+npm start
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧪 Test Your Setup</h2>
+      <div class="center">
+        <button onclick="testBackend()" class="btn">Test Backend Connection</button>
+        <button onclick="testSpotify()" class="btn">Test Spotify Config</button>
+      </div>
+      <div id="testResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎮 How to Use</h2>
+      <div class="status info">
+        Your app has a <strong>full Spotify Web Player</strong> built in! Songs play directly in your browser.
+      </div>
+      
+      <ol>
+        <li>Make sure backend is running: <code>cd backend && npm start</code></li>
+        <li>Make sure frontend is running: <code>cd frontend && npm run dev</code></li>
+        <li>Open: <a href="http://localhost:3000/music" target="_blank" style="color: #1DB954;">http://localhost:3000/music</a></li>
+        <li>Click the <strong>"Connect to Spotify"</strong> button</li>
+        <li>Login with your Spotify account</li>
+        <li>Search and play songs directly in the website!</li>
+      </ol>
+
+      <div class="status success" style="margin-top: 20px;">
+        ✅ Requires: Spotify Premium for playback<br>
+        ✅ Search works without Premium!
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎵 Features You'll Get</h2>
+      <ul>
+        <li>🎧 <strong>Embedded Web Player</strong> - Play songs in your browser</li>
+        <li>🔍 <strong>Search Spotify Catalog</strong> - Search millions of songs</li>
+        <li>🎵 <strong>Your Top Tracks</strong> - See your most played songs</li>
+        <li>👤 <strong>Your Top Artists</strong> - See your favorite artists</li>
+        <li>🕐 <strong>Recently Played</strong> - View your listening history</li>
+        <li>📀 <strong>Your Playlists</strong> - Browse all your playlists</li>
+        <li>🎮 <strong>Full Controls</strong> - Play, pause, skip, volume</li>
+      </ul>
+    </div>
+
+    <div class="card center">
+      <h2>🚀 Quick Start</h2>
+      <a href="http://localhost:3000/music" target="_blank" class="btn">
+        Open Music Page
+      </a>
+      <a href="https://developer.spotify.com/dashboard" target="_blank" class="btn btn-secondary">
+        Open Spotify Dashboard
+      </a>
+    </div>
+  </div>
+
+  <script>
+    function restartInstructions() {
+      const div = document.getElementById('restartCommands');
+      div.style.display = div.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function testBackend() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<div class="status info"><span class="loading"></span> Testing backend connection...</div>';
+
+      try {
+        const response = await fetch('http://localhost:5000/health');
+        const data = await response.json();
+        
+        if (data.status === 'ok') {
+          resultDiv.innerHTML = '<div class="status success">✅ Backend is running on port ' + data.port + '!</div>';
+        } else {
+          resultDiv.innerHTML = '<div class="status error">❌ Backend returned unexpected status</div>';
+        }
+      } catch (error) {
+        resultDiv.innerHTML = '<div class="status error">❌ Cannot connect to backend. Make sure it\'s running:<br><code>cd backend && npm start</code></div>';
+      }
+    }
+
+    async function testSpotify() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<div class="status info"><span class="loading"></span> Testing Spotify configuration...</div>';
+
+      try {
+        const response = await fetch('http://localhost:5000/api/spotify/health');
+        const data = await response.json();
+        
+        if (data.configured) {
+          resultDiv.innerHTML = `
+            <div class="status success">
+              ✅ Spotify is configured!<br><br>
+              <strong>Status:</strong> ${data.status}<br>
+              <strong>Message:</strong> ${data.message}<br><br>
+              <a href="http://localhost:5000/api/spotify/login" class="btn">Test OAuth Login</a>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = '<div class="status error">❌ Spotify credentials not configured. Check your backend/.env file.</div>';
+        }
+      } catch (error) {
+        resultDiv.innerHTML = '<div class="status error">❌ Cannot test Spotify. Make sure backend is running.</div>';
+      }
+    }
+  </script>
+</body>
+</html>

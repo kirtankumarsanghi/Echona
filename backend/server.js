@@ -1,116 +1,317 @@
+const net = require("net");
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const mongoose = require("mongoose");
+const axios = require("axios");
+const config = require("./config");
+const requestLogger = require("./middleware/requestLogger");
+const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
+
 const surpriseRoutes = require("./routes/surpriseRoutes");
 const gameRoutes = require("./routes/gameRoutes");
-const mongoose = require("mongoose");
+const moodRoutes = require("./routes/moodRoutes");
+const authRoutes = require("./routes/authRoutes");
+const spotifyRoutes = require("./routes/spotifyRoutes");
+const mlRoutes = require("./routes/mlRoutes");
 
+// ─── Port availability check ───────────────────────────────────────────────
+function checkPortAvailable(port) {
+  return new Promise((resolve) => {
+    const tester = net.createServer();
+    tester.once("error", (err) => {
+      if (err.code === "EADDRINUSE") resolve(false);
+      else resolve(true);
+    });
+    tester.once("listening", () => {
+      tester.close(() => resolve(true));
+    });
+    tester.listen(port, "0.0.0.0");
+  });
+}
 
-
-
-const SpotifyWebApi = require("spotify-web-api-node");
-
+// ─── Express app setup ─────────────────────────────────────────────────────
 const app = express();
 
-/* ===========================
-   MIDDLEWARE
-=========================== */
-app.use(cors());
-app.use(express.json());
+// Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // frontend handles CSP
+}));
+
+// Global rate limiter — 200 requests per minute per IP
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many requests — try again shortly" },
+}));
+
+// MongoDB (optional — never blocks startup)
+if (config.mongoUri && config.mongoUri.trim() !== "") {
+  mongoose
+    .connect(config.mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+    .then(() => console.log("✅ MongoDB Connected"))
+    .catch((err) => {
+      console.warn("⚠️  MongoDB not connected:", err.message);
+      console.warn("   App will continue with in-memory storage");
+    });
+
+  // Listen for post-connection errors (reconnection failures)
+  mongoose.connection.on("error", (err) => {
+    console.error("⚠️  MongoDB connection error:", err.message);
+  });
+  mongoose.connection.on("disconnected", () => {
+    console.warn("⚠️  MongoDB disconnected — will retry automatically");
+  });
+} else {
+  console.log("ℹ️  MongoDB not configured — using in-memory storage");
+}
+
+// CORS
+const allowedOrigins = new Set([
+  config.frontendUrl,
+  `http://localhost:${config.frontendPort}`,
+  `http://127.0.0.1:${config.frontendPort}`,
+  `http://localhost:${config.backendPort}`,
+]);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      console.warn(`[CORS] Blocked: ${origin}`);
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "4mb" }));
+
+// JSON parse error handler (must be right after express.json)
+app.use((err, req, res, next) => {
+  if (err && err.type === "entity.parse.failed") {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid JSON payload",
+      message: "Request body contains malformed JSON",
+    });
+  }
+  return next(err);
+});
+
+// Request timeout — abort in-flight work when timeout fires
+app.use((req, res, next) => {
+  const timeoutMs = config.requestTimeoutMs || 12000;
+  const timer = setTimeout(() => {
+    if (res.headersSent) return;
+    res.timedOut = true;
+    res.status(504).json({
+      success: false,
+      error: "Request timeout",
+      message: "Request took too long to complete",
+      requestId: req.requestId,
+    });
+    // Destroy the underlying socket to abort in-flight work
+    req.destroy();
+  }, timeoutMs);
+  res.on("finish", () => clearTimeout(timer));
+  res.on("close", () => clearTimeout(timer));
+  next();
+});
+
+app.use(requestLogger);
+
+// ─── API Routes ─────────────────────────────────────────────────────────────
 app.use("/api/surprise", surpriseRoutes);
 app.use("/api/game", gameRoutes);
-
-
-
-/* ===========================
-   SPOTIFY CONFIG
-=========================== */
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
-});
-
-/* ===========================
-   EXISTING ROUTES
-=========================== */
-const moodRoutes = require("./routes/moodRoutes");
 app.use("/api/mood", moodRoutes);
 
-/* ===========================
-   PHASE 1: SPOTIFY AUTH ROUTES
-=========================== */
-
-// Step 1: Redirect user to Spotify login
-app.get("/api/spotify/login", (req, res) => {
-  const scopes = ["user-read-email", "user-read-private"];
-  const authURL = spotifyApi.createAuthorizeURL(scopes);
-  res.redirect(authURL);
+// Strict rate limiter for auth (10 attempts per minute)
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many login attempts — try again in a minute" },
 });
+app.use("/api/auth", authLimiter, authRoutes);
 
-// Step 2: Spotify callback
-app.get("/api/spotify/callback", async (req, res) => {
-  const code = req.query.code;
+app.use("/api/spotify", spotifyRoutes);
+app.use("/api/ml", mlRoutes);
 
+// ─── Health Endpoints ───────────────────────────────────────────────────────
+app.get("/auth/health", (req, res) => res.redirect(307, "/api/auth/health"));
+app.get("/spotify/health", (req, res) => res.redirect(307, "/api/spotify/health"));
+
+app.get("/health", async (req, res) => {
+  const mongoStateMap = {
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
+  };
+
+  // Check ML service availability
+  let mlStatus = "unknown";
   try {
-    const data = await spotifyApi.authorizationCodeGrant(code);
-
-    spotifyApi.setAccessToken(data.body.access_token);
-    spotifyApi.setRefreshToken(data.body.refresh_token);
-
-    res.json({
-      success: true,
-      message: "Spotify connected successfully",
+    const mlRes = await axios.get(`${config.mlServiceUrl}/health`, {
+      timeout: config.healthTimeoutMs,
     });
-  } catch (err) {
-    console.error("Spotify error:", err.message);
-    res.status(500).json({ error: "Spotify authentication failed" });
+    mlStatus = mlRes.data?.status || "ok";
+  } catch {
+    mlStatus = "unavailable";
   }
-});
 
-/* ===========================
-   HEALTH CHECK
-=========================== */
-app.get("/", (req, res) => {
   res.json({
-    message: "ECHONA Backend API",
-    status: "running",
-    phase: "PHASE 1 - Spotify Integration",
+    service: "echona-backend",
+    status: "ok",
+    env: config.nodeEnv,
+    port: config.backendPort,
+    dependencies: {
+      mongodb: mongoStateMap[mongoose.connection.readyState] || "unknown",
+      mlService: { url: config.mlServiceUrl, status: mlStatus },
+      spotify: config.spotifyClientId ? "configured" : "not configured",
+    },
+    uptime: Math.round(process.uptime()),
     timestamp: new Date().toISOString(),
   });
 });
 
-/* ===========================
-   ERROR HANDLING
-=========================== */
-app.use((err, req, res, next) => {
-  console.error("[Server Error]:", err);
-  res.status(500).json({
-    error: "Internal server error",
-    message: err.message,
+app.get("/api/health", (req, res) => res.redirect(307, "/health"));
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "ECHONA Backend API",
+    status: "running",
+    version: "2.0.0",
+    endpoints: {
+      health: "/health",
+      authHealth: "/api/auth/health",
+      spotifyHealth: "/api/spotify/health",
+      mlHealth: "/api/ml/health",
+    },
+    timestamp: new Date().toISOString(),
   });
 });
 
-/* ===========================
-   SERVER START
-=========================== */
-const PORT = 5001;
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`🚀 ECHONA Backend running on http://localhost:${PORT}`);
-  console.log("🎧 PHASE 1: Spotify Integration active");
+// ─── Server startup with port conflict detection ────────────────────────────
+const PORT = config.backendPort;
+let server;
+
+async function startServer() {
+  const portFree = await checkPortAvailable(PORT);
+  if (!portFree) {
+    console.error(`\n❌ FATAL: Port ${PORT} is already in use!`);
+    console.error("   Another process is occupying this port.");
+    console.error(`\n   💡 Fix: Run in PowerShell:`);
+    console.error(`      Get-NetTCPConnection -LocalPort ${PORT} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }`);
+    console.error(`\n   Or use: npm run prestart\n`);
+    process.exit(1);
+  }
+
+  server = app.listen(PORT, "0.0.0.0", () => {
+    console.log("\n╔═══════════════════════════════════════════════╗");
+    console.log("║       🚀 ECHONA Backend API Running!          ║");
+    console.log("╠═══════════════════════════════════════════════╣");
+    console.log(`║   📡 API:      http://localhost:${PORT}          ║`);
+    console.log(`║   🩺 Health:   http://localhost:${PORT}/health   ║`);
+    console.log("║   ⚡ Mode:     stable + recovery enabled       ║");
+    console.log("╚═══════════════════════════════════════════════╝\n");
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`❌ Port ${PORT} became unavailable during startup`);
+    } else {
+      console.error("❌ Server error:", error.message);
+    }
+    process.exit(1);
+  });
+}
+
+startServer().catch((err) => {
+  console.error("❌ Failed to start server:", err);
+  process.exit(1);
 });
 
-// Keep process alive
-setInterval(() => {
-  // This prevents the process from exiting
-}, 1000);
+// ─── Graceful shutdown ──────────────────────────────────────────────────────
+let isShuttingDown = false;
 
-// Error handling
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+function closeResources(onComplete) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  const done = (() => {
+    let called = false;
+    const fn = typeof onComplete === "function" ? onComplete : () => {};
+    return () => {
+      if (called) return;
+      called = true;
+      fn();
+    };
+  })();
+
+  const forceTimeout = setTimeout(() => {
+    console.error("⚠️  Forced shutdown after timeout");
+    done();
+  }, 5000);
+
+  const closeMongo = () => {
+    mongoose.connection
+      .close(false)
+      .catch(() => {})
+      .finally(() => {
+        clearTimeout(forceTimeout);
+        done();
+      });
+  };
+
+  if (!server) {
+    closeMongo();
+    return;
+  }
+
+  server.close(() => closeMongo());
+}
+
+function closeResourcesAndExit(exitCode) {
+  closeResources(() => process.exit(exitCode));
+}
+
+process.on("SIGINT", () => {
+  console.log("\n🛑 SIGINT received, shutting down gracefully...");
+  closeResourcesAndExit(0);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("SIGTERM", () => {
+  console.log("\n🛑 SIGTERM received, shutting down gracefully...");
+  closeResourcesAndExit(0);
+});
+
+process.once("SIGUSR2", () => {
+  console.log("\n🔄 Nodemon restart signal, closing resources...");
+  closeResources(() => process.kill(process.pid, "SIGUSR2"));
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error.message);
+  console.error(error.stack);
+  closeResourcesAndExit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️  Unhandled Rejection:", reason);
+  if (config.nodeEnv === "production") {
+    closeResourcesAndExit(1);
+  }
 });

@@ -28,8 +28,8 @@ app.get("/api/surprise", async (req, res) => {
   });
 });
 
-const PORT = 5001;
+const PORT = Number(process.env.BACKEND_TEST_PORT || 5050);
 
 app.listen(PORT, () => {
-  console.log(`🧪 Test server running on http://localhost:${PORT}`);
+  console.log(`Test server running on http://localhost:${PORT}`);
 });

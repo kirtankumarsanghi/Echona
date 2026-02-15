@@ -1,35 +1,41 @@
 import { Routes, Route } from "react-router-dom";
 
 // Pages
-import Home from "./pages/Home.jsx";
-import Auth from "./pages/Auth.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import MoodDetect from "./pages/MoodDetect.jsx";
-import Music from "./pages/Music.jsx";
-import TodoPlanner from "./pages/TodoPlanner.jsx";
+import Home from "./pages/Home";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import MoodDetect from "./pages/MoodDetect";
+import Music from "./pages/Music";
+import TodoPlanner from "./pages/TodoPlanner";
+import Callback from "./pages/Callback";
 
 // Protection
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
     <Routes>
-
       {/* Public Routes */}
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/mood-detect" element={<MoodDetect />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/todo" element={<TodoPlanner />} />
-      <Route path="/music" element={<Music />} />
-
-      {/* Redirects for backwards compatibility */}
-      <Route path="/home" element={<Home />} />
       <Route path="/login" element={<Auth />} />
-      <Route path="/register" element={<Auth />} />
-      <Route path="/detect" element={<MoodDetect />} />
+      <Route path="/callback" element={<Callback />} />
 
-      {/* Catch all */}
+      {/* Protected Routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/mood-detect" element={<ProtectedRoute><MoodDetect /></ProtectedRoute>} />
+      <Route path="/music" element={<ProtectedRoute><Music /></ProtectedRoute>} />
+      <Route path="/todo" element={<ProtectedRoute><TodoPlanner /></ProtectedRoute>} />
+
+      {/* Fallback */}
       <Route path="*" element={<Home />} />
     </Routes>
   );

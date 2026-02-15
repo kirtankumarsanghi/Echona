@@ -1,7 +1,8 @@
-import axiosInstance from "../api/axiosInstance";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Line, Pie } from "react-chartjs-2";
+import { motion, AnimatePresence } from "framer-motion";
+import AppShell from "../components/AppShell";
+import OptionsMenu from "../components/OptionsMenu";
+import { Line, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   LineElement,
@@ -11,17 +12,10 @@ import {
   PointElement,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
-import { useNavigate } from "react-router-dom";
-import MoodStats from "../components/MoodStats";
-import ThemeToggle from "../components/ThemeToggle";
-import QuickActions from "../components/QuickActions";
-import { useToast } from "../components/Toast";
-import MoodStreak from "../components/MoodStreak";
-import DailyAffirmation from "../components/DailyAffirmation";
-import BreathingExercise from "../components/BreathingExercise";
-import MeditationTimer from "../components/MeditationTimer";
-import Navbar from "../components/Navbar";
+import { useNavigate, NavLink } from "react-router-dom";
+import { logout, getCurrentUser } from "../utils/auth";
 
 ChartJS.register(
   LineElement,
@@ -30,26 +24,43 @@ ChartJS.register(
   LinearScale,
   PointElement,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
-// Helper function to get mood color
-const getMoodColor = (mood) => {
-  const colors = {
-    Happy: "from-amber-400 to-orange-500",
-    Sad: "from-slate-400 to-slate-600",
-    Angry: "from-rose-500 to-red-600",
-    Calm: "from-teal-400 to-emerald-500",
-    Excited: "from-orange-400 to-rose-500",
-    Anxious: "from-purple-400 to-violet-600",
-  };
-  return colors[mood] || "from-gray-400 to-gray-600";
+// Sidebar navigation icon components
+const Icons = {
+  Dashboard: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  ),
+  MoodDetect: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Music: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+    </svg>
+  ),
+  Todo: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  ),
+  Logout: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  ),
 };
 
 function Dashboard() {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
-  const { showToast, ToastContainer } = useToast();
+  const user = getCurrentUser();
 
   useEffect(() => {
     // Load mood history from localStorage
@@ -59,7 +70,7 @@ function Dashboard() {
         const parsed = JSON.parse(storedHistory);
         setHistory(parsed);
       } else {
-        // Generate some sample data for demo
+        // Generate sample data for demo
         const sampleData = [
           { mood: "Happy", score: 8, createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
           { mood: "Calm", score: 7, createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
@@ -78,46 +89,42 @@ function Dashboard() {
     }
   }, []);
 
+  const handleLogout = () => {
+    logout();
+    navigate("/auth");
+  };
+
+  // Empty state if no data
   if (!history.length) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black text-white flex flex-col items-center justify-center p-4 overflow-hidden">
-        
-        {/* Navbar */}
-        <Navbar />
-        
-        {/* Background */}
-        <div className="fixed inset-0 pointer-events-none opacity-20">
+      <AppShell>
+        <div className="h-full flex flex-col items-center justify-center p-8">
           <motion.div
-            animate={{ x: [0, 40, -20, 0], y: [0, -40, 20, 0] }}
-            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-10 left-10 w-72 h-72 bg-amber-500/30 rounded-full mix-blend-screen filter blur-3xl"
-          />
-          <motion.div
-            animate={{ x: [0, -40, 20, 0], y: [0, 40, -20, 0] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-10 right-10 w-80 h-80 bg-teal-500/30 rounded-full mix-blend-screen filter blur-3xl"
-          />
-        </div>
-
-        <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center relative z-10 pt-20"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-white">
-            No Mood Data Yet
-          </h2>
-          <p className="text-gray-400 text-lg mb-8 max-w-md">Start tracking your mood to see detailed analytics</p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate("/mood-detect")}
-            className="px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl font-bold text-lg shadow-lg transition-all"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center max-w-lg"
           >
-            Start Detecting →
-          </motion.button>
-        </motion.div>
-      </div>
+            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary-600 to-primary-500 rounded-3xl flex items-center justify-center shadow-glow">
+              <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="heading-2 mb-4">No Mood Data Yet</h2>
+            <p className="text-muted mb-8">Start tracking your emotional wellness journey today</p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/mood-detect")}
+              className="btn-primary"
+            >
+              Start Detecting Mood
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </motion.button>
+          </motion.div>
+        </div>
+      </AppShell>
     );
   }
 
@@ -133,22 +140,20 @@ function Dashboard() {
   const best = history.reduce((a, b) => (a.score > b.score ? a : b));
   const worst = history.reduce((a, b) => (a.score < b.score ? a : b));
 
-  // Line chart data
+  // Chart configurations
   const lineData = {
-    labels: history.map((h) =>
-      new Date(h.createdAt).toLocaleDateString("en-IN")
-    ),
+    labels: history.map((h) => new Date(h.createdAt).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })),
     datasets: [
       {
         label: "Mood Score",
         data: history.map((h) => h.score),
-        borderColor: "#06b6d4",
-        backgroundColor: "rgba(6,182,212,0.1)",
+        borderColor: "rgb(139, 92, 246)",
+        backgroundColor: "rgba(139, 92, 246, 0.1)",
         tension: 0.4,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        pointBackgroundColor: "#06b6d4",
-        pointBorderColor: "#0f172a",
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: "rgb(139, 92, 246)",
+        pointBorderColor: "rgb(31, 41, 55)",
         pointBorderWidth: 2,
         borderWidth: 3,
         fill: true,
@@ -158,384 +163,332 @@ function Dashboard() {
 
   const lineOptions = {
     responsive: true,
-    maintainAspectRatio: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { 
-        labels: { 
-          color: "#fff",
-          font: { size: 14, weight: "bold" }
-        },
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(31, 41, 55, 0.9)',
+        padding: 12,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        borderColor: 'rgba(139, 92, 246, 0.3)',
+        borderWidth: 1,
       },
     },
     scales: {
       y: {
-        grid: { color: "rgba(255,255,255,0.1)", drawBorder: false },
-        ticks: { color: "#fff", font: { size: 12 } },
+        grid: { color: "rgba(115, 115, 115, 0.1)", drawBorder: false },
+        ticks: { color: "#a3a3a3", font: { size: 12 } },
         max: 10,
         beginAtZero: true,
       },
       x: {
-        grid: { color: "rgba(255,255,255,0.05)", drawBorder: false },
-        ticks: { color: "#fff", font: { size: 12 } },
+        grid: { display: false },
+        ticks: { color: "#a3a3a3", font: { size: 11 } },
       },
     },
   };
 
-  // Pie chart data
+  // Mood distribution
   const moodCounts = {};
   history.forEach((h) => {
     moodCounts[h.mood] = (moodCounts[h.mood] || 0) + 1;
   });
 
-  const pieData = {
+  const doughnutData = {
     labels: Object.keys(moodCounts),
     datasets: [
       {
         data: Object.values(moodCounts),
         backgroundColor: [
-          "#fbbf24",
-          "#38bdf8",
-          "#f87171",
-          "#34d399",
-          "#f472b6",
-          "#a78bfa",
+          "rgb(251, 191, 36)",
+          "rgb(56, 189, 248)",
+          "rgb(248, 113, 113)",
+          "rgb(52, 211, 153)",
+          "rgb(244, 114, 182)",
+          "rgb(167, 139, 250)",
         ],
-        borderColor: "#0f172a",
+        borderColor: "rgb(23, 23, 23)",
         borderWidth: 2,
+        hoverOffset: 8,
       },
     ],
   };
 
-  const pieOptions = {
+  const doughnutOptions = {
     responsive: true,
-    maintainAspectRatio: true,
+    maintainAspectRatio: false,
     plugins: { 
       legend: { 
         labels: { 
-          color: "#fff",
-          font: { size: 12, weight: "bold" },
-          padding: 20,
+          color: "#d4d4d4",
+          font: { size: 12, weight: "600" },
+          padding: 16,
         },
         position: "bottom",
-      } 
+      },
+      tooltip: {
+        backgroundColor: 'rgba(31, 41, 55, 0.9)',
+        padding: 12,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+      },
     },
+    cutout: '65%',
+  };
+
+  const getMoodBadgeColor = (mood) => {
+    const colors = {
+      Happy: "badge-warning",
+      Sad: "badge-error",
+      Angry: "badge-error",
+      Calm: "badge-success",
+      Excited: "badge-primary",
+      Anxious: "badge-error",
+    };
+    return colors[mood] || "badge-primary";
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-950 dark:from-indigo-950 dark:via-purple-900 dark:to-slate-950 light-mode:from-indigo-50 light-mode:via-purple-50 light-mode:to-slate-50 text-[var(--text-primary)] overflow-hidden relative transition-colors duration-300">
-      
-      {/* Navbar */}
-      <Navbar />
-      
-      {/* Dynamic Animated Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 90, 0],
-            x: [0, 200, -100, 0],
-            y: [0, -150, 100, 0],
-          }}
-          transition={{ duration: 40, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-20 left-20 w-[600px] h-[600px] bg-gradient-to-br from-pink-500/30 via-purple-500/30 to-violet-500/30 rounded-full mix-blend-screen filter blur-[120px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1.2, 1, 1.2],
-            rotate: [90, 0, 90],
-            x: [0, -200, 100, 0],
-            y: [0, 150, -100, 0],
-          }}
-          transition={{ duration: 45, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-20 right-20 w-[700px] h-[700px] bg-gradient-to-br from-cyan-500/30 via-blue-500/30 to-teal-500/30 rounded-full mix-blend-screen filter blur-[120px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            x: [0, 100, -50, 0],
-            y: [0, -50, 100, 0],
-          }}
-          transition={{ duration: 35, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-rose-500/20 rounded-full mix-blend-screen filter blur-[100px]"
-        />
-      </div>
-
-      <div className="relative z-10 px-6 pt-36 pb-12 max-w-7xl mx-auto">
-        
-        {/* Hero Section with Floating Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16"
-        >
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 mb-8 px-4 py-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-full text-sm text-white/90 transition-all group"
-          >
-            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span className="font-medium">Home</span>
-          </motion.button>
-
-          <motion.h1 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-6xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400"
-          >
-            Your Mood Journey
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-xl text-white/60 mb-8"
-          >
-            Emotional insights that matter
-          </motion.p>
-
-          {/* Floating Circular Stats */}
-          <div className="flex flex-wrap items-center justify-center gap-8 mt-12">
+    <AppShell>
+      <div className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            {/* Options Menu - Top Right */}
             <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.4, type: "spring" }}
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              className="relative"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="absolute top-4 right-4 lg:top-4 lg:right-8"
             >
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 p-1 shadow-2xl shadow-pink-500/50">
-                <div className="w-full h-full rounded-full bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center">
-                  <p className="text-xs text-white/60 mb-1">Today</p>
-                  <p className="text-2xl font-black text-white">{todayMood}</p>
-                  <p className="text-xs text-pink-400">{todayScore}/10</p>
-                </div>
-              </div>
+              <OptionsMenu currentPage="/dashboard" />
             </motion.div>
 
+            {/* Welcome Header */}
             <motion.div
-              initial={{ scale: 0, rotate: 180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.5, type: "spring" }}
-              whileHover={{ scale: 1.1, rotate: -5 }}
-              className="relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
             >
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 p-1 shadow-2xl shadow-cyan-500/50">
-                <div className="w-full h-full rounded-full bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center">
-                  <p className="text-xs text-white/60 mb-1">Average</p>
-                  <p className="text-4xl font-black text-white">{avgScore}</p>
-                  <p className="text-xs text-cyan-400">score</p>
-                </div>
-              </div>
+              <h1 className="heading-1 mb-2">
+                Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
+              </h1>
+              <p className="text-neutral-300 text-lg">Here's your emotional wellness overview</p>
             </motion.div>
 
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.6, type: "spring" }}
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              className="relative"
-            >
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 p-1 shadow-2xl shadow-amber-500/50">
-                <div className="w-full h-full rounded-full bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center">
-                  <p className="text-xs text-white/60 mb-1">Best Day</p>
-                  <p className="text-4xl font-black text-white">{best.score}</p>
-                  <p className="text-xs text-amber-400">{best.mood}</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ scale: 0, rotate: 180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 0.7, type: "spring" }}
-              whileHover={{ scale: 1.1, rotate: -5 }}
-              className="relative"
-            >
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 p-1 shadow-2xl shadow-purple-500/50">
-                <div className="w-full h-full rounded-full bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center">
-                  <p className="text-xs text-white/60 mb-1">Entries</p>
-                  <p className="text-4xl font-black text-white">{history.length}</p>
-                  <p className="text-xs text-purple-400">total</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* Organic Flowing Layout - No Grid */}
-        <div className="space-y-8">
-          
-          {/* Large Trend Card - Flowing Design */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.8 }}
-            className="relative"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600 rounded-3xl blur-xl opacity-30"></div>
-            <div className="relative bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center"
-                >
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <StatCard
+                title="Today's Mood"
+                value={todayMood}
+                subtitle={`${todayScore}/10`}
+                icon={
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                </motion.div>
-                <div>
-                  <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
-                    Emotional Trend
-                  </h2>
-                  <p className="text-sm text-white/50">Your journey over time</p>
-                </div>
-              </div>
-              <div className="mt-6">
-                <Line data={lineData} options={lineOptions} />
-              </div>
+                }
+                gradient="from-primary-600 to-primary-500"
+                delay={0}
+              />
+              <StatCard
+                title="Average Score"
+                value={avgScore}
+                subtitle="Overall rating"
+                icon={
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                }
+                gradient="from-secondary-600 to-secondary-500"
+                delay={0.1}
+              />
+              <StatCard
+                title="Best Day"
+                value={best.score}
+                subtitle={best.mood}
+                icon={
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                }
+                gradient="from-accent-600 to-accent-500"
+                delay={0.2}
+              />
+              <StatCard
+                title="Total Entries"
+                value={history.length}
+                subtitle="Tracked moods"
+                icon={
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                }
+                gradient="from-purple-600 to-pink-600"
+                delay={0.3}
+              />
             </div>
-          </motion.div>
 
-          {/* Dual Cards - Side by Side but Organic */}
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Pie Chart - Tilted Card */}
-            <motion.div
-              initial={{ opacity: 0, rotate: -5, y: 50 }}
-              animate={{ opacity: 1, rotate: 0, y: 0 }}
-              transition={{ delay: 0.9, type: "spring" }}
-              whileHover={{ rotate: 2, scale: 1.02 }}
-              className="flex-1 relative"
-            >
-              <div className="absolute -inset-1 bg-gradient-to-br from-purple-600 to-pink-600 rounded-3xl blur-xl opacity-30"></div>
-              <div className="relative bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Line Chart - Takes 2 columns */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="lg:col-span-2 card-premium p-6"
+              >
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-600 to-primary-500 flex items-center justify-center shadow-glow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-neutral-50">Mood Trend</h3>
+                    <p className="text-xs text-neutral-400">Your emotional journey over time</p>
+                  </div>
+                </div>
+                <div className="h-[300px]">
+                  <Line data={lineData} options={lineOptions} />
+                </div>
+              </motion.div>
+
+              {/* Doughnut Chart */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="card-premium p-6"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-glow-sm">
                     <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/>
                       <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-white">Mood Split</h3>
-                    <p className="text-xs text-white/50">Distribution</p>
+                    <h3 className="text-xl font-bold text-neutral-50">Distribution</h3>
+                    <p className="text-xs text-neutral-400">Mood breakdown</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-center mt-4">
-                  <div className="w-full max-w-[300px]">
-                    <Pie data={pieData} options={pieOptions} />
+                <div className="h-[300px] flex items-center justify-center">
+                  <div className="w-full max-w-[250px]">
+                    <Doughnut data={doughnutData} options={doughnutOptions} />
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
 
-            {/* Insights Stack */}
+            {/* Recent Activity */}
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 }}
-              className="flex-1 space-y-4"
+              transition={{ delay: 0.6 }}
+              className="card-premium p-6"
             >
-              <MoodStreak />
-              <DailyAffirmation />
-            </motion.div>
-          </div>
-
-          {/* Recent History - Wave Design */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1 }}
-            className="relative"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-rose-600 via-orange-600 to-amber-600 rounded-3xl blur-xl opacity-30"></div>
-            <div className="relative bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-600 to-accent-500 flex items-center justify-center shadow-glow-sm">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-neutral-50">Recent Activity</h3>
+                    <p className="text-xs text-neutral-400">Your latest mood entries</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white">Recent History</h3>
-                  <p className="text-xs text-white/50">Your latest moods</p>
-                </div>
+                <button 
+                  onClick={() => navigate("/mood-detect")}
+                  className="btn-primary text-sm"
+                >
+                  Add New
+                </button>
               </div>
-              
-              <div className="grid md:grid-cols-2 gap-4 mt-6">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {history.slice().reverse().slice(0, 6).map((entry, idx) => (
                   <motion.div
                     key={idx}
-                    initial={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 1.2 + (idx * 0.1) }}
-                    whileHover={{ scale: 1.05, rotate: idx % 2 === 0 ? 2 : -2 }}
-                    className={`relative p-5 rounded-2xl bg-gradient-to-br ${getMoodColor(entry.mood)} shadow-lg overflow-hidden group cursor-pointer`}
+                    transition={{ delay: 0.7 + (idx * 0.05) }}
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    className="card card-hover p-4"
                   >
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
-                    <div className="relative">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-2xl font-black text-white">{entry.mood}</p>
-                          <p className="text-xs text-white/80">{new Date(entry.createdAt).toLocaleDateString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-4xl font-black text-white/90">{entry.score}</p>
-                          <p className="text-xs text-white/70">/10</p>
-                        </div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold text-neutral-100">{entry.mood}</h4>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          {new Date(entry.createdAt).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
                       </div>
+                      <span className={`badge ${getMoodBadgeColor(entry.mood)}`}>
+                        {entry.score}/10
+                      </span>
+                    </div>
+                    <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(entry.score / 10) * 100}%` }}
+                        transition={{ delay: 0.8 + (idx * 0.05), duration: 0.6 }}
+                        className="h-full bg-gradient-to-r from-primary-600 to-primary-500 rounded-full"
+                      />
                     </div>
                   </motion.div>
                 ))}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Quote - Floating Design */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1.5 }}
-            whileHover={{ scale: 1.02 }}
-            className="relative"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 rounded-full blur-2xl opacity-40"></div>
-            <div className="relative bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-3xl p-12 shadow-2xl text-center">
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  rotate: [0, 10, -10, 0]
-                }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                className="inline-block mb-6"
-              >
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-2xl">
-                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                  </svg>
-                </div>
-              </motion.div>
-              <p className="text-2xl md:text-3xl font-bold text-white mb-4 leading-relaxed">
-                "Every mood tells a story. Keep tracking, keep growing."
-              </p>
-              <p className="text-lg text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">
-                — Your Wellness Journey ✨
-              </p>
-            </div>
-          </motion.div>
+            {/* Quick Actions Footer */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="mt-8 text-center"
+            >
+              <p className="text-neutral-300 text-sm mb-4">Ready for more?</p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button onClick={() => navigate("/music")} className="btn-secondary text-sm">
+                  <Icons.Music />
+                  Explore Music
+                </button>
+                <button onClick={() => navigate("/todo")} className="btn-secondary text-sm">
+                  <Icons.Todo />
+                  View Planner
+                </button>
+              </div>
+            </motion.div>
+      </div>
+    </AppShell>
+  );
+}
+
+
+
+// Stat Card Component
+function StatCard({ title, value, subtitle, icon, gradient, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      whileHover={{ y: -4 }}
+      className="card card-hover p-6"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-glow-sm`}>
+          {icon}
         </div>
       </div>
-
-      {/* Theme Toggle & Toast */}
-      <ThemeToggle />
-      <QuickActions />
-      <BreathingExercise />
-      <MeditationTimer />
-      <ToastContainer />
-    </div>
+      <div>
+        <p className="text-sm text-neutral-300 mb-1">{title}</p>
+        <p className="text-3xl font-bold text-white mb-1">{value}</p>
+        <p className="text-xs text-neutral-400">{subtitle}</p>
+      </div>
+    </motion.div>
   );
 }
 

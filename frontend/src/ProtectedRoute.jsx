@@ -1,9 +1,8 @@
 import { Navigate } from "react-router-dom";
+import { isLoggedIn } from "./utils/auth";
 
 export default function ProtectedRoute({ children }) {
-  const token = localStorage.getItem("echona_token");
-
-  if (!token) return <Navigate to="/" />;
+  if (!isLoggedIn()) return <Navigate to="/" />;
 
   return children;
 }

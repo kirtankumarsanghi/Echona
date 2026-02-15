@@ -4,12 +4,15 @@ import { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
 import SmartMoodFeature from "../components/SmartMoodFeature";
 import SurpriseMe from "../components/SurpriseMe";
-import ThemeToggle from "../components/ThemeToggle";
-import QuickActions from "../components/QuickActions";
 import BreathingExercise from "../components/BreathingExercise";
 import MeditationTimer from "../components/MeditationTimer";
-import Navbar from "../components/Navbar";
 import MusicChallenges from "../components/MusicChallenges";
+import SpotifyPlayer from "../components/SpotifyPlayer";
+import SpotifySearch from "../components/SpotifySearch";
+import SpotifyDashboard from "../components/SpotifyDashboard";
+import { getSpotifyToken, clearSpotifyTokens } from "../utils/auth";
+import AppShell from "../components/AppShell";
+import OptionsMenu from "../components/OptionsMenu";
 
 // ===============================
 // YOUTUBE THUMBNAIL (always works)
@@ -199,9 +202,26 @@ function Music() {
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [showPlayer, setShowPlayer] = useState(false);
   const [currentQuote, setCurrentQuote] = useState(null);
+  
+  // Spotify state
+  const [spotifyToken, setSpotifyToken] = useState(null);
+  const [spotifyDeviceId, setSpotifyDeviceId] = useState(null);
+
+  // Function to clear expired Spotify token
+  const clearSpotifyToken = () => {
+    clearSpotifyTokens();
+    setSpotifyToken(null);
+    console.log("🔄 Cleared expired Spotify token. Please reconnect.");
+  };
 
   useEffect(() => {
     fetchMoodAndMusic();
+    
+    // Check for Spotify token
+    const token = getSpotifyToken();
+    if (token) {
+      setSpotifyToken(token);
+    }
   }, []);
 
   // ===============================
@@ -314,10 +334,7 @@ function Music() {
   // UI START
   // =======================================================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black dark:from-slate-900 dark:via-gray-900 dark:to-black light-mode:from-slate-50 light-mode:via-gray-50 light-mode:to-white text-[var(--text-primary)] overflow-hidden transition-colors duration-300">
-
-      {/* Navbar */}
-      <Navbar />
+    <AppShell>
 
       {/* Animated Background */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-30">
@@ -340,22 +357,99 @@ function Music() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 px-6 pt-36 pb-12 max-w-6xl mx-auto">
+      <div className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
 
-        {/* Back Button */}
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate("/mood-detect")}
-          className="inline-flex items-center gap-2 mb-8 px-4 py-2 bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 rounded-full text-sm text-white/90 transition-all group"
+        {/* Header with Back Button and Options Menu */}
+        <div className="flex items-center justify-between mb-8">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/mood-detect")}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/70 hover:bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full text-sm text-slate-200 transition-all group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="font-medium">Back</span>
+          </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <OptionsMenu currentPage="/music" />
+          </motion.div>
+        </div>
+
+        {/* Spotify Connect Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
         >
-          <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          <span className="font-medium">Back</span>
-        </motion.button>
+          {getSpotifyToken() ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full text-sm text-green-400">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                </svg>
+                <span className="font-semibold">Spotify Connected</span>
+              </div>
+              <button
+                onClick={clearSpotifyToken}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full text-sm text-red-400 hover:bg-red-500/30 transition-all font-semibold"
+                title="Disconnect and reconnect if you're having issues"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Disconnect</span>
+              </button>
+            </div>
+          ) : (
+            <a
+              href="/api/spotify/login"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-full text-sm text-white font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:scale-105"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              </svg>
+              <span>Connect to Spotify</span>
+            </a>
+          )}
+        </motion.div>
+
+        {/* Spotify Player & Search - Only show when connected */}
+        {spotifyToken && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6 mb-8"
+          >
+            <SpotifyPlayer 
+              accessToken={spotifyToken}
+              onPlayerReady={(deviceId) => setSpotifyDeviceId(deviceId)}
+            />
+            <SpotifyDashboard 
+              spotifyToken={spotifyToken}
+            />
+          </motion.div>
+        )}
+
+        {/* Spotify Search - Always available (works without login) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <SpotifySearch 
+            accessToken={spotifyToken}
+            deviceId={spotifyDeviceId}
+          />
+        </motion.div>
 
         {loading ? (
           <motion.div
@@ -376,7 +470,7 @@ function Music() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-2xl p-8 mb-6 overflow-hidden"
+              className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 md:p-8 mb-8 overflow-hidden"
             >
               {/* Current Mood Badge */}
               <div className="absolute top-4 right-4">
@@ -412,7 +506,7 @@ function Music() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={changeQuote}
-                    className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-sm font-semibold transition-all"
+                    className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm font-semibold transition-all"
                   >
                     Next Quote →
                   </motion.button>
@@ -425,7 +519,7 @@ function Music() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => playSong(songs[0])}
-                  className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                  className="px-6 md:px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
@@ -437,7 +531,7 @@ function Music() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={refreshSongs}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-full transition-all flex items-center gap-2"
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold rounded-full transition-all flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -449,7 +543,7 @@ function Music() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowSongList(!showSongList)}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-full transition-all flex items-center gap-2"
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold rounded-full transition-all flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -461,7 +555,7 @@ function Music() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/mood-detect')}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-full transition-all"
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold rounded-full transition-all"
                 >
                   Change Mood
                 </motion.button>
@@ -478,7 +572,7 @@ function Music() {
                   transition={{ duration: 0.3 }}
                   className="mb-6 overflow-hidden"
                 >
-                  <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6">
+                  <div className="bg-slate-900/80 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xl font-bold text-white">Your Playlist</h3>
                       <span className="text-white/60 text-sm">{songs.length} songs</span>
@@ -486,12 +580,12 @@ function Music() {
                     <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                       {songs.map((song, index) => (
                         <motion.div
-                          key={index}
+                          key={song.youtubeId || index}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.02 }}
                           whileHover={{ x: 4 }}
-                          className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-all cursor-pointer group"
+                          className="flex items-center gap-3 p-3 bg-slate-800/60 hover:bg-slate-700/70 rounded-lg transition-all cursor-pointer group"
                           onClick={() => playSong(song)}
                         >
                           <span className="text-white/40 text-sm font-mono w-6">{String(index + 1).padStart(2, '0')}</span>
@@ -523,37 +617,13 @@ function Music() {
             </AnimatePresence>
 
             {/* Integrated Features Grid */}
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              {/* Mini Challenge Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 backdrop-blur-lg border border-purple-500/30 rounded-2xl p-6"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Mini Challenge</h3>
-                </div>
-                <p className="text-white/80 mb-4">Listen to 3 songs today to unlock special rewards!</p>
-                <div className="flex gap-2 mb-3">
-                  <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" style={{width: '33%'}}></div>
-                  </div>
-                </div>
-                <p className="text-white/60 text-sm">1 of 3 songs completed</p>
-              </motion.div>
-
+            <div className="grid grid-cols-1 gap-6 mb-8">
               {/* Spotify Card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 backdrop-blur-lg border border-emerald-500/30 rounded-2xl p-6"
+                transition={{ delay: 0.2 }}
+                className="bg-slate-900/80 backdrop-blur-lg border border-slate-700 rounded-2xl p-6"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
@@ -577,7 +647,7 @@ function Music() {
             </div>
 
             {/* Smart Features */}
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 mb-8">
               <SmartMoodFeature mood={currentMood} />
               <SurpriseMe />
             </div>
@@ -597,11 +667,11 @@ function Music() {
             initial={{ scale: 0.9, y: 30 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 30 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden"
+            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 p-6 flex justify-between items-start">
+            <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 p-6 flex justify-between items-start">
               <div className="flex-1">
                 <div className="inline-block px-3 py-1 bg-white/20 rounded-full mb-2">
                   <span className="text-white text-xs font-bold tracking-wider">NOW PLAYING</span>
@@ -630,12 +700,12 @@ function Music() {
             </div>
 
             {/* Controls */}
-            <div className="bg-gray-50 p-6 flex gap-4">
+            <div className="bg-slate-950 p-6 flex gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={playPrev}
-                className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-all"
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-xl font-bold transition-all"
               >
                 PREVIOUS
               </motion.button>
@@ -652,15 +722,12 @@ function Music() {
         </motion.div>
       )}
 
-      {/* Theme Toggle & Quick Actions */}
-      <ThemeToggle />
-      <QuickActions />
       <BreathingExercise />
       <MeditationTimer />
       
       {/* Music Challenges */}
       <MusicChallenges currentSong={currentlyPlaying} mood={currentMood} />
-    </div>
+    </AppShell>
   );
 }
 

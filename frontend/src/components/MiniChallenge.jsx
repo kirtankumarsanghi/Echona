@@ -9,7 +9,7 @@ export default function MiniChallenge({ correctMood }) {
       answer.toLowerCase() === correctMood.toLowerCase();
 
     const res = await fetch(
-      "http://localhost:5001/api/game/submit",
+      "/api/game/submit",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

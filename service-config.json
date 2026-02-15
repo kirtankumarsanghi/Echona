@@ -1,0 +1,22 @@
+{
+  "ports": {
+    "frontend": 3000,
+    "backend": 5000,
+    "ml": 5001
+  },
+  "hosts": {
+    "frontend": "http://127.0.0.1",
+    "backend": "http://127.0.0.1",
+    "ml": "http://127.0.0.1"
+  },
+  "timeouts": {
+    "request": 12000,
+    "ml": 15000,
+    "spotify": 10000,
+    "health": 4000
+  },
+  "retry": {
+    "maxAttempts": 3,
+    "baseDelayMs": 300
+  }
+}

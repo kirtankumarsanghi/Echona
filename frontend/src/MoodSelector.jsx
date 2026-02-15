@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import axiosInstance from "./api/axiosInstance";
+import { getToken } from "./utils/auth";
 
 const moods = [
   { label: "Happy", emoji: "😊", color: "from-yellow-400 to-yellow-600", gradient: "bg-yellow-500/10" },
@@ -19,7 +20,7 @@ export default function MoodSelector({ onMoodSelected, isLoading }) {
 
     try {
       console.log("[MoodSelector] Saving mood:", moodLabel);
-      const token = localStorage.getItem("echona_token");
+      const token = getToken();
       console.log("[MoodSelector] Token available:", !!token);
 
       const response = await axiosInstance.post("/api/mood/add", {

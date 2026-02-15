@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import JournalModal from "./JournalModal";
 
 // Define features with actions
 const smartFeatures = {
@@ -19,7 +20,7 @@ const smartFeatures = {
     title: "Release and Refocus",
     description: "Channel your anger by writing down what's on your mind in a digital journal.",
     buttonText: "Open Journal",
-    action: () => alert("Journal opened! (Not really, this is a demo)"),
+    action: "journal", // Changed to string identifier
   },
   Anxious: {
     title: "Find Your Calm",
@@ -31,7 +32,7 @@ const smartFeatures = {
     title: "Embrace Tranquility",
     description: "Take a moment for gratitude journaling or enjoy some ambient visuals.",
     buttonText: "Start Journaling",
-    action: () => alert("Gratitude journal ready! (Not really, this is a demo)"),
+    action: "journal", // Changed to string identifier
   },
   Excited: {
     title: "Capture the Excitement!",
@@ -75,13 +76,21 @@ function BreathingExercise({ onStop }) {
 
 function SmartMoodFeature({ mood }) {
   const [isBreathing, setIsBreathing] = useState(false);
+  const [isJournalOpen, setIsJournalOpen] = useState(false);
   const feature = smartFeatures[mood] || smartFeatures.Happy;
 
   const handleAction = () => {
     if (mood === "Anxious") {
       setIsBreathing(true);
-    } else {
+    } else if (feature.action === "journal") {
+      setIsJournalOpen(true);
+    } else if (typeof feature.action === "function") {
       feature.action();
+    } else {
+      // For other moods that might have string actions
+      if (mood === "Happy" || mood === "Excited") {
+        alert("Sharing feature coming soon!");
+      }
     }
   };
 
@@ -104,6 +113,7 @@ function SmartMoodFeature({ mood }) {
       </motion.div>
 
       {isBreathing && <BreathingExercise onStop={() => setIsBreathing(false)} />}
+      {isJournalOpen && <JournalModal isOpen={isJournalOpen} onClose={() => setIsJournalOpen(false)} mood={mood} />}
     </>
   );
 }

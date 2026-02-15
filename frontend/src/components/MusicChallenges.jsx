@@ -214,13 +214,13 @@ const MusicChallenges = ({ currentSong, mood }) => {
             exit={{ scale: 0, y: -100 }}
             className="fixed top-32 left-1/2 transform -translate-x-1/2 z-50"
           >
-            <div className="bg-gray-900 border-2 border-amber-500 rounded-2xl p-6 shadow-2xl">
+            <div className="bg-neutral-900 border-2 border-amber-500 rounded-2xl p-6 shadow-2xl">
               <div className="text-center">
-                <p className="text-amber-400 font-bold text-sm mb-2">BADGE UNLOCKED</p>
-                <div className={`mx-auto w-20 h-20 bg-gradient-to-br ${badgeStyles[activeChallenge.badge]} rounded-full flex items-center justify-center mb-2 shadow-lg`}>
+                <p className="text-amber-400 font-bold text-sm mb-3 uppercase tracking-wider">Badge Unlocked!</p>
+                <div className={`mx-auto w-20 h-20 bg-gradient-to-br ${badgeStyles[activeChallenge.badge]} rounded-full flex items-center justify-center mb-3 shadow-lg`}>
                   <span className="text-white font-black text-lg">{activeChallenge.badge}</span>
                 </div>
-                <p className="text-white font-semibold">+{activeChallenge.points} points</p>
+                <p className="text-white font-bold text-lg">+{activeChallenge.points} points</p>
               </div>
             </div>
           </motion.div>
@@ -232,23 +232,23 @@ const MusicChallenges = ({ currentSong, mood }) => {
         initial={{ opacity: 0, x: -100 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 100 }}
-        className="fixed bottom-32 left-6 z-40 w-full md:w-96"
+        className="fixed bottom-8 left-4 lg:left-72 z-[60] w-[calc(100%-2rem)] md:w-96"
       >
-        <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-amber-500/50 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+        <div className="bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-950 border-2 border-amber-500/60 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-sm">TASK</span>
               </div>
               <div>
-                <p className="text-amber-400 text-xs font-bold">MINI CHALLENGE</p>
+                <p className="text-amber-400 text-xs font-bold uppercase tracking-wider">Mini Challenge</p>
                 <p className="text-white text-sm font-semibold">+{activeChallenge.points} pts</p>
               </div>
             </div>
             <button
               onClick={skipChallenge}
-              className="text-gray-400 hover:text-white text-sm font-semibold"
+              className="px-3 py-1.5 bg-neutral-700/60 hover:bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-200 hover:text-white text-sm font-semibold transition-all"
             >
               SKIP
             </button>
@@ -256,17 +256,17 @@ const MusicChallenges = ({ currentSong, mood }) => {
 
           {/* Challenge Info */}
           <div className="mb-6">
-            <h3 className="text-white text-xl font-bold mb-2">{activeChallenge.title}</h3>
-            <p className="text-gray-300 text-sm">{activeChallenge.description}</p>
+            <h3 className="text-white text-xl font-bold mb-2 leading-tight">{activeChallenge.title}</h3>
+            <p className="text-neutral-200 text-sm leading-relaxed">{activeChallenge.description}</p>
           </div>
 
           {/* Badge Preview */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className={`w-10 h-10 bg-gradient-to-br ${badgeStyles[activeChallenge.badge]} rounded-lg flex items-center justify-center`}>
+          <div className="flex items-center gap-3 mb-6 bg-neutral-800/40 rounded-xl p-3">
+            <div className={`w-10 h-10 bg-gradient-to-br ${badgeStyles[activeChallenge.badge]} rounded-lg flex items-center justify-center shadow-lg`}>
               <span className="text-white font-bold text-xs">{activeChallenge.badge}</span>
             </div>
             <div>
-              <p className="text-gray-400 text-xs">Unlock Badge</p>
+              <p className="text-neutral-400 text-xs uppercase tracking-wide">Unlock Badge</p>
               <p className="text-white text-sm font-semibold">{activeChallenge.badge}</p>
             </div>
           </div>
@@ -282,18 +282,18 @@ const MusicChallenges = ({ currentSong, mood }) => {
           </motion.button>
 
           {/* Stats Bar */}
-          <div className="mt-4 pt-4 border-t border-gray-700 flex items-center justify-between text-sm">
+          <div className="mt-4 pt-4 border-t border-neutral-700/60 flex items-center justify-between text-sm">
             <div>
-              <span className="text-gray-400">Total Points:</span>
-              <span className="text-amber-400 font-bold ml-2">{points}</span>
+              <span className="text-neutral-400 text-xs">Total Points:</span>
+              <span className="text-amber-400 font-bold ml-2 text-sm">{points}</span>
             </div>
             <div>
-              <span className="text-gray-400">Badges:</span>
-              <span className="text-teal-400 font-bold ml-2">{earnedBadges.length}</span>
+              <span className="text-neutral-400 text-xs">Badges:</span>
+              <span className="text-teal-400 font-bold ml-2 text-sm">{earnedBadges.length}</span>
             </div>
             <div>
-              <span className="text-gray-400">Done:</span>
-              <span className="text-rose-400 font-bold ml-2">{completedChallenges.length}</span>
+              <span className="text-neutral-400 text-xs">Done:</span>
+              <span className="text-rose-400 font-bold ml-2 text-sm">{completedChallenges.length}</span>
             </div>
           </div>
         </div>

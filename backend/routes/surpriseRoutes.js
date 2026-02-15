@@ -12,6 +12,13 @@ const router = express.Router();
  */
 router.get("/", async (req, res) => {
   try {
+    if (!Array.isArray(musicLibrary) || musicLibrary.length === 0) {
+      return res.status(503).json({
+        success: false,
+        error: "Music library unavailable"
+      });
+    }
+
     // 1️⃣ Get context (time + weather)
     const { timeContext, weatherContext } = await getContext();
     
@@ -58,8 +65,16 @@ router.get("/", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
+    if (!Array.isArray(musicLibrary) || musicLibrary.length === 0) {
+      return res.status(503).json({
+        success: false,
+        error: "Music library unavailable"
+      });
+    }
+
     // 👇 emotion already predicted by ML (from face/voice/text)
-    const { mlEmotion } = req.body; // e.g. "happy", "sad", "anxious"
+    const { mlEmotion } = req.body || {}; // e.g. "happy", "sad", "anxious"
+    const safeEmotion = mlEmotion ? String(mlEmotion).trim().toLowerCase() : undefined;
 
     // 1️⃣ Context-based mood (time + weather)
     const { timeContext, weatherContext } = await getContext();
@@ -69,7 +84,7 @@ router.post("/", async (req, res) => {
     );
 
     // 2️⃣ Emotion-based mood (from ML)
-    const emotionMood = mapEmotionToMood(mlEmotion);
+    const emotionMood = mapEmotionToMood(safeEmotion);
 
     // 3️⃣ Final decision (emotion takes priority if available)
     const finalMood =
@@ -77,7 +92,7 @@ router.post("/", async (req, res) => {
         ? emotionMood
         : contextMood;
 
-    console.log(`Phase 4: ML Emotion="${mlEmotion}" -> Mood="${emotionMood}", Context Mood="${contextMood}", Final="${finalMood}"`);
+    console.log(`Phase 4: ML Emotion="${safeEmotion || "none"}" -> Mood="${emotionMood}", Context Mood="${contextMood}", Final="${finalMood}"`);
 
     // 4️⃣ Select song from library
     const matchingSongs = musicLibrary.filter(
@@ -94,7 +109,7 @@ router.post("/", async (req, res) => {
 
     res.json({
       success: true,
-      mlEmotion, // Show user what emotion was detected
+      mlEmotion: safeEmotion || null, // Show user what emotion was detected
       contextMood, // Show context fallback mood
       context: { // Match GET route structure
         time: timeContext,

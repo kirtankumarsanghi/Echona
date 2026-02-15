@@ -18,6 +18,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    moodHistory: {
+      type: [
+        {
+          mood: { type: String, trim: true },
+          source: { type: String, trim: true },
+          score: { type: Number, min: 0, max: 10 },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

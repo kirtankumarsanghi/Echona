@@ -1,26 +1,40 @@
 import { useState } from "react";
-import axios from "axios";
+import axiosInstance from "./api/axiosInstance";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function handleRegister() {
+    if (!name.trim() || !email.trim() || !password) {
+      setError("Name, email, and password are required.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
     try {
-      const res = await axios.post("http://localhost:5001/api/auth/register", {
+      const res = await axiosInstance.post("/api/auth/signup", {
         name,
         email,
         password,
       });
 
-      alert(res.data.message);
+      setSuccess(res.data?.message || "Registration successful.");
 
-      if (res.data.message === "Registered successfully") {
+      setTimeout(() => {
         window.location.href = "/login";
-      }
+      }, 600);
     } catch (err) {
-      alert("Registration failed");
+      setError(err.message || "Registration failed.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -30,6 +44,18 @@ export default function Register() {
         <h1 className="text-3xl font-bold text-white text-center mb-6">
           Create Account ✨
         </h1>
+
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-300/40 bg-red-500/20 px-3 py-2 text-sm text-red-100">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 rounded-xl border border-emerald-300/40 bg-emerald-500/20 px-3 py-2 text-sm text-emerald-100">
+            {success}
+          </div>
+        )}
 
         <input
           type="text"
@@ -54,9 +80,10 @@ export default function Register() {
 
         <button
           onClick={handleRegister}
-          className="w-full bg-white text-purple-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition"
+          disabled={loading}
+          className="w-full bg-white text-purple-700 font-semibold p-3 rounded-xl hover:bg-gray-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Register
+          {loading ? "Creating account..." : "Register"}
         </button>
 
         <p className="text-center text-gray-200 mt-4">

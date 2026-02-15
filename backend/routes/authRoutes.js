@@ -1,107 +1,245 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const { JWT_SECRET } = require("../middleware/authMiddleware");
+const mongoose = require("mongoose");
+const {
+  normalizeEmail,
+  createAccessToken,
+  verifyAccessToken,
+  hashPassword,
+  comparePassword,
+} = require("../services/authService");
 
-// Register/Signup
-router.post("/signup", async (req, res) => {
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 6;
+const MAX_NAME_LENGTH = 100;
+
+// In-memory user storage (fallback when MongoDB is unavailable)
+let inMemoryUsers = [];
+
+// Try to load User model, fallback to in-memory if MongoDB not available
+let User;
+try {
+  User = require("../models/User");
+} catch (err) {
+  console.warn("⚠️  User model unavailable — using in-memory auth");
+  User = null;
+}
+
+function useMongo() {
+  return Boolean(User) && mongoose.connection.readyState === 1;
+}
+
+function sanitizeUser(user) {
+  return {
+    id: user._id || user.id,
+    name: user.name,
+    email: user.email,
+  };
+}
+
+// ─── Health Check ───────────────────────────────────────────────────────────
+router.get("/health", (req, res) => {
+  const mongoReady = mongoose.connection.readyState === 1;
+  res.json({
+    success: true,
+    service: "auth",
+    status: "ok",
+    storage: mongoReady ? "mongodb" : "in-memory",
+    jwtConfigured: true,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ─── Token Verify (for frontend to check token validity) ────────────────────
+router.get("/verify", (req, res) => {
   try {
-    console.log("[Auth] Signup attempt:", req.body.email);
-    
-    const { name, email, password } = req.body;
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-    // Validation
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        valid: false,
+        error: "No token provided",
+      });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists with this email" });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    // Generate token
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    console.log("[Auth] ✓ User registered:", email);
-
-    res.status(201).json({
-      message: "User registered successfully",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
+    const decoded = verifyAccessToken(token);
+    return res.json({
+      success: true,
+      valid: true,
+      user: { id: decoded.id, email: decoded.email },
+      expiresAt: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : null,
     });
   } catch (err) {
-    console.error("[Auth] Signup error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    const isExpired = err.name === "TokenExpiredError";
+    return res.status(401).json({
+      success: false,
+      valid: false,
+      expired: isExpired,
+      error: isExpired ? "Token expired" : "Invalid token",
+    });
   }
 });
 
-// Login
-router.post("/login", async (req, res) => {
+// ─── Signup ─────────────────────────────────────────────────────────────────
+router.post("/signup", async (req, res) => {
   try {
-    console.log("[Auth] Login attempt:", req.body.email);
-    
-    const { email, password } = req.body;
+    const { name, email, password } = req.body || {};
+    const normalizedName = String(name || "").trim();
+    const normalizedEmail = normalizeEmail(email);
 
     // Validation
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    const errors = [];
+    if (!normalizedName) errors.push("Full name is required");
+    else if (normalizedName.length > MAX_NAME_LENGTH) errors.push(`Name must be under ${MAX_NAME_LENGTH} characters`);
+    if (!normalizedEmail) errors.push("Email is required");
+    else if (!EMAIL_REGEX.test(normalizedEmail)) errors.push("Please provide a valid email address");
+    if (!password) errors.push("Password is required");
+    else if (password.length < MIN_PASSWORD_LENGTH) errors.push(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        message: errors[0],
+        details: errors,
+      });
     }
 
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+    // Hash password using centralized service
+    const hashedPassword = await hashPassword(password);
+
+    let user;
+    if (useMongo()) {
+      const existingUser = await User.findOne({ email: normalizedEmail });
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: "Account exists",
+          message: "An account with this email already exists. Please sign in instead.",
+        });
+      }
+
+      user = await User.create({
+        name: normalizedName,
+        email: normalizedEmail,
+        password: hashedPassword,
+      });
+    } else {
+      const existingUser = inMemoryUsers.find((u) => u.email === normalizedEmail);
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: "Account exists",
+          message: "An account with this email already exists. Please sign in instead.",
+        });
+      }
+
+      user = {
+        _id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: normalizedName,
+        email: normalizedEmail,
+        password: hashedPassword,
+      };
+      inMemoryUsers.push(user);
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
+    const token = createAccessToken(user);
+    console.log("[Auth] ✓ User registered:", normalizedEmail);
 
-    // Generate token
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    console.log("[Auth] ✓ User logged in:", email);
-
-    res.json({
-      message: "Login successful",
+    res.status(201).json({
+      success: true,
+      message: "Account created successfully",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-      },
+      user: sanitizeUser(user),
     });
   } catch (err) {
-    console.error("[Auth] Login error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("[Auth] Signup error:", err.message);
+
+    // Handle MongoDB duplicate key error
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: "Account exists",
+        message: "An account with this email already exists.",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Registration failed",
+      message: "Unable to create account at the moment. Please try again.",
+    });
+  }
+});
+
+// ─── Login ──────────────────────────────────────────────────────────────────
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const normalizedEmail = normalizeEmail(email);
+
+    // Validation
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        message: "Email and password are required",
+      });
+    }
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        message: "Please provide a valid email address",
+      });
+    }
+
+    let user;
+    if (useMongo()) {
+      user = await User.findOne({ email: normalizedEmail });
+    } else {
+      user = inMemoryUsers.find((u) => u.email === normalizedEmail);
+    }
+
+    if (!user) {
+      // Dummy bcrypt compare to prevent timing-based user enumeration
+      await comparePassword(password, "$2a$10$dummyhashtopreventtimingattackxxxxxxxxxx");
+      return res.status(401).json({
+        success: false,
+        error: "Authentication failed",
+        message: "Invalid email or password",
+      });
+    }
+
+    // Verify password using centralized service
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication failed",
+        message: "Invalid email or password",
+      });
+    }
+
+    const token = createAccessToken(user);
+    console.log("[Auth] ✓ User logged in:", normalizedEmail);
+
+    res.json({
+      success: true,
+      message: "Login successful",
+      token,
+      user: sanitizeUser(user),
+    });
+  } catch (err) {
+    console.error("[Auth] Login error:", err.message);
+    res.status(500).json({
+      success: false,
+      error: "Login failed",
+      message: "Unable to complete login at the moment. Please try again.",
+    });
   }
 });
 
