@@ -217,15 +217,18 @@ def recommend():
 
 
 if __name__ == "__main__":
+    # Use PORT env variable (Render standard) or ML_PORT or default
     default_ml_port = read_shared_ml_port()
-    raw_port = os.getenv("ML_PORT", str(default_ml_port))
+    raw_port = os.getenv("PORT") or os.getenv("ML_PORT", str(default_ml_port))
     try:
         ml_port = int(raw_port)
     except ValueError:
-        raise SystemExit(f"Invalid ML_PORT '{raw_port}'. Expected an integer value.")
+        raise SystemExit(f"Invalid PORT '{raw_port}'. Expected an integer value.")
 
-    # Check port availability
-    if not is_port_available(ml_port):
+    # In production, skip port check (cloud providers handle this)
+    is_production = os.getenv("NODE_ENV") == "production" or os.getenv("FLASK_ENV") == "production"
+    
+    if not is_production and not is_port_available(ml_port):
         logger.error(f"Port {ml_port} is already in use!")
         logger.error(f"Fix: Run in PowerShell:")
         logger.error(f"  Get-NetTCPConnection -LocalPort {ml_port} -ErrorAction SilentlyContinue | ForEach-Object {{ Stop-Process -Id $_.OwningProcess -Force }}")
@@ -234,8 +237,9 @@ if __name__ == "__main__":
     logger.info("=" * 50)
     logger.info("  ECHONA ML Service Starting")
     logger.info(f"  Port: {ml_port}")
-    logger.info(f"  URL:  http://127.0.0.1:{ml_port}")
-    logger.info(f"  Health: http://127.0.0.1:{ml_port}/health")
+    logger.info(f"  Environment: {'production' if is_production else 'development'}")
     logger.info("=" * 50)
 
-    app.run(debug=False, host="127.0.0.1", port=ml_port, use_reloader=False)
+    # Use 0.0.0.0 in production for cloud deployment
+    host = "0.0.0.0" if is_production else "127.0.0.1"
+    app.run(debug=False, host=host, port=ml_port, use_reloader=False)
