@@ -8,8 +8,8 @@ const API_BASE_URL =
     ? import.meta.env.VITE_API_URL
     : "";
 
-const MAX_RETRIES = 2;
-const RETRY_BASE_DELAY = 400;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY = 2000; // Longer delay for cold starts
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,12 +21,13 @@ function getHeader(headers, key) {
 }
 
 // Create axios instance — empty baseURL means requests go through Vite proxy
+// Longer timeout for production (Render cold starts take 30-60 seconds)
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 15000,
+  timeout: API_BASE_URL ? 60000 : 15000, // 60s for production, 15s for dev
 });
 
 // ─── Request interceptor: inject auth token ─────────────────────────────────
@@ -81,8 +82,14 @@ axiosInstance.interceptors.response.use(
     }
 
     // ─── Network error (backend unreachable) ────────────────────────────
-    if (isNetworkError) {
-      error.message =
+    if// Better message for production cold starts
+      if (API_BASE_URL) {
+        error.message =
+          "Server is waking up (this takes 30-60 seconds on first load). Please wait and try again...";
+      } else {
+        error.message =
+          "Cannot connect to server. Please check if the backend is running.";
+      }
         "Cannot connect to server. Please check if the backend is running.";
       error.userFriendly = true;
       return Promise.reject(error);
