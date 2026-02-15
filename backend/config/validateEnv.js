@@ -80,21 +80,15 @@ function validateSpotify(config, errors, warnings) {
     if (!hasSecret) missing.push("SPOTIFY_CLIENT_SECRET");
     if (!hasRedirect) missing.push("SPOTIFY_REDIRECT_URI");
 
-    if (isStrictMode(config)) {
-      errors.push(`Spotify partially configured. Missing: ${missing.join(", ")}`);
-    } else {
-      warnings.push(`Spotify partially configured. Missing: ${missing.join(", ")}. Spotify features will be unavailable.`);
-    }
+    // Always warn instead of error - Spotify is optional
+    warnings.push(`Spotify partially configured. Missing: ${missing.join(", ")}. Spotify features will be unavailable.`);
   }
 }
 
 function validateMongo(config, warnings, errors) {
   if (!hasValue(config.mongoUri)) {
-    if (isStrictMode(config)) {
-      errors.push("MONGODB_URI is required in production/staging.");
-    } else {
-      warnings.push("MONGODB_URI not set — using in-memory storage. Data will not persist across restarts.");
-    }
+    // MongoDB is optional - warn in all modes
+    warnings.push("MONGODB_URI not set — using in-memory storage. Data will not persist across restarts.");
   }
 }
 
