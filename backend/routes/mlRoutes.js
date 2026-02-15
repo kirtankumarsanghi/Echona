@@ -12,12 +12,14 @@ function wait(ms) {
 async function postWithRetry(url, payload, options = {}) {
   const retries = options.retries ?? config.maxRetries ?? 2;
   const delayMs = options.delayMs ?? config.retryBaseDelayMs ?? 300;
+  // Longer timeout for production (ML service cold starts)
+  const timeout = config.nodeEnv === "production" ? 60000 : (options.timeout ?? config.mlTimeoutMs);
 
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       return await axios.post(url, payload, {
-        timeout: options.timeout ?? config.mlTimeoutMs,
+        timeout,
         headers: { "Content-Type": "application/json" },
       });
     } catch (error) {
@@ -84,9 +86,9 @@ router.post("/analyze", authMiddleware, async (req, res) => {
 
   try {
     const response = await postWithRetry(`${config.mlServiceUrl}/analyze`, req.body, {
-      timeout: config.requestTimeoutMs,
-      retries: 2,
-      delayMs: 350,
+      timeout: config.nodeEnv === "production" ? 60000 : config.requestTimeoutMs,
+      retries: config.nodeEnv === "production" ? 3 : 2,
+      delayMs: config.nodeEnv === "production" ? 2000 : 350,
     });
 
     res.json({
@@ -103,10 +105,15 @@ router.post("/analyze", authMiddleware, async (req, res) => {
       payload,
     });
 
+    // Better error message for cold starts
+    const errorMessage = config.nodeEnv === "production" && error.code === "ECONNABORTED"
+      ? "ML service is waking up. Please try again in a moment."
+      : payload?.message || error.message;
+
     res.status(statusCode >= 400 && statusCode < 600 ? statusCode : 503).json({
       success: false,
       error: payload?.error || "ML analysis unavailable",
-      message: payload?.message || error.message,
+      message: errorMessage,
     });
   }
 });
