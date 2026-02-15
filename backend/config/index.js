@@ -51,7 +51,8 @@ const config = {
   nodeEnv: process.env.NODE_ENV || "development",
 
   // Ports (strict: env > service-config > hardcoded)
-  backendPort: parsePort(process.env.BACKEND_PORT, defaultBackendPort),
+  // Render uses PORT, fallback to BACKEND_PORT
+  backendPort: parsePort(process.env.PORT || process.env.BACKEND_PORT, defaultBackendPort),
   frontendPort: parsePort(process.env.FRONTEND_PORT, defaultFrontendPort),
   mlPort: parsePort(process.env.ML_PORT, defaultMlPort),
 
