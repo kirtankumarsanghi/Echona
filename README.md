@@ -242,7 +242,7 @@ Contributions are welcome! Please read our contributing guidelines first.
 5. Open a Pull Request
 ---
 
-##  Acknowledgments
+##       Acknowledgments
 
 - Spotify Web API for music integration
 - OpenAI for AI insights
