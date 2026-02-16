@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 const OptionsMenu = ({ currentPage = "" }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
 
@@ -75,6 +76,29 @@ const OptionsMenu = ({ currentPage = "" }) => {
   const handleNavigation = (path) => {
     setIsOpen(false);
     navigate(path);
+  };
+
+  const handleClearData = () => {
+    try {
+      const history = localStorage.getItem('echona_mood_history');
+      const count = history ? JSON.parse(history).length : 0;
+      
+      localStorage.removeItem('echona_mood_history');
+      localStorage.removeItem('detected_mood');
+      
+      setShowClearModal(false);
+      setIsOpen(false);
+      
+      alert(`✅ Cleared ${count} mood entries! Your dashboard has been reset.`);
+      
+      // Refresh if on dashboard
+      if (currentPage === '/dashboard') {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Error clearing data:', err);
+      alert('❌ Failed to clear data. Please try again.');
+    }
   };
 
   return (
@@ -159,6 +183,26 @@ const OptionsMenu = ({ currentPage = "" }) => {
             {/* Divider */}
             <div className="border-t border-neutral-800" />
 
+            {/* Clear Data Button */}
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+              onClick={() => {
+                setIsOpen(false);
+                setShowClearModal(true);
+              }}
+              className="w-full px-4 py-3 flex items-center gap-3 text-orange-400 hover:bg-orange-500/10 transition-all duration-200"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span className="font-medium text-sm">Clear Mood Data</span>
+            </motion.button>
+
+            {/* Divider */}
+            <div className="border-t border-neutral-800" />
+
             {/* Logout Button */}
             <motion.button
               initial={{ opacity: 0 }}
@@ -175,6 +219,58 @@ const OptionsMenu = ({ currentPage = "" }) => {
               </svg>
               <span className="font-medium text-sm">Logout</span>
             </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Clear Data Confirmation Modal */}
+      <AnimatePresence>
+        {showClearModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowClearModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-800 rounded-2xl p-8 max-w-md w-full border border-gray-700 shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-orange-500/10 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Clear All Mood Data?</h3>
+                <p className="text-gray-400">
+                  This will permanently delete all your mood history and reset your dashboard. This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowClearModal(false)}
+                  className="flex-1 px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-semibold transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleClearData}
+                  className="flex-1 px-6 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition-colors"
+                >
+                  Clear Data
+                </motion.button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

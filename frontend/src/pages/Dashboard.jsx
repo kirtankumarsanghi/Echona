@@ -60,6 +60,7 @@ const Icons = {
 function Dashboard() {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
+  const [showClearModal, setShowClearModal] = useState(false);
   const user = getCurrentUser();
 
   useEffect(() => {
@@ -82,6 +83,22 @@ function Dashboard() {
   const handleLogout = () => {
     logout();
     navigate("/auth");
+  };
+
+  const handleClearData = () => {
+    try {
+      localStorage.removeItem('echona_mood_history');
+      localStorage.removeItem('detected_mood');
+      setHistory([]);
+      setShowClearModal(false);
+      // Show success message
+      setTimeout(() => {
+        alert('✅ All mood data cleared! Your dashboard is now reset.');
+      }, 100);
+    } catch (err) {
+      console.error('Error clearing data:', err);
+      alert('❌ Failed to clear data. Please try again.');
+    }
   };
 
   // Empty state if no data
@@ -257,10 +274,26 @@ function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-8"
             >
-              <h1 className="heading-1 mb-2">
-                Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
-              </h1>
-              <p className="text-neutral-300 text-lg">Here's your emotional wellness overview</p>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="heading-1 mb-2">
+                    Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
+                  </h1>
+                  <p className="text-neutral-300 text-lg">Here's your emotional wellness overview</p>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowClearModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all text-sm font-medium"
+                  title="Clear all mood history"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span className="hidden sm:inline">Reset Data</span>
+                </motion.button>
+              </div>
             </motion.div>
 
             {/* Stats Grid */}
@@ -452,6 +485,58 @@ function Dashboard() {
               </div>
             </motion.div>
       </div>
+
+      {/* Clear Data Confirmation Modal */}
+      <AnimatePresence>
+        {showClearModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowClearModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-800 rounded-2xl p-8 max-w-md w-full border border-gray-700 shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-red-500/10 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Clear All Data?</h3>
+                <p className="text-gray-400">
+                  This will permanently delete all your mood history ({history.length} entries) and reset your dashboard. This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowClearModal(false)}
+                  className="flex-1 px-6 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-semibold transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleClearData}
+                  className="flex-1 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors"
+                >
+                  Clear Data
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }

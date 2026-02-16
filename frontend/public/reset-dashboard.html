@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear ECHONA Data</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    h1 {
+      color: #1f2937;
+      font-size: 32px;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+    p {
+      color: #4b5563;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .status {
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #374151;
+      text-align: left;
+    }
+    .status div {
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .status div:last-child { border-bottom: none; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 48px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .success {
+      color: #10b981;
+      font-weight: 600;
+      font-size: 18px;
+      margin-top: 24px;
+      padding: 16px;
+      background: #d1fae5;
+      border-radius: 12px;
+      display: none;
+    }
+    .success.show { display: block; }
+    .link {
+      display: inline-block;
+      margin-top: 16px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    .link:hover {
+      background: #667eea;
+      color: white;
+    }
+    .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🧹</div>
+    <h1>Clear Dashboard Data</h1>
+    <p>This will remove all mood history from your browser and reset your dashboard to start fresh.</p>
+    
+    <div class="status">
+      <div>📊 <strong>Mood History:</strong> <span id="historyCount">Checking...</span></div>
+      <div>🎯 <strong>Status:</strong> <span id="status">Ready to clear</span></div>
+    </div>
+
+    <button onclick="clearAllData()" id="clearBtn">Clear All Data</button>
+    
+    <div class="success" id="successMsg">
+      ✅ All data cleared successfully!<br>
+      <a href="/dashboard" class="link">Go to Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    // Check current data
+    function checkData() {
+      try {
+        const history = localStorage.getItem('echona_mood_history');
+        const entries = history ? JSON.parse(history).length : 0;
+        document.getElementById('historyCount').textContent = entries > 0 ? `${entries} entries found` : 'No data';
+        document.getElementById('status').textContent = entries > 0 ? 'Data needs clearing' : 'Already clean';
+        return entries;
+      } catch (err) {
+        document.getElementById('historyCount').textContent = 'Error reading data';
+        return 0;
+      }
+    }
+
+    function clearAllData() {
+      const btn = document.getElementById('clearBtn');
+      btn.disabled = true;
+      btn.textContent = 'Clearing...';
+
+      try {
+        // Clear all ECHONA related data
+        localStorage.removeItem('echona_mood_history');
+        localStorage.removeItem('detected_mood');
+        
+        // Update UI
+        setTimeout(() => {
+          document.getElementById('historyCount').textContent = 'No data';
+          document.getElementById('status').textContent = 'Successfully cleared';
+          document.getElementById('successMsg').classList.add('show');
+          btn.style.display = 'none';
+          
+          console.log('✅ All mood data cleared from localStorage');
+        }, 500);
+      } catch (err) {
+        alert('❌ Error clearing data: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Clear All Data';
+      }
+    }
+
+    // Check on page load
+    window.addEventListener('load', () => {
+      const entries = checkData();
+      if (entries === 0) {
+        document.getElementById('status').style.color = '#10b981';
+      }
+    });
+  </script>
+</body>
+</html>
