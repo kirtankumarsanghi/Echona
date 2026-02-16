@@ -70,22 +70,12 @@ function Dashboard() {
         const parsed = JSON.parse(storedHistory);
         setHistory(parsed);
       } else {
-        // Generate sample data for demo
-        const sampleData = [
-          { mood: "Happy", score: 8, createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Calm", score: 7, createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Excited", score: 9, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Anxious", score: 4, createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Happy", score: 8, createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Sad", score: 3, createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Calm", score: 7, createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-          { mood: "Happy", score: 9, createdAt: new Date().toISOString() },
-        ];
-        localStorage.setItem('echona_mood_history', JSON.stringify(sampleData));
-        setHistory(sampleData);
+        // Start with empty history - user will build their own data
+        setHistory([]);
       }
     } catch (err) {
       console.error('Error loading mood history:', err);
+      setHistory([]);
     }
   }, []);
 
