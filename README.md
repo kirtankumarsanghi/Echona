@@ -14,9 +14,9 @@
 [![Live Application](https://img.shields.io/badge/🌐_Live_Demo-Visit_App-8B5CF6?style=for-the-badge)](https://echona-qanj.vercel.app)
 
 **Production URLs:**
-- 🌐 **Frontend**: [https://echona-qanj.vercel.app](https://echona-qanj.vercel.app)
-- ⚙️ **Backend API**: [https://echona.onrender.com](https://echona.onrender.com)
-- 🤖 **ML Service**: [https://echona-ml.onrender.com](https://echona-ml.onrender.com)
+-  **Frontend**: [https://echona-qanj.vercel.app](https://echona-qanj.vercel.app)
+- **Backend API**: [https://echona.onrender.com](https://echona.onrender.com)
+-  **ML Service**: [https://echona-ml.onrender.com](https://echona-ml.onrender.com)
 
 [Features](#features) • [Tech Stack](#tech-stack) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation)
 
@@ -148,13 +148,7 @@ ML_SERVICE_PORT=5000
 
 ##  Usage
 
-### Quick Start (Windows)
-```powershell
-# Start all services
-.\scripts\start-echona.ps1
-```
-
-### Quick Start (Manual)
+### Quick Start
 
 **Terminal 1** - Frontend:
 ```bash
@@ -174,17 +168,6 @@ python api.py
 ```
 
 Access the application at: **http://localhost:5173**
-
----
-
-##  Documentation
-
-Detailed documentation is available in the [`docs/`](./docs) folder:
-
-- **[Setup Guide](./docs/COMPLETE_SETUP_GUIDE.md)** - Comprehensive installation instructions
-- **[Spotify Setup](./docs/SPOTIFY_SETUP.md)** - Configure Spotify integration
-- **[API Documentation](./docs/API.md)** - Backend API reference
-- **[Development Guide](./docs/DEVELOPMENT.md)** - Contributing guidelines
 
 ---
 
@@ -212,13 +195,13 @@ echona-pro/
 │   ├── face_emotion.py   # Facial recognition
 │   ├── voice_emotion.py  # Voice analysis
 │   ├── text_emotion.py   # Text sentiment
-│   └── fusion.py         # Multimodal fusion
+│   ├── fusion.py         # Multimodal fusion
+│   └── recommend.py      # Music recommendations
 │
-├── database/             # SQLite database
 ├── uploads/              # User-uploaded files
-├── scripts/              # Utility scripts
-├── tests/                # Test files
-└── docs/                 # Documentation
+├── api.py                # ML API server
+├── requirements.txt      # Python dependencies
+└── service-config.json   # Service configuration
 ```
 
 ---
@@ -237,6 +220,19 @@ The platform uses a sophisticated multimodal approach:
 - **Context Analysis**: Considers time of day, weather, and user history
 - **Personalization**: Learns from user preferences and listening patterns
 - **Diversity**: Balances familiar comfort songs with new discoveries
+
+---
+
+##  Recent Updates
+
+### February 2026 - Codebase Cleanup
+- ✅ Removed development documentation files (30+ dev notes moved to version control history)
+- ✅ Cleaned up test files and test HTML pages
+- ✅ Removed utility scripts (platform-specific start/stop scripts)
+- ✅ Eliminated backup files and deprecated code
+- ✅ Removed Python cache files and test assets
+- ✅ Streamlined project structure for production deployment
+- 📦 **Result**: Cleaner, more maintainable codebase focused on core functionality
 
 ---
 
@@ -262,9 +258,9 @@ Contributions are welcome! Please read our contributing guidelines first.
 
 ##  Contact
 
-**Project Creator**: Your Name  
-**Email**: your.email@example.com  
-**GitHub**: [@yourusername](https://github.com/yourusername)
+**Project Creator**: Kirtan Kumar Sanghi
+**Email**: kirtankumarsanghi@example.com  
+
 
 ---
 

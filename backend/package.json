@@ -4,11 +4,8 @@
   "description": "ECHONA Backend API - Mood Detection & Music",
   "main": "server.js",
   "scripts": {
-    "prestart": "powershell -ExecutionPolicy Bypass -File .\\kill-port-5000.ps1",
     "start": "node server.js",
-    "predev": "powershell -ExecutionPolicy Bypass -File .\\kill-port-5000.ps1",
-    "dev": "nodemon server.js",
-    "dev:direct": "npm run dev"
+    "dev": "nodemon server.js"
   },
   "keywords": [
     "mood",
