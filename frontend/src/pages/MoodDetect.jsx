@@ -19,6 +19,35 @@ function MoodDetect() {
   const canvasRef = useRef(null);
   const recognitionRef = useRef(null);
 
+  // Helper function to save mood to history
+  const saveMoodToHistory = (moodName, score = null) => {
+    try {
+      const history = JSON.parse(localStorage.getItem('echona_mood_history') || '[]');
+      
+      // Calculate score based on mood if not provided
+      const moodScores = {
+        Happy: 9,
+        Excited: 8,
+        Calm: 7,
+        Anxious: 4,
+        Sad: 3,
+        Angry: 2
+      };
+      
+      const moodEntry = {
+        mood: moodName,
+        score: score || moodScores[moodName] || 5,
+        createdAt: new Date().toISOString()
+      };
+      
+      history.push(moodEntry);
+      localStorage.setItem('echona_mood_history', JSON.stringify(history));
+      console.log('Mood saved to history:', moodEntry);
+    } catch (err) {
+      console.error('Error saving mood to history:', err);
+    }
+  };
+
   const moods = [
     { 
       name: "Happy", 
@@ -149,6 +178,10 @@ function MoodDetect() {
   const selectManualMood = (moodName) => {
     setSelectedMood(moodName);
     localStorage.setItem("detected_mood", moodName);
+    
+    // Save to mood history
+    saveMoodToHistory(moodName);
+    
     showToast(`Mood set to: ${moodName}`, "success");
     setTimeout(() => navigate("/music"), 1500);
   };
@@ -205,6 +238,7 @@ const capturePhoto = async () => {
     }
     
     localStorage.setItem("detected_mood", res.mood);
+    saveMoodToHistory(res.mood);
     showToast(`Detected: ${res.mood}`, "success");
     setTimeout(() => navigate("/music"), 1500);
   } catch (err) {
@@ -258,6 +292,7 @@ const capturePhoto = async () => {
         }
         
         localStorage.setItem("detected_mood", res.mood);
+        saveMoodToHistory(res.mood);
         showToast(`Detected: ${res.mood}`, "success");
         setTimeout(() => navigate("/music"), 1500);
       } catch (err) {
@@ -284,6 +319,7 @@ const capturePhoto = async () => {
       }
       
       localStorage.setItem("detected_mood", res.mood);
+      saveMoodToHistory(res.mood);
       showToast(`Detected: ${res.mood}`, "success");
       setTimeout(() => navigate("/music"), 1500);
     } catch (err) {
@@ -309,6 +345,7 @@ const capturePhoto = async () => {
       }
       
       localStorage.setItem("detected_mood", res.mood);
+      saveMoodToHistory(res.mood);
       showToast(`Detected: ${res.mood}`, "success");
       setTimeout(() => navigate("/music"), 1500);
     } catch (err) {

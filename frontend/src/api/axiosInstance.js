@@ -82,7 +82,8 @@ axiosInstance.interceptors.response.use(
     }
 
     // ─── Network error (backend unreachable) ────────────────────────────
-    if// Better message for production cold starts
+    if (isNetworkError) {
+      // Better message for production cold starts
       if (API_BASE_URL) {
         error.message =
           "Server is waking up (this takes 30-60 seconds on first load). Please wait and try again...";
@@ -90,7 +91,6 @@ axiosInstance.interceptors.response.use(
         error.message =
           "Cannot connect to server. Please check if the backend is running.";
       }
-        "Cannot connect to server. Please check if the backend is running.";
       error.userFriendly = true;
       return Promise.reject(error);
     }
