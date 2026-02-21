@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import axiosInstance from "./api/axiosInstance";
 import MiniChallenge from "../components/MiniChallenge";
 
-
-
-
 export default function Dashboard() {
   const [moods, setMoods] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     axiosInstance
@@ -42,7 +45,17 @@ export default function Dashboard() {
     <div className="min-h-screen w-full bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-white">
       <div className="max-w-5xl mx-auto mt-20">
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-10 shadow-2xl mb-6">
-          <h1 className="text-4xl font-bold mb-4">Dashboard</h1>
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+            <h1 className="text-4xl font-bold">Dashboard</h1>
+            <div className="text-right">
+              <p className="text-3xl font-mono font-light tracking-wider">
+                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </p>
+              <p className="text-sm opacity-70 mt-1">
+                {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+          </div>
           <div className="mt-6">
   <MiniChallenge correctMood={mockTrack.mood} />
 </div>

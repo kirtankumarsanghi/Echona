@@ -1,189 +1,50 @@
-import { useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { analyzeWithFlask } from "../api/flask";
 import { useToast } from "../components/Toast";
 import AppShell from "../components/AppShell";
 import OptionsMenu from "../components/OptionsMenu";
+import { getMoodList } from "../components/MoodIcons";           // #20 extracted SVGs
+import { useMood } from "../context/MoodContext";                // #18 context
+import { useSubmitGuard } from "../hooks/useDebounce";           // #21 debounce
+import { sanitizeText } from "../utils/sanitize";                // #26 sanitize
+import SEO from "../components/SEO";                             // #24 SEO
 
 function MoodDetect() {
   const navigate = useNavigate();
   const { showToast, ToastContainer } = useToast();
+  const { saveMood } = useMood();                                 // #18 context
+  const { guarded, guard } = useSubmitGuard();                    // #21 debounce
 
   const [mode, setMode] = useState("manual"); // manual | camera | voice | text
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedMood, setSelectedMood] = useState(null);
+  const [ripple, setRipple] = useState(null);                     // #14 micro-interaction
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Helper function to save mood to history
-  const saveMoodToHistory = (moodName, score = null) => {
-    try {
-      const history = JSON.parse(localStorage.getItem('echona_mood_history') || '[]');
-      
-      // Calculate score based on mood if not provided
-      const moodScores = {
-        Happy: 9,
-        Excited: 8,
-        Calm: 7,
-        Anxious: 4,
-        Sad: 3,
-        Angry: 2
-      };
-      
-      const moodEntry = {
-        mood: moodName,
-        score: score || moodScores[moodName] || 5,
-        createdAt: new Date().toISOString()
-      };
-      
-      history.push(moodEntry);
-      localStorage.setItem('echona_mood_history', JSON.stringify(history));
-      console.log('Mood saved to history:', moodEntry);
-    } catch (err) {
-      console.error('Error saving mood to history:', err);
-    }
-  };
-
-  const moods = [
-    { 
-      name: "Happy", 
-      icon: (
-        <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 8L36 20L48 24L36 28L32 40L28 28L16 24L28 20L32 8Z" fill="url(#happyGrad)" className="animate-pulse"/>
-          <circle cx="32" cy="32" r="20" stroke="url(#happyGrad)" strokeWidth="2" opacity="0.3"/>
-          <circle cx="32" cy="32" r="14" stroke="url(#happyGrad)" strokeWidth="2" opacity="0.5"/>
-          <defs>
-            <linearGradient id="happyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fbbf24" />
-              <stop offset="100%" stopColor="#f59e0b" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-      color: "from-amber-500 to-orange-500", 
-      bgColor: "bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent", 
-      borderColor: "border-amber-500/30",
-      description: "Joyful & Positive",
-      accent: "amber"
-    },
-    { 
-      name: "Sad", 
-      icon: (
-        <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 48C32 48 20 44 20 32C20 20 32 16 32 16C32 16 44 20 44 32C44 44 32 48 32 48Z" fill="url(#sadGrad)" opacity="0.8"/>
-          <path d="M28 20L28 12M36 20L36 12M24 32L18 32M46 32L40 32" stroke="url(#sadGrad)" strokeWidth="2" strokeLinecap="round"/>
-          <defs>
-            <linearGradient id="sadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#60a5fa" />
-              <stop offset="100%" stopColor="#3b82f6" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-      color: "from-blue-500 to-indigo-500", 
-      bgColor: "bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent", 
-      borderColor: "border-blue-500/30",
-      description: "Down & Blue",
-      accent: "blue"
-    },
-    { 
-      name: "Angry", 
-      icon: (
-        <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 16L40 24L48 16L44 32L48 48L40 40L32 48L24 40L16 48L20 32L16 16L24 24L32 16Z" fill="url(#angryGrad)"/>
-          <path d="M20 24L28 28M44 24L36 28" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
-          <defs>
-            <linearGradient id="angryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f87171" />
-              <stop offset="100%" stopColor="#dc2626" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-      color: "from-red-500 to-rose-600", 
-      bgColor: "bg-gradient-to-br from-red-500/10 via-rose-600/5 to-transparent", 
-      borderColor: "border-red-500/30",
-      description: "Frustrated & Mad",
-      accent: "red"
-    },
-    { 
-      name: "Calm", 
-      icon: (
-        <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 32C16 32 20 28 32 28C44 28 48 32 48 32M16 38C16 38 20 42 32 42C44 42 48 38 48 38" stroke="url(#calmGrad)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6"/>
-          <circle cx="32" cy="32" r="22" stroke="url(#calmGrad)" strokeWidth="2" strokeDasharray="4 4" opacity="0.4"/>
-          <circle cx="32" cy="32" r="4" fill="url(#calmGrad)"/>
-          <defs>
-            <linearGradient id="calmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#34d399" />
-              <stop offset="100%" stopColor="#10b981" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-      color: "from-emerald-500 to-teal-500", 
-      bgColor: "bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent", 
-      borderColor: "border-emerald-500/30",
-      description: "Peaceful & Relaxed",
-      accent: "emerald"
-    },
-    { 
-      name: "Excited", 
-      icon: (
-        <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M32 8L35 25L48 18L38 30L54 32L38 34L48 46L35 39L32 56L29 39L16 46L26 34L10 32L26 30L16 18L29 25L32 8Z" fill="url(#excitedGrad)"/>
-          <circle cx="32" cy="32" r="8" fill="white" opacity="0.3"/>
-          <defs>
-            <linearGradient id="excitedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f472b6" />
-              <stop offset="100%" stopColor="#ec4899" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-      color: "from-pink-500 to-fuchsia-500", 
-      bgColor: "bg-gradient-to-br from-pink-500/10 via-fuchsia-500/5 to-transparent", 
-      borderColor: "border-pink-500/30",
-      description: "Energized & Thrilled",
-      accent: "pink"
-    },
-    { 
-      name: "Anxious", 
-      icon: (
-        <svg className="w-16 h-16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 28L24 24L28 28M36 28L40 24L44 28" stroke="url(#anxiousGrad)" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M22 36Q28 32 32 36Q36 32 42 36M24 42Q28 40 32 42Q36 40 40 42" stroke="url(#anxiousGrad)" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-          <circle cx="32" cy="32" r="24" stroke="url(#anxiousGrad)" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.3"/>
-          <defs>
-            <linearGradient id="anxiousGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#a78bfa" />
-              <stop offset="100%" stopColor="#8b5cf6" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ),
-      color: "from-slate-400 to-zinc-400", 
-      bgColor: "bg-slate-500/20", 
-      borderColor: "border-slate-400",
-      description: "Worried & Nervous"
-    },
-  ];
+  // Use extracted mood icons from MoodIcons.jsx (#20)
+  const moods = getMoodList();
 
   /* ---------------- MANUAL ---------------- */
   
   const selectManualMood = (moodName) => {
-    setSelectedMood(moodName);
-    localStorage.setItem("detected_mood", moodName);
-    
-    // Save to mood history
-    saveMoodToHistory(moodName);
-    
-    showToast(`Mood set to: ${moodName}`, "success");
-    setTimeout(() => navigate("/music"), 1500);
+    if (guarded) return;                                           // #21 debounce guard
+    guard(async () => {
+      setSelectedMood(moodName);
+      setRipple(moodName);                                         // #14 trigger ripple
+      localStorage.setItem("detected_mood", moodName);
+      saveMood(moodName);                                          // #18 context
+      showToast(`Mood set to: ${moodName}`, "success");
+      setTimeout(() => {
+        setRipple(null);
+        navigate("/music");
+      }, 1500);
+    });
   };
 
   /* ---------------- CAMERA ---------------- */
@@ -210,6 +71,7 @@ const stopCamera = () => {
 };
 
 const capturePhoto = async () => {
+  if (guarded) return;                                             // #21 debounce
   // Guard: ensure camera is active
   if (!videoRef.current?.srcObject || !videoRef.current.videoWidth) {
     showToast("Please start the camera first", "error");
@@ -238,7 +100,7 @@ const capturePhoto = async () => {
     }
     
     localStorage.setItem("detected_mood", res.mood);
-    saveMoodToHistory(res.mood);
+    saveMood(res.mood);                                            // #18 context
     showToast(`Detected: ${res.mood}`, "success");
     setTimeout(() => navigate("/music"), 1500);
   } catch (err) {
@@ -284,7 +146,7 @@ const capturePhoto = async () => {
       try {
         const res = await analyzeWithFlask({ 
           type: "text",
-          text: spokenText 
+          text: sanitizeText(spokenText)                           // #26 sanitize
         });
         
         if (res.error || !res.mood) {
@@ -292,7 +154,7 @@ const capturePhoto = async () => {
         }
         
         localStorage.setItem("detected_mood", res.mood);
-        saveMoodToHistory(res.mood);
+        saveMood(res.mood);                                        // #18 context
         showToast(`Detected: ${res.mood}`, "success");
         setTimeout(() => navigate("/music"), 1500);
       } catch (err) {
@@ -306,12 +168,12 @@ const capturePhoto = async () => {
   };
 
   const analyzeVoice = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || guarded) return;                           // #21 debounce
     setLoading(true);
     try {
       const res = await analyzeWithFlask({ 
         type: "text",
-        text: text 
+        text: sanitizeText(text)                                   // #26 sanitize
       });
       
       if (res.error || !res.mood) {
@@ -319,7 +181,7 @@ const capturePhoto = async () => {
       }
       
       localStorage.setItem("detected_mood", res.mood);
-      saveMoodToHistory(res.mood);
+      saveMood(res.mood);                                          // #18 context
       showToast(`Detected: ${res.mood}`, "success");
       setTimeout(() => navigate("/music"), 1500);
     } catch (err) {
@@ -332,12 +194,12 @@ const capturePhoto = async () => {
   /* ---------------- TEXT ---------------- */
 
   const analyzeText = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || guarded) return;                           // #21 debounce
     setLoading(true);
     try {
       const res = await analyzeWithFlask({ 
         type: "text",
-        text: text 
+        text: sanitizeText(text)                                   // #26 sanitize
       });
       
       if (res.error || !res.mood) {
@@ -345,7 +207,7 @@ const capturePhoto = async () => {
       }
       
       localStorage.setItem("detected_mood", res.mood);
-      saveMoodToHistory(res.mood);
+      saveMood(res.mood);                                          // #18 context
       showToast(`Detected: ${res.mood}`, "success");
       setTimeout(() => navigate("/music"), 1500);
     } catch (err) {
@@ -357,7 +219,12 @@ const capturePhoto = async () => {
 
   return (
     <AppShell>
+      <SEO title="Detect Your Mood" description="Use AI-powered face, voice, or text analysis to detect your current emotional state." />
       
+      {/* Skip to content for accessibility (#23) */}
+      <a href="#mood-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg">
+        Skip to mood detection
+      </a>
       {/* Animated Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-60">
         <motion.div
@@ -401,7 +268,7 @@ const capturePhoto = async () => {
         ))}
       </div>
 
-      <div className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div id="mood-content" className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" role="main" aria-label="Mood detection">
         {/* Header with Back Button and Options Menu */}
         <div className="flex items-center justify-between mb-8">
           <motion.button
@@ -460,6 +327,8 @@ const capturePhoto = async () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="flex justify-center gap-3 md:gap-4 mb-16 flex-wrap max-w-4xl mx-auto"
+          role="tablist"
+          aria-label="Detection method"
         >
           {[
             { id: "manual", icon: "●", label: "Manual Selection" },
@@ -469,6 +338,9 @@ const capturePhoto = async () => {
           ].map((m, index) => (
             <motion.button
               key={m.id}
+              role="tab"
+              aria-selected={mode === m.id}
+              aria-controls={`${m.id}-panel`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + index * 0.1 }}
@@ -527,7 +399,7 @@ const capturePhoto = async () => {
               </p>
             </motion.div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6" role="radiogroup" aria-label="Select your mood">
               {moods.map((mood, index) => (
                 <motion.button
                   key={mood.name}
@@ -539,14 +411,33 @@ const capturePhoto = async () => {
                     stiffness: 100
                   }}
                   whileHover={{ scale: 1.05, y: -8 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={{ scale: 0.92 }}
                   onClick={() => selectManualMood(mood.name)}
-                  disabled={loading}
-                  className="relative p-8 md:p-10 rounded-2xl bg-neutral-900/60 backdrop-blur-sm border border-neutral-700/50 overflow-hidden group transition-all duration-300 hover:border-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading || guarded}
+                  role="radio"
+                  aria-checked={selectedMood === mood.name}
+                  aria-label={`${mood.name} — ${mood.description}`}
+                  className={`relative p-8 md:p-10 rounded-2xl bg-neutral-900/60 backdrop-blur-sm border overflow-hidden group transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    selectedMood === mood.name
+                      ? `${mood.borderColor} ring-2 ring-offset-2 ring-offset-neutral-950 ring-current`
+                      : "border-neutral-700/50 hover:border-neutral-600"
+                  }`}
                   style={{
                     boxShadow: '0 4px 24px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)'
                   }}
                 >
+                  {/* Ripple micro-interaction (#14) */}
+                  <AnimatePresence>
+                    {ripple === mood.name && (
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0.6 }}
+                        animate={{ scale: 4, opacity: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8 }}
+                        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-gradient-to-r ${mood.color}`}
+                      />
+                    )}
+                  </AnimatePresence>
                   {/* Gradient Overlay on Hover */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${mood.bgColor} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                   
@@ -757,6 +648,7 @@ const capturePhoto = async () => {
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
+                  aria-label="Express your feelings"
                   className="w-full p-6 md:p-8 rounded-2xl bg-slate-950/80 border-2 border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/20 transition-all min-h-[240px] text-base md:text-lg resize-none"
                   placeholder="Share your thoughts and feelings here...\n\nFor example:\n• 'I feel overwhelmed with all the work I have to do today'\n• 'I'm so excited about my upcoming vacation!'\n• 'Feeling peaceful after a good meditation session'"
                 />
@@ -796,6 +688,8 @@ const capturePhoto = async () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+            role="alert"
+            aria-live="assertive"
           >
             <div className="bg-slate-900/90 border border-violet-500/40 rounded-3xl p-8 shadow-2xl shadow-violet-500/30">
               <motion.div

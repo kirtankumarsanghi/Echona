@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const MusicChallenges = ({ currentSong, mood }) => {
+const MusicChallenges = ({ currentSong, mood, inDrawer = false }) => {
   const [activeChallenge, setActiveChallenge] = useState(null);
   const [completedChallenges, setCompletedChallenges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
-  const [showBadgePopup, setShowBadgePopup] = useState(false);
+  const [showBadgeCollection, setShowBadgeCollection] = useState(false);
   const [recentReaction, setRecentReaction] = useState(null);
   const [points, setPoints] = useState(0);
 
@@ -55,42 +55,41 @@ const MusicChallenges = ({ currentSong, mood }) => {
     ]
   };
 
-  // Badge designs with warm colors
+  // Badge styles — muted, calm palette
   const badgeStyles = {
-    GRIN: 'from-amber-500 to-yellow-500',
-    GROOVE: 'from-orange-500 to-rose-500',
-    SPARK: 'from-amber-400 to-orange-400',
-    THANKS: 'from-amber-500 to-yellow-600',
-    JUMP: 'from-orange-400 to-amber-500',
-    BREATH: 'from-teal-400 to-cyan-500',
-    ZEN: 'from-teal-500 to-emerald-500',
-    FLEX: 'from-teal-400 to-green-500',
-    HYDRO: 'from-cyan-400 to-teal-500',
-    PEACE: 'from-emerald-400 to-teal-600',
-    HERO: 'from-rose-500 to-pink-500',
-    PUMP: 'from-orange-500 to-rose-500',
-    ROAR: 'from-rose-400 to-orange-500',
-    ROCK: 'from-amber-500 to-rose-500',
-    SPRINT: 'from-orange-600 to-rose-600',
-    HUG: 'from-pink-400 to-rose-500',
-    KIND: 'from-rose-400 to-pink-500',
-    RECALL: 'from-amber-400 to-rose-400',
-    FLOW: 'from-teal-400 to-cyan-400',
-    HOPE: 'from-amber-500 to-orange-500',
-    FIGHT: 'from-rose-600 to-red-600',
-    VENT: 'from-orange-600 to-rose-600',
-    GRIP: 'from-red-500 to-rose-500',
-    STOMP: 'from-rose-500 to-red-500',
-    CHILL: 'from-teal-500 to-cyan-500',
-    AWARE: 'from-purple-400 to-pink-500',
-    BOX: 'from-teal-500 to-purple-500',
-    GROUND: 'from-amber-600 to-orange-600',
-    HEART: 'from-rose-400 to-pink-400',
-    SHAKE: 'from-teal-400 to-emerald-400'
+    GRIN: 'bg-amber-500/20 text-amber-400',
+    GROOVE: 'bg-orange-500/20 text-orange-400',
+    SPARK: 'bg-amber-400/20 text-amber-400',
+    THANKS: 'bg-amber-500/20 text-amber-400',
+    JUMP: 'bg-orange-400/20 text-orange-400',
+    BREATH: 'bg-teal-500/20 text-teal-400',
+    ZEN: 'bg-emerald-500/20 text-emerald-400',
+    FLEX: 'bg-teal-400/20 text-teal-400',
+    HYDRO: 'bg-cyan-500/20 text-cyan-400',
+    PEACE: 'bg-emerald-400/20 text-emerald-400',
+    HERO: 'bg-rose-500/20 text-rose-400',
+    PUMP: 'bg-orange-500/20 text-orange-400',
+    ROAR: 'bg-rose-400/20 text-rose-400',
+    ROCK: 'bg-amber-500/20 text-amber-400',
+    SPRINT: 'bg-orange-500/20 text-orange-400',
+    HUG: 'bg-pink-400/20 text-pink-400',
+    KIND: 'bg-rose-400/20 text-rose-400',
+    RECALL: 'bg-amber-400/20 text-amber-400',
+    FLOW: 'bg-teal-400/20 text-teal-400',
+    HOPE: 'bg-amber-500/20 text-amber-400',
+    FIGHT: 'bg-rose-500/20 text-rose-400',
+    VENT: 'bg-orange-500/20 text-orange-400',
+    GRIP: 'bg-red-500/20 text-red-400',
+    STOMP: 'bg-rose-500/20 text-rose-400',
+    CHILL: 'bg-teal-500/20 text-teal-400',
+    AWARE: 'bg-purple-400/20 text-purple-400',
+    BOX: 'bg-indigo-500/20 text-indigo-400',
+    GROUND: 'bg-amber-500/20 text-amber-400',
+    HEART: 'bg-rose-400/20 text-rose-400',
+    SHAKE: 'bg-emerald-400/20 text-emerald-400'
   };
 
-  // Reaction animations
-  const reactions = ['AWESOME', 'GREAT', 'NAILED IT', 'AMAZING', 'PERFECT', 'YES', 'BOOM', 'FIRE'];
+  const reactions = ['Well done', 'Great job', 'Wonderful', 'Beautiful', 'Perfect', 'Amazing'];
 
   // Load saved data
   useEffect(() => {
@@ -114,269 +113,201 @@ const MusicChallenges = ({ currentSong, mood }) => {
     }
   }, [completedChallenges, earnedBadges, points]);
 
-  // Generate new challenge when song changes
+  // Generate challenge based on mood
   useEffect(() => {
     if (currentSong && mood) {
       const moodChallenges = challenges[mood] || challenges.Calm;
-      // Filter out already completed challenges
-      const available = moodChallenges.filter(c => 
-        !completedChallenges.includes(c.id)
-      );
-      
+      const available = moodChallenges.filter(c => !completedChallenges.includes(c.id));
       if (available.length > 0) {
-        const random = available[Math.floor(Math.random() * available.length)];
-        setActiveChallenge(random);
+        setActiveChallenge(available[Math.floor(Math.random() * available.length)]);
       } else {
-        // All challenges completed, reset
         setActiveChallenge(moodChallenges[Math.floor(Math.random() * moodChallenges.length)]);
       }
     } else if (mood && !currentSong) {
-      // Show challenge even when no song is playing yet
       const moodChallenges = challenges[mood] || challenges.Calm;
-      const random = moodChallenges[Math.floor(Math.random() * moodChallenges.length)];
-      setActiveChallenge(random);
+      setActiveChallenge(moodChallenges[Math.floor(Math.random() * moodChallenges.length)]);
     }
   }, [currentSong, mood, completedChallenges]);
 
   const completeChallenge = () => {
     if (!activeChallenge) return;
 
-    // Add to completed
     setCompletedChallenges([...completedChallenges, activeChallenge.id]);
-    
-    // Add badge if not earned yet
+
     if (!earnedBadges.includes(activeChallenge.badge)) {
       setEarnedBadges([...earnedBadges, activeChallenge.badge]);
-      setShowBadgePopup(true);
-      setTimeout(() => setShowBadgePopup(false), 3000);
     }
-    
-    // Add points
+
     setPoints(points + activeChallenge.points);
-    
-    // Show reaction
-    const randomReaction = reactions[Math.floor(Math.random() * reactions.length)];
-    setRecentReaction(randomReaction);
-    setTimeout(() => setRecentReaction(null), 2000);
-    
-    // Get next challenge
+
+    const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+    setRecentReaction(reaction);
+    setTimeout(() => setRecentReaction(null), 2500);
+
     const moodChallenges = challenges[mood] || challenges.Calm;
-    const available = moodChallenges.filter(c => 
+    const available = moodChallenges.filter(c =>
       !completedChallenges.includes(c.id) && c.id !== activeChallenge.id
     );
-    
+
     if (available.length > 0) {
       setTimeout(() => {
-        const random = available[Math.floor(Math.random() * available.length)];
-        setActiveChallenge(random);
+        setActiveChallenge(available[Math.floor(Math.random() * available.length)]);
       }, 500);
     }
   };
 
   const skipChallenge = () => {
     const moodChallenges = challenges[mood] || challenges.Calm;
-    const available = moodChallenges.filter(c => 
-      c.id !== activeChallenge?.id
-    );
-    
+    const available = moodChallenges.filter(c => c.id !== activeChallenge?.id);
     if (available.length > 0) {
-      const random = available[Math.floor(Math.random() * available.length)];
-      setActiveChallenge(random);
+      setActiveChallenge(available[Math.floor(Math.random() * available.length)]);
     }
   };
 
-  if (!activeChallenge) return null;
+  // ═══════════════════════════════════════
+  // IN-DRAWER MODE (new calm design)
+  // ═══════════════════════════════════════
+  if (inDrawer) {
+    return (
+      <div className="space-y-5">
+        {/* Stats — minimal, muted */}
+        <div className="flex items-center gap-4 pb-4 border-b border-neutral-800/50">
+          <div>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Points</p>
+            <p className="text-lg font-semibold text-neutral-200">{points}</p>
+          </div>
+          <div className="w-px h-8 bg-neutral-800" />
+          <div>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Badges</p>
+            <p className="text-lg font-semibold text-neutral-200">{earnedBadges.length}</p>
+          </div>
+          <div className="w-px h-8 bg-neutral-800" />
+          <div>
+            <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Done</p>
+            <p className="text-lg font-semibold text-neutral-200">{completedChallenges.length}</p>
+          </div>
+        </div>
 
-  return (
-    <>
-      {/* Reaction Popup */}
-      <AnimatePresence>
-        {recentReaction && (
-          <motion.div
-            initial={{ scale: 0, rotate: -180, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            exit={{ scale: 0, rotate: 180, opacity: 0 }}
-            className="fixed top-1/4 left-1/2 transform -translate-x-1/2 z-50"
-          >
-            <div className="px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 rounded-full shadow-2xl">
-              <span className="text-white font-black text-4xl tracking-wider">{recentReaction}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        {/* Reaction Toast */}
+        <AnimatePresence>
+          {recentReaction && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center"
+            >
+              <span className="text-emerald-400 font-medium text-sm">{recentReaction} ✓</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Badge Unlock Popup */}
-      <AnimatePresence>
-        {showBadgePopup && (
-          <motion.div
-            initial={{ scale: 0, y: -100 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0, y: -100 }}
-            className="fixed top-32 left-1/2 transform -translate-x-1/2 z-50"
-          >
-            <div className="bg-neutral-900 border-2 border-amber-500 rounded-2xl p-6 shadow-2xl">
-              <div className="text-center">
-                <p className="text-amber-400 font-bold text-sm mb-3 uppercase tracking-wider">Badge Unlocked!</p>
-                <div className={`mx-auto w-20 h-20 bg-gradient-to-br ${badgeStyles[activeChallenge.badge]} rounded-full flex items-center justify-center mb-3 shadow-lg`}>
-                  <span className="text-white font-black text-lg">{activeChallenge.badge}</span>
-                </div>
-                <p className="text-white font-bold text-lg">+{activeChallenge.points} points</p>
+        {/* Active Challenge */}
+        {activeChallenge ? (
+          <div className="bg-neutral-900/60 border border-neutral-800/50 rounded-2xl p-5">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">Current Challenge</p>
+                <h3 className="text-base font-semibold text-neutral-100">{activeChallenge.title}</h3>
               </div>
+              <span className="text-xs text-neutral-500 font-medium">+{activeChallenge.points} pts</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Challenge Card */}
-      <motion.div
-        initial={{ opacity: 0, x: -100 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 100 }}
-        className="fixed bottom-8 left-4 lg:left-72 z-[60] w-[calc(100%-2rem)] md:w-96"
-      >
-        <div className="bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-950 border-2 border-amber-500/60 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-sm">TASK</span>
+            <p className="text-neutral-400 text-sm mb-4 leading-relaxed">{activeChallenge.description}</p>
+
+            {/* Badge Preview */}
+            <div className="flex items-center gap-2.5 mb-5 px-3 py-2.5 bg-neutral-800/40 rounded-xl">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${badgeStyles[activeChallenge.badge]}`}>
+                {activeChallenge.badge.charAt(0)}
               </div>
               <div>
-                <p className="text-amber-400 text-xs font-bold uppercase tracking-wider">Mini Challenge</p>
-                <p className="text-white text-sm font-semibold">+{activeChallenge.points} pts</p>
+                <p className="text-[10px] text-neutral-600 uppercase tracking-wide">Unlocks</p>
+                <p className="text-neutral-300 text-xs font-medium">{activeChallenge.badge}</p>
               </div>
             </div>
-            <button
-              onClick={skipChallenge}
-              className="px-3 py-1.5 bg-neutral-700/60 hover:bg-neutral-700 border border-neutral-600 rounded-lg text-neutral-200 hover:text-white text-sm font-semibold transition-all"
-            >
-              SKIP
-            </button>
-          </div>
 
-          {/* Challenge Info */}
-          <div className="mb-6">
-            <h3 className="text-white text-xl font-bold mb-2 leading-tight">{activeChallenge.title}</h3>
-            <p className="text-neutral-200 text-sm leading-relaxed">{activeChallenge.description}</p>
-          </div>
-
-          {/* Badge Preview */}
-          <div className="flex items-center gap-3 mb-6 bg-neutral-800/40 rounded-xl p-3">
-            <div className={`w-10 h-10 bg-gradient-to-br ${badgeStyles[activeChallenge.badge]} rounded-lg flex items-center justify-center shadow-lg`}>
-              <span className="text-white font-bold text-xs">{activeChallenge.badge}</span>
-            </div>
-            <div>
-              <p className="text-neutral-400 text-xs uppercase tracking-wide">Unlock Badge</p>
-              <p className="text-white text-sm font-semibold">{activeChallenge.badge}</p>
-            </div>
-          </div>
-
-          {/* Complete Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={completeChallenge}
-            className="w-full py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-amber-500/50 transition-all"
-          >
-            COMPLETE CHALLENGE
-          </motion.button>
-
-          {/* Stats Bar */}
-          <div className="mt-4 pt-4 border-t border-neutral-700/60 flex items-center justify-between text-sm">
-            <div>
-              <span className="text-neutral-400 text-xs">Total Points:</span>
-              <span className="text-amber-400 font-bold ml-2 text-sm">{points}</span>
-            </div>
-            <div>
-              <span className="text-neutral-400 text-xs">Badges:</span>
-              <span className="text-teal-400 font-bold ml-2 text-sm">{earnedBadges.length}</span>
-            </div>
-            <div>
-              <span className="text-neutral-400 text-xs">Done:</span>
-              <span className="text-rose-400 font-bold ml-2 text-sm">{completedChallenges.length}</span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Badge Collection - Floating Button */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setShowBadgePopup(true)}
-        className="fixed bottom-44 right-6 w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full shadow-2xl flex items-center justify-center z-30"
-      >
-        <div className="text-center">
-          <span className="text-white font-black text-xs block">BADGE</span>
-          <span className="text-white font-black text-lg">{earnedBadges.length}</span>
-        </div>
-      </motion.button>
-
-      {/* Badge Collection Modal */}
-      <AnimatePresence>
-        {showBadgePopup && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowBadgePopup(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, y: 50 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 50 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-amber-500 rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-            >
-              <div className="text-center mb-8">
-                <div className="inline-block px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full mb-4">
-                  <span className="text-white font-bold text-sm tracking-wider">COLLECTION</span>
-                </div>
-                <h2 className="text-4xl font-black text-white mb-2">Your Badges</h2>
-                <p className="text-gray-400">
-                  {earnedBadges.length} earned • {points} total points
-                </p>
-              </div>
-
-              {earnedBadges.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-gray-700 to-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-gray-400 font-bold text-2xl">START</span>
-                  </div>
-                  <p className="text-gray-400 text-lg">Complete challenges to earn badges!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                  {earnedBadges.map((badge, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="text-center"
-                    >
-                      <div className={`w-20 h-20 mx-auto bg-gradient-to-br ${badgeStyles[badge]} rounded-2xl flex items-center justify-center mb-2 shadow-lg`}>
-                        <span className="text-white font-black text-sm">{badge}</span>
-                      </div>
-                      <p className="text-gray-400 text-xs font-semibold">{badge}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
+            {/* Actions */}
+            <div className="flex gap-2">
               <button
-                onClick={() => setShowBadgePopup(false)}
-                className="mt-8 w-full py-4 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-bold hover:shadow-xl transition-all"
+                onClick={completeChallenge}
+                className="flex-1 py-2.5 bg-white text-neutral-900 rounded-xl font-semibold text-sm transition-all hover:shadow-md"
               >
-                CLOSE
+                Complete
               </button>
-            </motion.div>
-          </motion.div>
+              <button
+                onClick={skipChallenge}
+                className="px-4 py-2.5 bg-neutral-800/60 hover:bg-neutral-700/60 border border-neutral-700/50 text-neutral-400 rounded-xl text-sm font-medium transition-all"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-neutral-500 text-sm">No challenge right now</p>
+            <p className="text-neutral-600 text-xs mt-1">Select a mood to get started</p>
+          </div>
         )}
-      </AnimatePresence>
-    </>
-  );
+
+        {/* Badge Collection */}
+        <div>
+          <button
+            onClick={() => setShowBadgeCollection(!showBadgeCollection)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-neutral-900/40 border border-neutral-800/40 rounded-xl transition-all hover:bg-neutral-800/40"
+          >
+            <span className="text-sm text-neutral-400 font-medium">Badge Collection ({earnedBadges.length})</span>
+            <svg
+              className={`w-4 h-4 text-neutral-600 transition-transform ${showBadgeCollection ? "rotate-180" : ""}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <AnimatePresence>
+            {showBadgeCollection && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                {earnedBadges.length === 0 ? (
+                  <div className="text-center py-6 px-4">
+                    <p className="text-neutral-600 text-sm">Complete challenges to earn badges</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2 pt-3">
+                    {earnedBadges.map((badge, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.03 }}
+                        className="flex flex-col items-center py-3"
+                      >
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xs font-bold ${badgeStyles[badge]}`}>
+                          {badge.substring(0, 2)}
+                        </div>
+                        <p className="text-neutral-600 text-[9px] mt-1.5 font-medium">{badge}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════
+  // LEGACY FLOATING MODE (fallback — should not be used in new layout)
+  // ═══════════════════════════════════════
+  if (!activeChallenge) return null;
+
+  return null; // Floating mode removed — use inDrawer mode
 };
 
 export default MusicChallenges;

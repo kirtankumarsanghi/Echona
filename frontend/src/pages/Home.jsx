@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import SEO from "../components/SEO";
 
 function Home() {
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-indigo-500/30">
+      <SEO title="ECHONA — AI Mental Wellness" description="AI-powered mental wellness platform with mood detection, music therapy, and emotional tracking." />
       <Navbar />
 
       {/* HERO SECTION */}

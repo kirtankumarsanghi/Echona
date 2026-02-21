@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NavLink, useNavigate } from "react-router-dom";
 import { logout, getCurrentUser } from "../utils/auth";
@@ -37,6 +37,39 @@ function AppShell({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const user = getCurrentUser();
 
+  // #16 — Persist sidebar collapsed state on desktop
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("echona_sidebar_collapsed") === "true"; } catch { return false; }
+  });
+  const toggleCollapse = useCallback(() => {
+    setCollapsed((prev) => {
+      localStorage.setItem("echona_sidebar_collapsed", String(!prev));
+      return !prev;
+    });
+  }, []);
+
+  // #16 — Swipe-to-open on mobile (touch gestures)
+  const touchRef = useRef({ startX: 0, startY: 0 });
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      touchRef.current.startX = e.touches[0].clientX;
+      touchRef.current.startY = e.touches[0].clientY;
+    };
+    const handleTouchEnd = (e) => {
+      const dx = e.changedTouches[0].clientX - touchRef.current.startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - touchRef.current.startY);
+      // Swipe right from left edge → open; swipe left → close
+      if (dx > 80 && dy < 40 && touchRef.current.startX < 30) setSidebarOpen(true);
+      if (dx < -80 && dy < 40 && sidebarOpen) setSidebarOpen(false);
+    };
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [sidebarOpen]);
+
   const navItems = [
     { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
     { path: "/mood-detect", label: "Detect Mood", icon: Icons.MoodDetect },
@@ -66,14 +99,26 @@ function AppShell({ children }) {
 
       {/* Sidebar — fixed on all breakpoints, CSS transition for mobile slide */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-64 bg-neutral-900/80 backdrop-blur-xl border-r border-neutral-800 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-screen ${collapsed ? "w-20" : "w-64"} bg-neutral-900/80 backdrop-blur-xl border-r border-neutral-800 flex flex-col z-50 transition-all duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
+        aria-label="Main navigation"
       >
         <div className="p-6 border-b border-neutral-800">
           <div className="flex items-center justify-between">
-            <Logo size="default" showText={true} />
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 rounded-xl hover:bg-neutral-800/50 transition-colors">
+            {!collapsed && <Logo size="default" showText={true} />}
+            {collapsed && <Logo size="small" showText={false} />}
+            {/* Collapse toggle for desktop */}
+            <button
+              onClick={toggleCollapse}
+              className="hidden lg:flex p-2 rounded-xl hover:bg-neutral-800/50 transition-colors"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <svg className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 rounded-xl hover:bg-neutral-800/50 transition-colors" aria-label="Close menu">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -81,13 +126,14 @@ function AppShell({ children }) {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto" role="navigation">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
+              title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                `flex items-center ${collapsed ? "justify-center" : ""} gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                   isActive
                     ? "bg-gradient-to-r from-primary-600/20 to-primary-500/10 text-white border-l-4 border-primary-500"
                     : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
@@ -96,16 +142,16 @@ function AppShell({ children }) {
               onClick={() => setSidebarOpen(false)}
             >
               <item.icon />
-              <span>{item.label}</span>
+              {!collapsed && <span>{item.label}</span>}
             </NavLink>
           ))}
         </nav>
 
         <div className="p-4 border-t border-neutral-800 space-y-2">
-          {user && (
+          {user && !collapsed && (
             <div className="p-3 rounded-xl bg-neutral-800/50 border border-neutral-700/50 mb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-primary-500 flex items-center justify-center font-bold text-white">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-primary-500 flex items-center justify-center font-bold text-white flex-shrink-0">
                   {user.name ? user.name[0].toUpperCase() : "U"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -115,29 +161,39 @@ function AppShell({ children }) {
               </div>
             </div>
           )}
+          {user && collapsed && (
+            <div className="flex justify-center mb-2">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-primary-500 flex items-center justify-center font-bold text-white" title={user.name || "User"}>
+                {user.name ? user.name[0].toUpperCase() : "U"}
+              </div>
+            </div>
+          )}
           {user ? (
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-300"
+              title={collapsed ? "Logout" : undefined}
+              className={`flex items-center ${collapsed ? "justify-center" : ""} gap-3 px-4 py-3 rounded-xl w-full text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-300`}
+              aria-label="Logout"
             >
               <Icons.Logout />
-              <span>Logout</span>
+              {!collapsed && <span>Logout</span>}
             </button>
           ) : (
             <NavLink
               to="/auth"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all"
+              title={collapsed ? "Sign In" : undefined}
+              className={`flex items-center ${collapsed ? "justify-center" : ""} gap-3 px-4 py-3 rounded-xl w-full text-neutral-400 hover:text-white hover:bg-neutral-800/50 transition-all`}
               onClick={() => setSidebarOpen(false)}
             >
               <Icons.Dashboard />
-              <span>Sign In</span>
+              {!collapsed && <span>Sign In</span>}
             </NavLink>
           )}
         </div>
       </aside>
 
       {/* Main content area — offset by sidebar width on desktop */}
-      <div className="lg:ml-64 min-h-screen">
+      <div className={`${collapsed ? "lg:ml-20" : "lg:ml-64"} min-h-screen transition-all duration-300`}>
         {/* Mobile top bar with hamburger menu */}
         <div className="lg:hidden sticky top-0 z-30 p-4 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800">
           <div className="flex items-center justify-between">
