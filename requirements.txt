@@ -1,7 +1,7 @@
-tensorflow==2.15.0
-keras==2.15.0
+tensorflow==2.12.0
+keras==2.12.0
 opencv-python-headless==4.8.1.78
-numpy==1.24.3
+numpy==1.23.5
 pandas==2.0.3
 scikit-learn==1.3.0
 librosa==0.10.0
@@ -14,5 +14,5 @@ soundfile==0.12.1
 scipy==1.11.1
 requests==2.31.0
 gunicorn==21.2.0
-deepface==0.0.79
+deepface==0.0.75
 transformers==4.35.2

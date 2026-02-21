@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
 
@@ -11,15 +11,18 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(50);
   const [playerReady, setPlayerReady] = useState(false);
+  const progressBarRef = useRef(null);
 
   useEffect(() => {
     if (!accessToken) return;
 
-    // Load Spotify Web Playback SDK
-    const script = document.createElement("script");
-    script.src = "https://sdk.scdn.co/spotify-player.js";
-    script.async = true;
-    document.body.appendChild(script);
+    // Load Spotify Web Playback SDK (prevent duplicate script loading)
+    if (!document.querySelector('script[src*="sdk.scdn.co/spotify-player"]')) {
+      const script = document.createElement("script");
+      script.src = "https://sdk.scdn.co/spotify-player.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
 
     window.onSpotifyWebPlaybackSDKReady = () => {
       const player = new window.Spotify.Player({
@@ -173,16 +176,32 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
               {currentTrack.album.name}
             </p>
 
-            {/* Progress Bar */}
+            {/* Progress Bar — clickable to seek */}
             <div className="mt-4">
               <div className="flex justify-between text-xs text-gray-400 mb-2">
                 <span className="font-mono">{formatTime(position)}</span>
                 <span className="font-mono">{formatTime(duration)}</span>
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-2 cursor-pointer hover:h-3 transition-all">
+              <div
+                ref={progressBarRef}
+                className="w-full bg-gray-700 rounded-full h-2 cursor-pointer hover:h-3 transition-all relative"
+                onClick={(e) => {
+                  if (!player || !duration) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const ratio = clickX / rect.width;
+                  const seekMs = Math.round(ratio * duration);
+                  player.seek(seekMs).then(() => setPosition(seekMs));
+                }}
+                role="slider"
+                aria-label="Seek"
+                aria-valuenow={position}
+                aria-valuemin={0}
+                aria-valuemax={duration}
+              >
                 <div
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full h-2 hover:h-3 transition-all relative group"
-                  style={{ width: `${(position / duration) * 100}%` }}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full h-full transition-all relative group"
+                  style={{ width: `${duration ? (position / duration) * 100 : 0}%` }}
                 >
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg"></div>
                 </div>
@@ -247,7 +266,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
         </div>
       </div>
       
-      <style jsx>{`
+      <style>{`
         .slider::-webkit-slider-thumb {
           appearance: none;
           width: 14px;

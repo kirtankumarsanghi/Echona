@@ -94,6 +94,66 @@ app.use(
 
 app.use(express.json({ limit: "4mb" }));
 
+// ─── CSRF Protection — Double-submit cookie pattern (#25) ─────────────────
+// For JSON APIs with JWT auth + strict CORS + SameSite, CSRF risk is already
+// low. This adds defense-in-depth: once the cookie is set (via any response),
+// every subsequent state-changing request must echo it back in a header.
+const crypto = require("crypto");
+
+// Issue CSRF token cookie on every response (so the client can read it)
+app.use((req, res, next) => {
+  let csrfToken = req.headers.cookie
+    ?.split(";")
+    .find((c) => c.trim().startsWith("csrf_token="))
+    ?.split("=")[1]
+    ?.trim();
+  if (!csrfToken) {
+    csrfToken = crypto.randomBytes(32).toString("hex");
+    res.cookie("csrf_token", csrfToken, {
+      httpOnly: false,        // JS must read it to send in header
+      sameSite: "Lax",        // Lax to allow normal navigation
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 1000, // 1 hour
+    });
+  }
+  req.csrfToken = csrfToken;
+  next();
+});
+
+// Endpoint to fetch/bootstrap token
+app.get("/api/csrf-token", (req, res) => {
+  res.json({ csrfToken: req.csrfToken });
+});
+
+// Validate CSRF for state-changing methods — soft-check:
+// If the client has the cookie (i.e. has visited before), the header MUST match.
+// If no cookie exists yet (first visit), we allow the request and the cookie
+// will be set in the response for next time.
+app.use((req, res, next) => {
+  const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+  if (safeMethods.has(req.method)) return next();
+
+  const cookieToken = req.headers.cookie
+    ?.split(";")
+    .find((c) => c.trim().startsWith("csrf_token="))
+    ?.split("=")[1]
+    ?.trim();
+
+  // No cookie yet → first request, allow it (cookie will be set in response)
+  if (!cookieToken) return next();
+
+  const headerToken = req.headers["x-csrf-token"]?.trim();
+
+  if (!headerToken || headerToken !== cookieToken) {
+    return res.status(403).json({
+      success: false,
+      error: "CSRF validation failed",
+      message: "Missing or invalid CSRF token. Refresh the page and try again.",
+    });
+  }
+  next();
+});
+
 // JSON parse error handler (must be right after express.json)
 app.use((err, req, res, next) => {
   if (err && err.type === "entity.parse.failed") {

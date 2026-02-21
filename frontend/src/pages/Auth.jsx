@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Logo from "../components/Logo";
 import axiosInstance from "../api/axiosInstance";
 import { isLoggedIn, login as authLogin } from "../utils/auth";
+import SEO from "../components/SEO";
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -128,6 +129,7 @@ function Auth() {
 
   return (
     <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 relative pt-20">
+      <SEO title={isLogin ? "Sign In" : "Create Account"} description="Sign in or create your ECHONA account for AI mood detection and music therapy." />
       <Navbar />
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div

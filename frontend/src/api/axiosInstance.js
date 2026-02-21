@@ -30,12 +30,19 @@ const axiosInstance = axios.create({
   timeout: API_BASE_URL ? 60000 : 15000, // 60s for production, 15s for dev
 });
 
-// ─── Request interceptor: inject auth token ─────────────────────────────────
+// ─── Request interceptor: inject auth token + CSRF (#25) ─────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // CSRF double-submit: read csrf_token cookie and send as header
+    const csrfCookie = document.cookie
+      .split(";")
+      .find((c) => c.trim().startsWith("csrf_token="));
+    if (csrfCookie) {
+      config.headers["X-CSRF-Token"] = csrfCookie.split("=")[1];
     }
     return config;
   },

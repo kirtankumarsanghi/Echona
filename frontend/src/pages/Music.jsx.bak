@@ -1,0 +1,757 @@
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import axiosInstance from "../api/axiosInstance";
+import SpotifyPlayer from "../components/SpotifyPlayer";
+import SpotifySearch from "../components/SpotifySearch";
+import SpotifyDashboard from "../components/SpotifyDashboard";
+import { getSpotifyToken, clearSpotifyTokens } from "../utils/auth";
+import AppShell from "../components/AppShell";
+import OptionsMenu from "../components/OptionsMenu";
+import SEO from "../components/SEO";
+import musicLibrary, {
+  getYoutubeThumbnail,
+  THUMBNAIL_PLACEHOLDER,
+  spotifyPlaylists,
+  motivationalQuotes,
+  moodColors,
+} from "../data/musicLibrary";
+
+// Lazy-load below-fold components for performance
+const SmartMoodFeature = lazy(() => import("../components/SmartMoodFeature"));
+const SurpriseMe = lazy(() => import("../components/SurpriseMe"));
+const BreathingExercise = lazy(() => import("../components/BreathingExercise"));
+const MeditationTimer = lazy(() => import("../components/MeditationTimer"));
+const MusicChallenges = lazy(() => import("../components/MusicChallenges"));
+
+const LazyFallback = () => (
+  <div className="flex items-center justify-center py-8">
+    <div className="w-8 h-8 border-2 border-white/20 border-t-amber-500 rounded-full animate-spin" />
+  </div>
+);
+
+// Get API base URL for Spotify OAuth
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
+// =======================================================================
+// MAIN COMPONENT
+// =======================================================================
+function Music() {
+  const navigate = useNavigate();
+  const playerRef = useRef(null);
+  const currentSongRef = useRef(null);
+  const songsRef = useRef([]);
+  const repeatModeRef = useRef("off");
+
+  const [currentMood, setCurrentMood] = useState(null);
+  const [songs, setSongs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentQuote, setCurrentQuote] = useState(null);
+  const [showSongList, setShowSongList] = useState(true);
+  const [repeatMode, setRepeatMode] = useState("off"); // off, all, one
+
+  // Spotify state
+  const [spotifyToken, setSpotifyToken] = useState(null);
+  const [spotifyDeviceId, setSpotifyDeviceId] = useState(null);
+
+  // Keep refs in sync for use in callbacks
+  useEffect(() => { currentSongRef.current = currentlyPlaying; }, [currentlyPlaying]);
+  useEffect(() => { songsRef.current = songs; }, [songs]);
+  useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
+
+  const clearSpotifyToken = () => {
+    clearSpotifyTokens();
+    setSpotifyToken(null);
+  };
+
+  useEffect(() => {
+    fetchMoodAndMusic();
+    const token = getSpotifyToken();
+    if (token) setSpotifyToken(token);
+  }, []);
+
+  // ===============================
+  // YOUTUBE IFRAME API SETUP
+  // ===============================
+  useEffect(() => {
+    if (!window.YT && !document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+  }, []);
+
+  // Handle song end — auto-advance using refs for stable callback
+  const handleSongEnd = useCallback(() => {
+    const mode = repeatModeRef.current;
+    const currentSongs = songsRef.current;
+    const current = currentSongRef.current;
+
+    if (mode === "one") {
+      if (playerRef.current) {
+        try { playerRef.current.seekTo(0); playerRef.current.playVideo(); } catch {}
+      }
+    } else {
+      const index = currentSongs.findIndex((s) => s.youtubeId === current?.youtubeId);
+      const nextIndex = (index + 1) % currentSongs.length;
+      if (nextIndex === 0 && mode === "off") {
+        setIsPlaying(false);
+      } else {
+        setCurrentlyPlaying(currentSongs[nextIndex]);
+        setIsPlaying(true);
+      }
+    }
+  }, []);
+
+  // Create/update YouTube player when song changes
+  useEffect(() => {
+    if (!currentlyPlaying) return;
+
+    const createPlayer = () => {
+      if (playerRef.current) {
+        try { playerRef.current.destroy(); } catch {}
+        playerRef.current = null;
+      }
+
+      const container = document.getElementById("yt-player-container");
+      if (!container) return;
+
+      playerRef.current = new window.YT.Player("yt-player-container", {
+        videoId: currentlyPlaying.youtubeId,
+        height: "1",
+        width: "1",
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+        },
+        events: {
+          onReady: () => setIsPlaying(true),
+          onStateChange: (event) => {
+            if (event.data === window.YT.PlayerState.ENDED) {
+              handleSongEnd();
+            } else if (event.data === window.YT.PlayerState.PLAYING) {
+              setIsPlaying(true);
+            } else if (event.data === window.YT.PlayerState.PAUSED) {
+              setIsPlaying(false);
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      createPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = createPlayer;
+    }
+  }, [currentlyPlaying?.youtubeId, handleSongEnd]);
+
+  // ===============================
+  // KEYBOARD SHORTCUTS
+  // ===============================
+  const togglePlayPause = useCallback(() => {
+    if (!playerRef.current) return;
+    try {
+      const state = playerRef.current.getPlayerState();
+      if (state === window.YT.PlayerState.PLAYING) {
+        playerRef.current.pauseVideo();
+      } else {
+        playerRef.current.playVideo();
+      }
+    } catch {}
+  }, []);
+
+  const playNext = useCallback(() => {
+    const currentSongs = songsRef.current;
+    const current = currentSongRef.current;
+    if (!current || currentSongs.length === 0) return;
+    const index = currentSongs.findIndex((s) => s.youtubeId === current.youtubeId);
+    const next = currentSongs[(index + 1) % currentSongs.length];
+    setCurrentlyPlaying(next);
+    setIsPlaying(true);
+  }, []);
+
+  const playPrev = useCallback(() => {
+    const currentSongs = songsRef.current;
+    const current = currentSongRef.current;
+    if (!current || currentSongs.length === 0) return;
+    const index = currentSongs.findIndex((s) => s.youtubeId === current.youtubeId);
+    const prev = currentSongs[(index - 1 + currentSongs.length) % currentSongs.length];
+    setCurrentlyPlaying(prev);
+    setIsPlaying(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      switch (e.key) {
+        case " ":
+          e.preventDefault();
+          togglePlayPause();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          playNext();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          playPrev();
+          break;
+        case "Escape":
+          if (currentSongRef.current) {
+            e.preventDefault();
+            closePlayer();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [togglePlayPause, playNext, playPrev]);
+
+  // ===============================
+  // HELPERS
+  // ===============================
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const fetchMoodAndMusic = async () => {
+    try {
+      const detectedMood = localStorage.getItem("detected_mood");
+      let mood = "Happy";
+
+      if (detectedMood) {
+        mood = detectedMood.charAt(0).toUpperCase() + detectedMood.slice(1).toLowerCase();
+        if (!musicLibrary[mood]) mood = "Happy";
+      } else {
+        try {
+          const res = await axiosInstance.get("/api/mood/history");
+          const history = res.data;
+          if (history.length > 0) mood = history[history.length - 1].mood;
+        } catch {}
+      }
+
+      setCurrentMood(mood);
+      setSongs(shuffleArray(musicLibrary[mood] || musicLibrary.Happy));
+      const quotes = motivationalQuotes[mood] || motivationalQuotes.Happy;
+      setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+    } catch {
+      setCurrentMood("Happy");
+      setSongs(shuffleArray(musicLibrary.Happy));
+      setCurrentQuote(motivationalQuotes.Happy[0]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===============================
+  // PLAYER CONTROLS
+  // ===============================
+  const playSong = useCallback((song) => {
+    setCurrentlyPlaying(song);
+    setIsPlaying(true);
+  }, []);
+
+  const closePlayer = useCallback(() => {
+    if (playerRef.current) {
+      try { playerRef.current.destroy(); } catch {}
+      playerRef.current = null;
+    }
+    setCurrentlyPlaying(null);
+    setIsPlaying(false);
+  }, []);
+
+  const changeQuote = () => {
+    if (currentMood && motivationalQuotes[currentMood]?.length > 0) {
+      const quotes = motivationalQuotes[currentMood];
+      setCurrentQuote({ ...quotes[Math.floor(Math.random() * quotes.length)] });
+    }
+  };
+
+  const refreshSongs = () => {
+    if (currentMood && musicLibrary[currentMood]) {
+      setSongs(shuffleArray(musicLibrary[currentMood]));
+    }
+  };
+
+  const cycleRepeat = () => {
+    setRepeatMode((prev) => (prev === "off" ? "all" : prev === "all" ? "one" : "off"));
+  };
+
+  const getMoodBadgeClass = () => moodColors[currentMood]?.badge || "bg-purple-500 text-white";
+
+  // =======================================================================
+  // UI
+  // =======================================================================
+  return (
+    <AppShell>
+      <SEO title={`${currentMood || "Music"} — Music Therapy`} description="Mood-based music therapy with curated playlists for emotional wellness." />
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-30">
+        <motion.div
+          animate={{ x: [0, 100, -50, 0], y: [0, -100, 50, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className={`absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br ${
+            currentMood === "Sad" ? "from-blue-500 to-indigo-500" :
+            currentMood === "Angry" ? "from-rose-500 to-red-500" :
+            currentMood === "Calm" ? "from-teal-500 to-emerald-500" :
+            currentMood === "Anxious" ? "from-purple-500 to-pink-500" :
+            "from-amber-500 to-orange-500"
+          } rounded-full mix-blend-screen filter blur-3xl`}
+        />
+        <motion.div
+          animate={{ x: [0, -100, 50, 0], y: [0, 100, -50, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          className={`absolute bottom-0 right-1/4 w-96 h-96 bg-gradient-to-br ${
+            currentMood === "Sad" ? "from-indigo-500 to-blue-600" :
+            currentMood === "Angry" ? "from-red-600 to-orange-500" :
+            currentMood === "Calm" ? "from-emerald-500 to-cyan-500" :
+            currentMood === "Anxious" ? "from-pink-500 to-violet-500" :
+            "from-teal-500 to-emerald-500"
+          } rounded-full mix-blend-screen filter blur-3xl`}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className={`relative z-10 pt-14 lg:pt-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto ${currentlyPlaying ? "pb-32" : "pb-12"}`}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/mood-detect")}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/70 hover:bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full text-sm text-slate-200 transition-all group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="font-medium">Back</span>
+          </motion.button>
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <OptionsMenu currentPage="/music" />
+          </motion.div>
+        </div>
+
+        {/* Spotify Connect */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          {getSpotifyToken() ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full text-sm text-green-400">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                </svg>
+                <span className="font-semibold">Spotify Connected</span>
+              </div>
+              <button
+                onClick={clearSpotifyToken}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full text-sm text-red-400 hover:bg-red-500/30 transition-all font-semibold"
+                aria-label="Disconnect Spotify"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Disconnect</span>
+              </button>
+            </div>
+          ) : (
+            <a
+              href={`${API_BASE_URL}/api/spotify/login`}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-full text-sm text-white font-bold transition-all shadow-lg hover:shadow-emerald-500/40 hover:scale-105"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              </svg>
+              <span>Connect to Spotify</span>
+            </a>
+          )}
+        </motion.div>
+
+        {/* Spotify Player & Dashboard */}
+        {spotifyToken && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 mb-8">
+            <SpotifyPlayer accessToken={spotifyToken} onPlayerReady={(deviceId) => setSpotifyDeviceId(deviceId)} />
+            <SpotifyDashboard spotifyToken={spotifyToken} />
+          </motion.div>
+        )}
+
+        {/* Spotify Search — Always available */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+          <SpotifySearch accessToken={spotifyToken} deviceId={spotifyDeviceId} />
+        </motion.div>
+
+        {loading ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-20">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 border-4 border-white/20 border-t-amber-500 rounded-full mx-auto mb-4"
+            />
+            <p className="text-white/90 text-xl font-semibold">Loading your music...</p>
+          </motion.div>
+        ) : (
+          <>
+            {/* Hero Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 md:p-8 mb-8 overflow-hidden"
+            >
+              {/* Current Mood Badge */}
+              <div className="absolute top-4 right-4">
+                <span className={`px-4 py-2 rounded-full font-bold text-sm shadow-lg ${getMoodBadgeClass()}`}>
+                  {currentMood}
+                </span>
+              </div>
+
+              {/* Quote Section */}
+              {currentQuote && (
+                <div className="mb-8 max-w-2xl">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-8 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full" />
+                    <span className="text-amber-400 font-bold text-sm tracking-wider uppercase">Daily Inspiration</span>
+                  </div>
+                  <motion.p
+                    key={currentQuote.quote}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-2xl font-bold text-white mb-2 leading-relaxed"
+                  >
+                    &ldquo;{currentQuote.quote}&rdquo;
+                  </motion.p>
+                  <p className="text-white/60 text-sm">— {currentQuote.author}</p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={changeQuote}
+                    className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm font-semibold transition-all"
+                  >
+                    Next Quote →
+                  </motion.button>
+                </div>
+              )}
+
+              {/* Player Controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => playSong(songs[0])}
+                  className="px-6 md:px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+                  aria-label="Play all songs"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                  Play All
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={refreshSongs}
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold rounded-full transition-all flex items-center gap-2"
+                  aria-label="Shuffle songs"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Shuffle
+                </motion.button>
+
+                {/* Repeat Toggle */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={cycleRepeat}
+                  className={`px-5 py-3 border rounded-full font-bold transition-all flex items-center gap-2 text-sm ${
+                    repeatMode === "off"
+                      ? "bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-400"
+                      : "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/50 text-amber-400"
+                  }`}
+                  aria-label={`Repeat: ${repeatMode}`}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {repeatMode === "off" ? "Repeat" : repeatMode === "all" ? "Repeat All" : "Repeat 1"}
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowSongList(!showSongList)}
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold rounded-full transition-all flex items-center gap-2"
+                  aria-label={showSongList ? "Hide playlist" : "Show playlist"}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  {showSongList ? "Hide" : "View"} Playlist ({songs.length})
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate("/mood-detect")}
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold rounded-full transition-all"
+                >
+                  Change Mood
+                </motion.button>
+              </div>
+
+              {/* Keyboard shortcuts hint */}
+              <p className="text-white/30 text-xs mt-4">
+                Shortcuts: Space = play/pause · ← → = prev/next · Esc = stop
+              </p>
+            </motion.div>
+
+            {/* Collapsible Song List with active highlighting */}
+            <AnimatePresence>
+              {showSongList && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-6 overflow-hidden"
+                >
+                  <div className="bg-slate-900/80 backdrop-blur-lg border border-slate-700 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-white">Your Playlist</h3>
+                      <span className="text-white/60 text-sm">{songs.length} songs</span>
+                    </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                      {songs.map((song, index) => {
+                        const isActive = currentlyPlaying?.youtubeId === song.youtubeId;
+                        return (
+                          <motion.div
+                            key={song.youtubeId || index}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.02 }}
+                            whileHover={{ x: 4 }}
+                            className={`flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer group ${
+                              isActive
+                                ? "bg-amber-500/20 border border-amber-500/30"
+                                : "bg-slate-800/60 hover:bg-slate-700/70"
+                            }`}
+                            onClick={() => playSong(song)}
+                          >
+                            {/* Active indicator or index */}
+                            {isActive ? (
+                              <div className="w-6 flex justify-center">
+                                <div className="flex items-end gap-0.5 h-4">
+                                  <motion.div animate={{ height: ["40%", "100%", "60%"] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-1 bg-amber-500 rounded-full" />
+                                  <motion.div animate={{ height: ["100%", "40%", "80%"] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-1 bg-amber-500 rounded-full" />
+                                  <motion.div animate={{ height: ["60%", "100%", "40%"] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-1 bg-amber-500 rounded-full" />
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-white/40 text-sm font-mono w-6 text-center">{String(index + 1).padStart(2, "0")}</span>
+                            )}
+                            <img
+                              src={getYoutubeThumbnail(song.youtubeId)}
+                              className="w-12 h-12 rounded object-cover"
+                              alt={song.title}
+                              onError={(e) => { e.target.src = THUMBNAIL_PLACEHOLDER; }}
+                              loading="lazy"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-semibold text-sm truncate ${isActive ? "text-amber-400" : "text-white"}`}>
+                                {song.title}
+                              </p>
+                              <p className="text-white/60 text-xs truncate">{song.artist}</p>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded ${song.isBollywood ? "bg-rose-500/20 text-rose-300" : "bg-teal-500/20 text-teal-300"}`}>
+                              {song.isBollywood ? "Hindi" : "English"}
+                            </span>
+                            <div className={`transition-opacity ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                              <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  {isActive && isPlaying ? (
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  ) : (
+                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                  )}
+                                </svg>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Spotify Extended Playlist */}
+            <div className="grid grid-cols-1 gap-6 mb-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-slate-900/80 backdrop-blur-lg border border-slate-700 rounded-2xl p-6"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.73 14.42c-.15.25-.42.39-.7.39-.13 0-.27-.03-.39-.1-1.41-.8-3.18-1.23-5.12-1.23-.97 0-1.9.11-2.76.33-.38.09-.77-.14-.86-.52-.09-.38.14-.77.52-.86.98-.25 2.03-.37 3.1-.37 2.15 0 4.11.5 5.83 1.48.35.2.48.65.28 1z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Extended Playlist</h3>
+                </div>
+                <p className="text-white/80 mb-4">Discover more {currentMood} songs on Spotify</p>
+                <motion.a
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  href={spotifyPlaylists[currentMood]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-full shadow-lg transition-all"
+                >
+                  Open Spotify →
+                </motion.a>
+              </motion.div>
+            </div>
+
+            {/* Smart Features — Lazy loaded */}
+            <div className="grid grid-cols-1 gap-6 mb-8">
+              <Suspense fallback={<LazyFallback />}>
+                <SmartMoodFeature mood={currentMood} />
+                <SurpriseMe />
+              </Suspense>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ============================================================ */}
+      {/* STICKY MINI-PLAYER */}
+      {/* ============================================================ */}
+      <AnimatePresence>
+        {currentlyPlaying && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-700/80 shadow-2xl"
+          >
+            <div className="max-w-7xl mx-auto px-4 py-3">
+              <div className="flex items-center gap-4">
+                {/* Thumbnail */}
+                <img
+                  src={getYoutubeThumbnail(currentlyPlaying.youtubeId)}
+                  alt={currentlyPlaying.title}
+                  className="w-14 h-14 rounded-lg object-cover shadow-lg flex-shrink-0"
+                  onError={(e) => { e.target.src = THUMBNAIL_PLACEHOLDER; }}
+                />
+
+                {/* Song Info */}
+                <div className="flex-1 min-w-0 hidden sm:block">
+                  <p className="text-white font-bold text-sm truncate">{currentlyPlaying.title}</p>
+                  <p className="text-white/60 text-xs truncate">{currentlyPlaying.artist}</p>
+                </div>
+
+                {/* Mobile song info (shorter) */}
+                <div className="flex-1 min-w-0 sm:hidden">
+                  <p className="text-white font-bold text-xs truncate">{currentlyPlaying.title}</p>
+                  <p className="text-white/50 text-[10px] truncate">{currentlyPlaying.artist}</p>
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <button onClick={playPrev} className="p-2 text-white/70 hover:text-white transition-colors" aria-label="Previous track">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={togglePlayPause}
+                    className="w-10 h-10 bg-amber-500 hover:bg-amber-600 rounded-full flex items-center justify-center transition-colors shadow-lg"
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? (
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                      </svg>
+                    )}
+                  </button>
+
+                  <button onClick={playNext} className="p-2 text-white/70 hover:text-white transition-colors" aria-label="Next track">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798l-5.445-3.63z" />
+                    </svg>
+                  </button>
+
+                  {/* Repeat mini button */}
+                  <button
+                    onClick={cycleRepeat}
+                    className={`p-2 transition-colors relative hidden sm:block ${repeatMode === "off" ? "text-white/30 hover:text-white/60" : "text-amber-400"}`}
+                    aria-label={`Repeat: ${repeatMode}`}
+                    title={`Repeat: ${repeatMode === "off" ? "Off" : repeatMode === "all" ? "All" : "One"}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {repeatMode === "one" && <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-amber-400">1</span>}
+                  </button>
+
+                  {/* Close player */}
+                  <button onClick={closePlayer} className="p-2 text-white/40 hover:text-red-400 transition-colors ml-1" aria-label="Close player">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Hidden YouTube player — audio only */}
+            <div className="sr-only" aria-hidden="true">
+              <div id="yt-player-container" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating utilities — Lazy loaded */}
+      <Suspense fallback={null}>
+        <BreathingExercise />
+        <MeditationTimer />
+        <MusicChallenges currentSong={currentlyPlaying} mood={currentMood} />
+      </Suspense>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.5); }
+      `}</style>
+    </AppShell>
+  );
+}
+
+export default Music;

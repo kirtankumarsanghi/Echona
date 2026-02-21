@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../api/axiosInstance";
+import { cachedFetch } from "../utils/cache";  // #28 cache search results
 
 function SpotifySearch({ accessToken, deviceId, onPlayTrack }) {
   const [query, setQuery] = useState("");
@@ -33,9 +34,15 @@ function SpotifySearch({ accessToken, deviceId, onPlayTrack }) {
         headers.Authorization = `Bearer ${accessToken}`;
       }
 
-      const response = await axiosInstance.get(
-        `/api/spotify/search?q=${encodeURIComponent(query)}`,
-        { headers, timeout: 15000 }
+      // #28 Cache search results for 5 minutes to reduce API calls
+      const cacheKey = `spotify_search_${query.trim().toLowerCase()}`;
+      const response = await cachedFetch(
+        cacheKey,
+        () => axiosInstance.get(
+          `/api/spotify/search?q=${encodeURIComponent(query)}`,
+          { headers, timeout: 15000 }
+        ),
+        5 * 60 * 1000
       );
       
       if (response.data.tracks && response.data.tracks.items) {
