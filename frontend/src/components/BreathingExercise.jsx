@@ -76,7 +76,7 @@ function BreathingExercise({ inline = false }) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 z-40 p-3.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl hover:bg-white/20 transition-all group"
+        className="fixed bottom-6 left-6 z-40 p-3.5 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800/90 transition-all group"
         title="Breathing Exercise"
       >
         <motion.div
@@ -118,7 +118,7 @@ function BreathingModal({ phase, isActive, breathingCycle, startExercise, stopEx
             <p className="text-neutral-500 text-sm mb-8">Reduce stress in just a few breaths.</p>
             <button
               onClick={startExercise}
-              className="px-8 py-3 bg-white text-neutral-900 rounded-full font-semibold hover:scale-105 transition-transform text-sm"
+              className="px-8 py-3 bg-slate-200 hover:bg-slate-100 text-slate-900 rounded-full font-semibold hover:scale-105 transition-transform text-sm border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"
             >
               Start Session
             </button>

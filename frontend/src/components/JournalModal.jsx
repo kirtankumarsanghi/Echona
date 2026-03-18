@@ -90,7 +90,7 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
               whileHover={{ scale: 1.1, rotate: 90 }}
               whileTap={{ scale: 0.9 }}
               onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition text-white font-bold text-2xl"
+              className="w-10 h-10 flex items-center justify-center bg-slate-900/40 hover:bg-slate-900/60 rounded-full transition text-white font-bold text-2xl"
             >
               ×
             </motion.button>

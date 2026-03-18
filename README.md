@@ -37,6 +37,10 @@
 - **Spotify Integration** - Seamless music playback with your Spotify account
 - **Context-Aware Suggestions** - Music recommendations based on time, weather, and context
 - **Surprise Me Feature** - Discover new music matched to your mood
+- **Music Intelligence Search** - Faster, richer song discovery with improved metadata quality
+- **Multilingual Song Search** - Better support for mixed-language and non-English queries
+- **Smart Playback Recovery** - Handles unavailable tracks with graceful fallback and recovery
+- **Live Sidebar Mini Player** - Persistent mini player with progress, quick controls, and mood glow
 
 ### **Wellness Dashboard**
 - **Mood Tracking** - Visualize your emotional journey over time
@@ -48,6 +52,14 @@
 - **Smart Todo List** - Organize tasks with mood-aware prioritization
 - **Journal Integration** - Express yourself through writing
 - **Daily Challenges** - Personalized wellness activities
+- **Planner Cockpit** - Quick capture, energy budget, and next-best-task recommendations
+- **Board + List Views** - Workflow-friendly task management in both Kanban and list formats
+- **Task Metadata** - Status flow, effort points, and tags for better planning clarity
+
+### **Wellness Intelligence (New)**
+- **Wellness Hub APIs** - New backend routes for wellness and music-intel insights
+- **Mood Chat Detection** - Conversational mood signals integrated into the wellness flow
+- **In-App Intelligence Panels** - New frontend panels for wellness and music intelligence
 
 ---
 
@@ -90,7 +102,7 @@
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/yourusername/echona-pro.git
+git clone https://github.com/kirtankumarsanghi/Echona.git
 cd echona-pro
 ```
 
@@ -132,14 +144,14 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 SPOTIFY_REDIRECT_URI=http://localhost:5173/music
 
 # Backend
-PORT=5001
+PORT=5000
 JWT_SECRET=your_jwt_secret_key
 
 # Weather API (optional)
 WEATHER_API_KEY=your_openweather_api_key
 
 # ML Service
-ML_SERVICE_PORT=5000
+ML_SERVICE_PORT=5001
 ```
 
 > 📝 **Note**: Get your Spotify credentials from [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
@@ -225,14 +237,14 @@ The platform uses a sophisticated multimodal approach:
 
 ##  Recent Updates
 
-### February 2026 - Codebase Cleanup
-- ✅ Removed development documentation files (30+ dev notes moved to version control history)
-- ✅ Cleaned up test files and test HTML pages
-- ✅ Removed utility scripts (platform-specific start/stop scripts)
-- ✅ Eliminated backup files and deprecated code
-- ✅ Removed Python cache files and test assets
-- ✅ Streamlined project structure for production deployment
-- 📦 **Result**: Cleaner, more maintainable codebase focused on core functionality
+### March 2026 - Major Product Upgrade
+- ✅ Improved music metadata extraction to reduce generic artist/channel labels
+- ✅ Added robust music-intel search quality and playback fallback behavior
+- ✅ Added persistent sidebar mini player with live controls and progress sync
+- ✅ Upgraded planner with workflow statuses, effort points, tags, and smart recommendations
+- ✅ Added wellness and music intelligence backend/frontend modules
+- ✅ Performed repository cleanup by removing legacy duplicates, backups, and non-runtime assets
+- 📦 **Result**: Better UX, smarter recommendations, cleaner codebase, and stronger runtime stability
 
 ---
 

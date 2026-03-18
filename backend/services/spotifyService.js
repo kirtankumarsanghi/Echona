@@ -14,7 +14,29 @@ const clientCredentialsApi = new SpotifyWebApi(baseConfig);
 let clientTokenExpiry = 0;
 
 function isSpotifyConfigured() {
-  return Boolean(config.spotifyClientId && config.spotifyClientSecret && config.spotifyRedirectUri);
+  const looksLikePlaceholder = (value) => {
+    const v = String(value || "").toLowerCase();
+    return (
+      !v ||
+      v.includes("your_") ||
+      v.includes("change_me") ||
+      v.includes("example") ||
+      v.includes("client_id") ||
+      v.includes("client_secret") ||
+      v.includes("spotify_client") ||
+      v.includes("dummy")
+    );
+  };
+
+  if (!config.spotifyClientId || !config.spotifyClientSecret || !config.spotifyRedirectUri) {
+    return false;
+  }
+
+  if (looksLikePlaceholder(config.spotifyClientId) || looksLikePlaceholder(config.spotifyClientSecret)) {
+    return false;
+  }
+
+  return true;
 }
 
 function getUserApi(accessToken) {
@@ -27,6 +49,21 @@ function getUserApi(accessToken) {
 
 function mapSpotifyError(error, fallbackMessage = "Spotify request failed") {
   const status = Number(error?.statusCode || error?.response?.statusCode || error?.response?.status) || 502;
+  const rawMessage = String(
+    error?.body?.error_description ||
+    error?.body?.error?.message ||
+    error?.message ||
+    ""
+  ).toLowerCase();
+
+  if (rawMessage.includes("invalid_client")) {
+    return {
+      statusCode: 401,
+      error: "Spotify invalid_client",
+      message:
+        "Spotify rejected client credentials (invalid_client). Verify SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET belong to the same Spotify app and are current.",
+    };
+  }
 
   if (status === 401) {
     return { statusCode: 401, error: "Spotify token expired", message: "Reconnect Spotify to continue." };
@@ -187,13 +224,19 @@ async function getServiceHealth() {
       message: "Spotify service ready",
     };
   } catch (error) {
+    const message = String(error?.message || "Spotify health check failed");
+    const lowerMessage = message.toLowerCase();
+    const isInvalidClient = lowerMessage.includes("invalid_client");
+
     return {
       success: false,
       status: "degraded",
       configured: true,
       timeoutMs: SPOTIFY_TIMEOUT_MS,
-      error: error.error || "Spotify health check failed",
-      message: error.message || "Spotify health check failed",
+      error: isInvalidClient ? "Spotify invalid_client" : (error.error || "Spotify health check failed"),
+      message: isInvalidClient
+        ? "Spotify rejected client credentials (invalid_client). Verify SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET belong to the same Spotify app and are current."
+        : message,
     };
   }
 }

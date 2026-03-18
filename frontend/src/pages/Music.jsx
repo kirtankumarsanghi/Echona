@@ -1,15 +1,17 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import axiosInstance from "../api/axiosInstance";
 import SpotifyPlayer from "../components/SpotifyPlayer";
 import SpotifySearch from "../components/SpotifySearch";
 import SpotifyDashboard from "../components/SpotifyDashboard";
+import MusicIntelligencePanel from "../components/MusicIntelligencePanel";
 import { getSpotifyToken, clearSpotifyTokens } from "../utils/auth";
 import AppShell from "../components/AppShell";
 import OptionsMenu from "../components/OptionsMenu";
 import SEO from "../components/SEO";
 import musicLibrary, {
+  getPlaylist,
   getYoutubeThumbnail,
   THUMBNAIL_PLACEHOLDER,
   spotifyPlaylists,
@@ -32,6 +34,79 @@ const LazyFallback = () => (
 
 // Get API base URL for Spotify OAuth
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+const UNAVAILABLE_TRACKS_KEY = "echona_unavailable_tracks";
+const LIKED_SONGS_KEY = "echona_liked_songs";
+const LISTEN_HISTORY_KEY = "echona_listen_history";
+const MINI_PLAYER_STATE_KEY = "echona_mini_player_state";
+const MINI_PLAYER_ACTION_KEY = "echona_mini_player_action";
+const MINI_PLAYER_UPDATE_EVENT = "echona-mini-player-updated";
+const MINI_PLAYER_ACTION_EVENT = "echona-mini-player-action";
+
+function loadUnavailableTrackIds() {
+  try {
+    const raw = localStorage.getItem(UNAVAILABLE_TRACKS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUnavailableTrackIds(ids) {
+  try {
+    localStorage.setItem(UNAVAILABLE_TRACKS_KEY, JSON.stringify(ids.slice(-100)));
+  } catch {
+    // no-op: localStorage may be unavailable in strict contexts
+  }
+}
+
+function loadLikedSongs() {
+  try {
+    const raw = localStorage.getItem(LIKED_SONGS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((song) => song?.youtubeId) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLikedSongs(songs) {
+  try {
+    localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify((songs || []).slice(0, 200)));
+  } catch {
+    // no-op
+  }
+}
+
+function loadListenHistory() {
+  try {
+    const raw = localStorage.getItem(LISTEN_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((entry) => entry?.youtubeId) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveListenHistory(history) {
+  try {
+    localStorage.setItem(LISTEN_HISTORY_KEY, JSON.stringify((history || []).slice(0, 300)));
+  } catch {
+    // no-op
+  }
+}
+
+function publishMiniPlayerState(payload) {
+  try {
+    localStorage.setItem(MINI_PLAYER_STATE_KEY, JSON.stringify(payload || {}));
+    window.dispatchEvent(new CustomEvent(MINI_PLAYER_UPDATE_EVENT, { detail: payload || {} }));
+  } catch {
+    // no-op
+  }
+}
 
 // Subtle mood accent colors (muted for calm aesthetic)
 const moodAccents = {
@@ -41,6 +116,10 @@ const moodAccents = {
   Anxious: { bg: "bg-purple-500/8", border: "border-purple-500/20", text: "text-purple-400", dot: "bg-purple-400" },
   Calm: { bg: "bg-emerald-500/8", border: "border-emerald-500/20", text: "text-emerald-400", dot: "bg-emerald-400" },
   Excited: { bg: "bg-pink-500/8", border: "border-pink-500/20", text: "text-pink-400", dot: "bg-pink-400" },
+  Stressed: { bg: "bg-red-400/8", border: "border-red-400/20", text: "text-red-400", dot: "bg-red-400" },
+  Lonely: { bg: "bg-slate-400/8", border: "border-slate-400/20", text: "text-slate-400", dot: "bg-slate-400" },
+  Tired: { bg: "bg-indigo-400/8", border: "border-indigo-400/20", text: "text-indigo-400", dot: "bg-indigo-400" },
+  Neutral: { bg: "bg-gray-400/8", border: "border-gray-400/20", text: "text-gray-400", dot: "bg-gray-400" },
 };
 
 // =======================================================================
@@ -52,6 +131,8 @@ function Music() {
   const currentSongRef = useRef(null);
   const songsRef = useRef([]);
   const repeatModeRef = useRef("off");
+  const searchCacheRef = useRef(new Map());
+  const isRecoveringPlaybackRef = useRef(false);
 
   const [currentMood, setCurrentMood] = useState(null);
   const [songs, setSongs] = useState([]);
@@ -61,6 +142,14 @@ function Music() {
   const [currentQuote, setCurrentQuote] = useState(null);
   const [showSongList, setShowSongList] = useState(true);
   const [repeatMode, setRepeatMode] = useState("off");
+  const [songSearchQuery, setSongSearchQuery] = useState("");
+  const [songSearchLanguage, setSongSearchLanguage] = useState("Any");
+  const [songSearchResults, setSongSearchResults] = useState([]);
+  const [showSongSearchResults, setShowSongSearchResults] = useState(false);
+  const [songSearchLoading, setSongSearchLoading] = useState(false);
+  const [songSearchLoadingMore, setSongSearchLoadingMore] = useState(false);
+  const [songSearchNextPageToken, setSongSearchNextPageToken] = useState("");
+  const [songSearchHasMore, setSongSearchHasMore] = useState(false);
 
   // Spotify state
   const [spotifyToken, setSpotifyToken] = useState(null);
@@ -70,11 +159,71 @@ function Music() {
   const [showWellness, setShowWellness] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
   const [showSpotifyDashboard, setShowSpotifyDashboard] = useState(false);
+  const [unavailableTrackIds, setUnavailableTrackIds] = useState(() => loadUnavailableTrackIds());
+  const [playlistNotice, setPlaylistNotice] = useState("");
+  const [likedSongs, setLikedSongs] = useState(() => loadLikedSongs());
+  const [listenHistory, setListenHistory] = useState(() => loadListenHistory());
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [seekValue, setSeekValue] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const actionHandlersRef = useRef({
+    togglePlayPause: () => {},
+    playNext: () => {},
+    toggleLikedSong: () => {},
+  });
+
+  const unavailableSetRef = useRef(new Set(unavailableTrackIds));
 
   // Keep refs in sync
   useEffect(() => { currentSongRef.current = currentlyPlaying; }, [currentlyPlaying]);
   useEffect(() => { songsRef.current = songs; }, [songs]);
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
+  useEffect(() => { unavailableSetRef.current = new Set(unavailableTrackIds); }, [unavailableTrackIds]);
+  useEffect(() => { saveLikedSongs(likedSongs); }, [likedSongs]);
+  useEffect(() => { saveListenHistory(listenHistory); }, [listenHistory]);
+
+  useEffect(() => {
+    if (!isSeeking) setSeekValue(currentTime);
+  }, [currentTime, isSeeking]);
+
+  useEffect(() => {
+    if (!currentlyPlaying) {
+      setCurrentTime(0);
+      setDuration(0);
+      setSeekValue(0);
+    }
+  }, [currentlyPlaying]);
+
+  useEffect(() => {
+    const payload = {
+      updatedAt: Date.now(),
+      mood: currentMood || "Neutral",
+      isPlaying: Boolean(isPlaying && currentlyPlaying?.youtubeId),
+      currentTime: Number(currentTime) || 0,
+      duration: Number(duration) || 0,
+      song: currentlyPlaying
+        ? {
+            youtubeId: currentlyPlaying.youtubeId,
+            title: currentlyPlaying.title,
+            artist: currentlyPlaying.artist,
+            language: currentlyPlaying.language,
+            sourceMood: currentlyPlaying.sourceMood,
+            thumbnail: getYoutubeThumbnail(currentlyPlaying.youtubeId) || THUMBNAIL_PLACEHOLDER,
+            isLiked: likedSongs.some((item) => item.youtubeId === currentlyPlaying.youtubeId),
+          }
+        : null,
+    };
+
+    publishMiniPlayerState(payload);
+  }, [currentMood, isPlaying, currentTime, duration, currentlyPlaying, likedSongs]);
+
+  useEffect(() => {
+    if (!playlistNotice) return undefined;
+    const timer = setTimeout(() => setPlaylistNotice(""), 4000);
+    return () => clearTimeout(timer);
+  }, [playlistNotice]);
 
   const clearSpotifyToken = () => {
     clearSpotifyTokens();
@@ -118,8 +267,83 @@ function Music() {
     }
   }, []);
 
+  const tryRecoverSongSource = useCallback(async (failedSong, failedVideoId) => {
+    if (!failedSong?.title) return false;
+
+    try {
+      const query = `${failedSong.title} ${failedSong.artist || ""}`.trim();
+      const { data } = await axiosInstance.get("/api/music-intel/search", {
+        params: {
+          q: query,
+          language: failedSong.language || "Any",
+          maxResults: 15,
+        },
+        timeout: 5000,
+      });
+
+      const candidates = Array.isArray(data?.results) ? data.results : [];
+      const blocked = unavailableSetRef.current;
+      const replacement = candidates.find(
+        (song) => song?.youtubeId && song.youtubeId !== failedVideoId && !blocked.has(song.youtubeId)
+      );
+
+      if (!replacement) return false;
+
+      setSongs((prev) => {
+        const filtered = prev.filter(
+          (song) => song.youtubeId !== failedVideoId && song.youtubeId !== replacement.youtubeId
+        );
+        return [replacement, ...filtered];
+      });
+      setCurrentlyPlaying(replacement);
+      setIsPlaying(true);
+      setPlaylistNotice("Original source failed. Switched to an alternate playable version.");
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const handlePlaybackError = useCallback(async (failedVideoId) => {
+    if (!failedVideoId) return;
+    const failedSong = songsRef.current.find((song) => song.youtubeId === failedVideoId) || currentSongRef.current;
+
+    setUnavailableTrackIds((prev) => {
+      if (prev.includes(failedVideoId)) return prev;
+      const updated = [...prev, failedVideoId];
+      saveUnavailableTrackIds(updated);
+      return updated;
+    });
+
+    setSongs((prev) => prev.filter((song) => song.youtubeId !== failedVideoId));
+    setPlaylistNotice("A track was unavailable and has been removed from your playlist.");
+
+    const remaining = songsRef.current.filter((song) => song.youtubeId !== failedVideoId);
+    songsRef.current = remaining;
+
+    if (!isRecoveringPlaybackRef.current && failedSong) {
+      isRecoveringPlaybackRef.current = true;
+      const recovered = await tryRecoverSongSource(failedSong, failedVideoId);
+      isRecoveringPlaybackRef.current = false;
+      if (recovered) return;
+    }
+
+    if (remaining.length === 0) {
+      setCurrentlyPlaying(null);
+      setIsPlaying(false);
+      return;
+    }
+
+    setCurrentlyPlaying(remaining[0]);
+    setIsPlaying(true);
+  }, [tryRecoverSongSource]);
+
   useEffect(() => {
     if (!currentlyPlaying) return;
+
+    setCurrentTime(0);
+    setDuration(0);
+    setSeekValue(0);
 
     const createPlayer = () => {
       if (playerRef.current) {
@@ -136,11 +360,32 @@ function Music() {
         width: "1",
         playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, playsinline: 1 },
         events: {
-          onReady: () => setIsPlaying(true),
+          onReady: () => {
+            setIsPlaying(true);
+            try {
+              const nextDuration = Number(playerRef.current?.getDuration()) || 0;
+              const nextTime = Number(playerRef.current?.getCurrentTime()) || 0;
+              setDuration(nextDuration);
+              setCurrentTime(nextTime);
+              setSeekValue(nextTime);
+            } catch {
+              // no-op
+            }
+          },
+          onError: () => handlePlaybackError(currentlyPlaying?.youtubeId),
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.ENDED) handleSongEnd();
             else if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
             else if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
+
+            try {
+              const nextDuration = Number(playerRef.current?.getDuration()) || 0;
+              const nextTime = Number(playerRef.current?.getCurrentTime()) || 0;
+              if (nextDuration > 0) setDuration(nextDuration);
+              setCurrentTime(nextTime);
+            } catch {
+              // no-op
+            }
           },
         },
       });
@@ -148,7 +393,7 @@ function Music() {
 
     if (window.YT && window.YT.Player) createPlayer();
     else window.onYouTubeIframeAPIReady = createPlayer;
-  }, [currentlyPlaying?.youtubeId, handleSongEnd]);
+  }, [currentlyPlaying?.youtubeId, handleSongEnd, handlePlaybackError]);
 
   // Keyboard shortcuts
   const togglePlayPause = useCallback(() => {
@@ -178,14 +423,172 @@ function Music() {
     setIsPlaying(true);
   }, []);
 
+  const addToHistory = useCallback((song) => {
+    if (!song?.youtubeId) return;
+    const historyEntry = {
+      youtubeId: song.youtubeId,
+      title: song.title,
+      artist: song.artist,
+      language: song.language,
+      genre: song.genre,
+      playedAt: new Date().toISOString(),
+    };
+
+    setListenHistory((prev) => {
+      const deduped = prev.filter((item) => item.youtubeId !== song.youtubeId);
+      return [historyEntry, ...deduped].slice(0, 50);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!currentlyPlaying?.youtubeId) return;
+    addToHistory(currentlyPlaying);
+  }, [currentlyPlaying?.youtubeId, addToHistory]);
+
+  const isSongLiked = useCallback(
+    (song) => Boolean(song?.youtubeId) && likedSongs.some((item) => item.youtubeId === song.youtubeId),
+    [likedSongs]
+  );
+
+  const toggleLikedSong = useCallback((song) => {
+    if (!song?.youtubeId) return;
+    setLikedSongs((prev) => {
+      const exists = prev.some((item) => item.youtubeId === song.youtubeId);
+      if (exists) return prev.filter((item) => item.youtubeId !== song.youtubeId);
+      return [
+        {
+          youtubeId: song.youtubeId,
+          title: song.title,
+          artist: song.artist,
+          language: song.language,
+          genre: song.genre,
+          likedAt: new Date().toISOString(),
+        },
+        ...prev,
+      ].slice(0, 100);
+    });
+  }, []);
+
+  useEffect(() => {
+    actionHandlersRef.current = {
+      togglePlayPause,
+      playNext,
+      toggleLikedSong: () => {
+        if (currentSongRef.current) toggleLikedSong(currentSongRef.current);
+      },
+    };
+  }, [togglePlayPause, playNext, toggleLikedSong]);
+
+  useEffect(() => {
+    const runAction = (actionName) => {
+      if (!actionName) return;
+
+      if (actionName === "toggle-play") actionHandlersRef.current.togglePlayPause();
+      if (actionName === "next") actionHandlersRef.current.playNext();
+      if (actionName === "like") actionHandlersRef.current.toggleLikedSong();
+    };
+
+    const handleMiniPlayerAction = (event) => {
+      runAction(String(event?.detail?.action || ""));
+      try {
+        localStorage.removeItem(MINI_PLAYER_ACTION_KEY);
+      } catch {
+        // no-op
+      }
+    };
+
+    window.addEventListener(MINI_PLAYER_ACTION_EVENT, handleMiniPlayerAction);
+
+    try {
+      const raw = localStorage.getItem(MINI_PLAYER_ACTION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.action) runAction(String(parsed.action));
+        localStorage.removeItem(MINI_PLAYER_ACTION_KEY);
+      }
+    } catch {
+      // no-op
+    }
+
+    return () => window.removeEventListener(MINI_PLAYER_ACTION_EVENT, handleMiniPlayerAction);
+  }, []);
+
+  const formatDuration = useCallback((seconds) => {
+    const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
+    return `${String(mins).padStart(1, "0")}:${String(secs).padStart(2, "0")}`;
+  }, []);
+
+  const seekTo = useCallback((seconds) => {
+    if (!playerRef.current) return;
+    const max = duration > 0 ? duration : seconds;
+    const safe = Math.max(0, Math.min(Number(seconds) || 0, max));
+    try {
+      playerRef.current.seekTo(safe, true);
+      setCurrentTime(safe);
+      setSeekValue(safe);
+    } catch {
+      // no-op
+    }
+  }, [duration]);
+
+  useEffect(() => {
+    if (!currentlyPlaying?.youtubeId) return undefined;
+
+    const timer = setInterval(() => {
+      if (!playerRef.current || isSeeking) return;
+      try {
+        const nextTime = Number(playerRef.current.getCurrentTime()) || 0;
+        const nextDuration = Number(playerRef.current.getDuration()) || 0;
+        setCurrentTime(nextTime);
+        if (nextDuration > 0) setDuration(nextDuration);
+      } catch {
+        // no-op
+      }
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, [currentlyPlaying?.youtubeId, isSeeking]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-      switch (e.key) {
-        case " ": e.preventDefault(); togglePlayPause(); break;
-        case "ArrowRight": e.preventDefault(); playNext(); break;
-        case "ArrowLeft": e.preventDefault(); playPrev(); break;
-        case "Escape": if (currentSongRef.current) { e.preventDefault(); closePlayer(); } break;
+      if (e.defaultPrevented || e.repeat) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const target = e.target;
+      const tag = target?.tagName;
+      const isTypingTarget =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable;
+      if (isTypingTarget) return;
+
+      const key = e.key;
+      const code = e.code;
+
+      if (key === " " || key === "Spacebar" || code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+        return;
+      }
+
+      if (key === "ArrowRight") {
+        e.preventDefault();
+        playNext();
+        return;
+      }
+
+      if (key === "ArrowLeft") {
+        e.preventDefault();
+        playPrev();
+        return;
+      }
+
+      if (key === "Escape" && currentSongRef.current) {
+        e.preventDefault();
+        closePlayer();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -202,8 +605,266 @@ function Music() {
     return shuffled;
   };
 
+  const searchableSongs = useMemo(() => {
+    const byId = new Map();
+
+    Object.entries(musicLibrary).forEach(([mood, moodSongs]) => {
+      (moodSongs || []).forEach((song) => {
+        if (!song?.youtubeId) return;
+        const existing = byId.get(song.youtubeId);
+
+        if (existing) {
+          if (!existing.moods.includes(mood)) existing.moods.push(mood);
+          return;
+        }
+
+        byId.set(song.youtubeId, {
+          ...song,
+          moods: [mood],
+          sourceMood: mood,
+        });
+      });
+    });
+
+    return Array.from(byId.values());
+  }, []);
+
+  const searchableLanguages = useMemo(() => {
+    const langs = Array.from(new Set(searchableSongs.map((song) => song.language).filter(Boolean))).sort();
+    return ["Any", ...langs];
+  }, [searchableSongs]);
+
+  const inferMoodFromSong = useCallback((song) => {
+    if (song?.detectedMood && musicLibrary[song.detectedMood]) return song.detectedMood;
+    if (song?.sourceMood && musicLibrary[song.sourceMood]) return song.sourceMood;
+
+    const firstMood = song?.moods?.find((m) => musicLibrary[m]);
+    if (firstMood) return firstMood;
+
+    const energy = String(song?.energy || "").toLowerCase();
+    const genre = String(song?.genre || "").toLowerCase();
+
+    if (energy === "high") return "Excited";
+    if (energy === "low") return "Calm";
+    if (genre.includes("ambient") || genre.includes("instrumental") || genre.includes("lo-fi")) return "Calm";
+    if (genre.includes("rock") || genre.includes("hip-hop")) return "Excited";
+    return "Happy";
+  }, []);
+
+  useEffect(() => {
+    const onClickOutside = () => setShowSongSearchResults(false);
+    window.addEventListener("click", onClickOutside);
+    return () => window.removeEventListener("click", onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const query = songSearchQuery.trim().toLowerCase();
+    if (!query) {
+      setSongSearchResults([]);
+      setSongSearchLoading(false);
+      setSongSearchNextPageToken("");
+      setSongSearchHasMore(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const cacheKey = `${songSearchLanguage}::${query}`;
+      const localMatches = searchableSongs
+        .filter((song) => {
+          if (songSearchLanguage !== "Any" && song.language !== songSearchLanguage) return false;
+          const haystack = `${song.title} ${song.artist} ${song.language || ""}`.toLowerCase();
+          return haystack.includes(query);
+        })
+        .map((song) => ({ ...song, source: "local-library" }));
+
+      const localSorted = Array.from(
+        new Map(localMatches.filter((song) => song?.youtubeId).map((song) => [song.youtubeId, song])).values()
+      ).sort((a, b) => {
+        const aStarts = String(a.title || "").toLowerCase().startsWith(query) ? 1 : 0;
+        const bStarts = String(b.title || "").toLowerCase().startsWith(query) ? 1 : 0;
+        if (aStarts !== bStarts) return bStarts - aStarts;
+        return String(a.title || "").localeCompare(String(b.title || ""));
+      });
+
+      if (!cancelled) setSongSearchResults(localSorted);
+
+      const cached = searchCacheRef.current.get(cacheKey);
+      if (cached && !cancelled) {
+        setSongSearchResults(cached.results || localSorted);
+        setSongSearchNextPageToken(cached.nextPageToken || "");
+        setSongSearchHasMore(Boolean(cached.nextPageToken));
+        return;
+      }
+
+      try {
+        setSongSearchLoading(true);
+
+        let youtubeMatches = [];
+        let nextPageToken = "";
+        try {
+          const { data } = await axiosInstance.get("/api/music-intel/search", {
+            params: {
+              q: songSearchQuery.trim(),
+              language: songSearchLanguage,
+              maxResults: 20,
+            },
+            timeout: 4500,
+          });
+          if (data?.success && Array.isArray(data.results)) {
+            youtubeMatches = data.results;
+            nextPageToken = data.nextPageToken || "";
+          }
+        } catch {
+          // fallback to local library search if online provider fails
+        }
+
+        if (cancelled) return;
+
+        const baseResults = youtubeMatches.length ? [...youtubeMatches, ...localSorted] : localSorted;
+
+        const merged = Array.from(
+          new Map(baseResults.filter((song) => song?.youtubeId).map((song) => [song.youtubeId, song])).values()
+        )
+          .sort((a, b) => {
+            const aStarts = String(a.title || "").toLowerCase().startsWith(query) ? 1 : 0;
+            const bStarts = String(b.title || "").toLowerCase().startsWith(query) ? 1 : 0;
+            if (aStarts !== bStarts) return bStarts - aStarts;
+            return String(a.title || "").localeCompare(String(b.title || ""));
+          });
+
+        setSongSearchResults(merged);
+        setSongSearchNextPageToken(nextPageToken);
+        setSongSearchHasMore(Boolean(nextPageToken) && youtubeMatches.length > 0);
+        searchCacheRef.current.set(cacheKey, {
+          results: merged,
+          nextPageToken,
+          createdAt: Date.now(),
+        });
+      } finally {
+        if (!cancelled) setSongSearchLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [songSearchQuery, songSearchLanguage, searchableSongs]);
+
+  const loadMoreSearchResults = useCallback(async () => {
+    if (!songSearchNextPageToken || songSearchLoadingMore || !songSearchQuery.trim()) return;
+
+    try {
+      setSongSearchLoadingMore(true);
+      const { data } = await axiosInstance.get("/api/music-intel/search", {
+        params: {
+          q: songSearchQuery.trim(),
+          language: songSearchLanguage,
+          maxResults: 50,
+          pageToken: songSearchNextPageToken,
+        },
+        timeout: 8000,
+      });
+
+      if (!(data?.success && Array.isArray(data.results))) {
+        setSongSearchHasMore(false);
+        return;
+      }
+
+      const nextToken = data.nextPageToken || "";
+      const incoming = data.results;
+
+      setSongSearchResults((prev) => {
+        const dedup = new Map();
+        [...prev, ...incoming].forEach((song) => {
+          if (!song?.youtubeId) return;
+          if (!dedup.has(song.youtubeId)) dedup.set(song.youtubeId, song);
+        });
+        return Array.from(dedup.values());
+      });
+
+      setSongSearchNextPageToken(nextToken);
+      setSongSearchHasMore(Boolean(nextToken));
+    } catch {
+      // Keep current results visible; only disable load-more on repeated provider failures.
+      setSongSearchHasMore(false);
+    } finally {
+      setSongSearchLoadingMore(false);
+    }
+  }, [songSearchNextPageToken, songSearchLoadingMore, songSearchQuery, songSearchLanguage]);
+
+  const buildPlaylistForMood = useCallback((mood, blockedIds = unavailableSetRef.current, targetSize = 8) => {
+    const isAllowed = (song) => song?.youtubeId && !blockedIds.has(song.youtubeId);
+    const moodPool = (musicLibrary[mood] || musicLibrary.Happy).filter(isAllowed);
+    const basePool = getPlaylist(mood).filter(isAllowed);
+
+    const dedup = new Map();
+    [...basePool, ...moodPool].forEach((song) => {
+      if (!dedup.has(song.youtubeId)) dedup.set(song.youtubeId, song);
+    });
+    const mergedPool = Array.from(dedup.values());
+
+    const english = mergedPool.filter((song) => song.language === "English");
+    const hindi = mergedPool.filter((song) => song.language === "Hindi");
+    const southIndian = mergedPool.filter((song) => song.language === "Tamil" || song.language === "Telugu");
+    const instrumental = mergedPool.filter((song) => song.language === "Instrumental");
+
+    const selected = [];
+    const usedIds = new Set();
+    const takeFromPool = (pool, count) => {
+      if (count <= 0 || !pool.length) return;
+      const shuffled = shuffleArray(pool);
+      let remaining = count;
+      for (const song of shuffled) {
+        if (usedIds.has(song.youtubeId)) continue;
+        selected.push(song);
+        usedIds.add(song.youtubeId);
+        remaining -= 1;
+        if (remaining <= 0) break;
+      }
+    };
+
+    const desiredSize = Math.max(targetSize, 6);
+    if (desiredSize >= 8) {
+      takeFromPool(english, 2);
+      takeFromPool(hindi, 2);
+      takeFromPool(southIndian, 2);
+      takeFromPool(instrumental, 1);
+    } else {
+      takeFromPool(english, 2);
+      takeFromPool(hindi, 1);
+      takeFromPool(southIndian, 1);
+      takeFromPool(instrumental, 1);
+    }
+
+    for (const song of shuffleArray(mergedPool)) {
+      if (selected.length >= desiredSize) break;
+      if (usedIds.has(song.youtubeId)) continue;
+      selected.push(song);
+      usedIds.add(song.youtubeId);
+    }
+
+    if (selected.length < desiredSize) {
+      const crossMoodPool = shuffleArray(
+        Object.values(musicLibrary)
+          .flat()
+          .filter(isAllowed)
+      );
+      for (const song of crossMoodPool) {
+        if (selected.length >= desiredSize) break;
+        if (usedIds.has(song.youtubeId)) continue;
+        selected.push(song);
+        usedIds.add(song.youtubeId);
+      }
+    }
+
+    return shuffleArray(selected).slice(0, desiredSize);
+  }, []);
+
   const fetchMoodAndMusic = async () => {
     try {
+      const blocked = unavailableSetRef.current;
       const detectedMood = localStorage.getItem("detected_mood");
       let mood = "Happy";
       if (detectedMood) {
@@ -217,12 +878,15 @@ function Music() {
         } catch {}
       }
       setCurrentMood(mood);
-      setSongs(shuffleArray(musicLibrary[mood] || musicLibrary.Happy));
+
+      const nextSongs = buildPlaylistForMood(mood, blocked, 8);
+      setSongs(nextSongs);
       const quotes = motivationalQuotes[mood] || motivationalQuotes.Happy;
       setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
     } catch {
       setCurrentMood("Happy");
-      setSongs(shuffleArray(musicLibrary.Happy));
+      const blocked = unavailableSetRef.current;
+      setSongs(buildPlaylistForMood("Happy", blocked, 8));
       setCurrentQuote(motivationalQuotes.Happy[0]);
     } finally {
       setLoading(false);
@@ -233,6 +897,30 @@ function Music() {
     setCurrentlyPlaying(song);
     setIsPlaying(true);
   }, []);
+
+  const playSongFromSearch = useCallback((song) => {
+    if (!song?.youtubeId) return;
+
+    const detectedMood = inferMoodFromSong(song);
+    if (detectedMood && musicLibrary[detectedMood]) {
+      setCurrentMood(detectedMood);
+      localStorage.setItem("detected_mood", detectedMood.toLowerCase());
+
+      const quotes = motivationalQuotes[detectedMood] || motivationalQuotes.Happy;
+      if (quotes?.length) setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+
+      const blocked = unavailableSetRef.current;
+      const refreshed = buildPlaylistForMood(detectedMood, blocked, Math.max(songsRef.current.length || 8, 8));
+      const deduped = [song, ...refreshed.filter((item) => item.youtubeId !== song.youtubeId)];
+      setSongs(deduped.slice(0, Math.max(8, deduped.length)));
+
+      setPlaylistNotice(`Detected mood from song: ${detectedMood}. Playing your selected track.`);
+    }
+
+    setSongSearchQuery("");
+    setShowSongSearchResults(false);
+    playSong(song);
+  }, [buildPlaylistForMood, inferMoodFromSong, playSong]);
 
   const closePlayer = useCallback(() => {
     if (playerRef.current) { try { playerRef.current.destroy(); } catch {} playerRef.current = null; }
@@ -248,7 +936,36 @@ function Music() {
   };
 
   const refreshSongs = () => {
-    if (currentMood && musicLibrary[currentMood]) setSongs(shuffleArray(musicLibrary[currentMood]));
+    if (!currentMood || !musicLibrary[currentMood]) return;
+    const blocked = unavailableSetRef.current;
+    const nextSongs = buildPlaylistForMood(currentMood, blocked, songsRef.current.length || 8);
+    setSongs(nextSongs);
+    setPlaylistNotice("Playlist refreshed with available tracks.");
+  };
+
+  const replaceBrokenSongs = () => {
+    if (!currentMood || !musicLibrary[currentMood]) return;
+
+    const replacedCount = unavailableTrackIds.length;
+    saveUnavailableTrackIds([]);
+    setUnavailableTrackIds([]);
+    unavailableSetRef.current = new Set();
+
+    const nextSongs = buildPlaylistForMood(currentMood, new Set(), songsRef.current.length || 8);
+    setSongs(nextSongs);
+
+    const currentTrackId = currentSongRef.current?.youtubeId;
+    const currentTrackStillPresent = nextSongs.find((song) => song.youtubeId === currentTrackId);
+    if (!currentTrackStillPresent && currentSongRef.current) {
+      setCurrentlyPlaying(nextSongs[0] || null);
+      if (nextSongs.length === 0) setIsPlaying(false);
+    }
+
+    setPlaylistNotice(
+      replacedCount > 0
+        ? `Replaced ${replacedCount} unavailable track${replacedCount > 1 ? "s" : ""} with multilingual fresh picks.`
+        : "No blocked tracks found. Refreshed with multilingual fresh picks."
+    );
   };
 
   const cycleRepeat = () => {
@@ -270,7 +987,7 @@ function Music() {
       </div>
 
       {/* Main Content */}
-      <div className={`relative z-10 pt-14 lg:pt-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto ${currentlyPlaying ? "pb-28" : "pb-12"}`}>
+      <div className={`relative z-10 pt-14 lg:pt-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto ${currentlyPlaying ? "pb-36" : "pb-12"}`}>
 
         {/* ─── HEADER ─── */}
         <div className="flex items-center justify-between mb-6">
@@ -306,9 +1023,15 @@ function Music() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="relative bg-neutral-900/60 backdrop-blur-sm border border-neutral-800/80 rounded-2xl p-6 md:p-8 mb-6 overflow-hidden"
+              className="relative bg-neutral-900/60 backdrop-blur-sm border border-neutral-800/80 rounded-2xl p-6 md:p-8 mb-6 overflow-visible"
               aria-label="Music player hero"
             >
+              {playlistNotice && (
+                <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                  {playlistNotice}
+                </div>
+              )}
+
               {/* Mood indicator — subtle chip */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -346,12 +1069,88 @@ function Music() {
                 </div>
               )}
 
+              <div className="mb-6 relative" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col md:flex-row gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      value={songSearchQuery}
+                      onChange={(e) => {
+                        setSongSearchQuery(e.target.value);
+                        setShowSongSearchResults(true);
+                      }}
+                      onFocus={() => setShowSongSearchResults(true)}
+                      placeholder="Search any song (all languages)..."
+                      className="w-full bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2.5 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    />
+                  </div>
+
+                  <select
+                    value={songSearchLanguage}
+                    onChange={(e) => setSongSearchLanguage(e.target.value)}
+                    className="bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-3 py-2.5 text-sm text-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  >
+                    {searchableLanguages.map((language) => (
+                      <option key={language} value={language}>{language}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <AnimatePresence>
+                  {showSongSearchResults && songSearchQuery.trim() && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.2 }}
+                      className="mt-2 bg-neutral-950/95 border border-neutral-700/70 rounded-xl shadow-xl overflow-hidden"
+                    >
+                      <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                        {!!songSearchResults.length && !songSearchLoading && (
+                          <p className="px-4 py-2 text-[11px] text-neutral-500 border-b border-neutral-800/60">
+                            Showing {songSearchResults.length} results{songSearchHasMore ? " (load more available)" : ""}
+                          </p>
+                        )}
+                        {songSearchLoading && (
+                          <p className="px-4 py-3 text-xs text-neutral-500">Searching songs...</p>
+                        )}
+                        {!songSearchLoading && songSearchResults.length ? songSearchResults.map((song) => (
+                          <button
+                            key={`search-${song.youtubeId}`}
+                            onClick={() => playSongFromSearch(song)}
+                            className="w-full px-4 py-3 text-left border-b border-neutral-800/60 last:border-0 hover:bg-neutral-800/70 transition-colors"
+                          >
+                            <p className="text-sm text-neutral-100 truncate">{song.title}</p>
+                            <p className="text-[11px] text-neutral-500 truncate">
+                              {song.artist} • {song.language || "Unknown"} • Mood signal: {song.sourceMood || song.detectedMood || "Neutral"} • {song.source === "youtube-search" ? "Online" : "Library"}
+                            </p>
+                          </button>
+                        )) : (
+                          !songSearchLoading && <p className="px-4 py-3 text-xs text-neutral-500">No songs found. Try another title, artist, or language.</p>
+                        )}
+
+                        {!songSearchLoading && songSearchHasMore && (
+                          <div className="px-3 py-2 border-t border-neutral-800/60">
+                            <button
+                              onClick={loadMoreSearchResults}
+                              disabled={songSearchLoadingMore}
+                              className="w-full px-3 py-2 rounded-lg text-xs bg-neutral-800/80 hover:bg-neutral-700/80 text-neutral-200 transition-colors disabled:opacity-60"
+                            >
+                              {songSearchLoadingMore ? "Loading more songs..." : "Load More Songs"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* Primary Music Controls — dominant, clear */}
               <div className="flex flex-wrap items-center gap-2.5">
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => playSong(songs[0])}
-                  className="px-6 py-2.5 bg-white text-neutral-900 font-semibold rounded-full text-sm shadow-sm hover:shadow-md transition-all flex items-center gap-2"
+                  className="px-6 py-2.5 bg-slate-200 hover:bg-slate-100 text-slate-900 font-semibold rounded-full text-sm shadow-sm hover:shadow-md transition-all flex items-center gap-2 border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"
                   aria-label="Play all songs"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -368,6 +1167,17 @@ function Music() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   Shuffle
+                </button>
+
+                <button
+                  onClick={replaceBrokenSongs}
+                  className="px-5 py-2.5 bg-emerald-900/30 hover:bg-emerald-800/30 border border-emerald-600/30 text-emerald-300 text-sm font-medium rounded-full transition-all flex items-center gap-2"
+                  title="Clear blocked songs and replace with fresh picks"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h5l2-2h4l2 2h5M7 7v10a2 2 0 002 2h6a2 2 0 002-2V7m-7 4v4m4-4v4" />
+                  </svg>
+                  Replace Broken Songs{unavailableTrackIds.length > 0 ? ` (${unavailableTrackIds.length})` : ""}
                 </button>
 
                 <button
@@ -395,9 +1205,6 @@ function Music() {
                 </button>
               </div>
 
-              <p className="text-neutral-600 text-[11px] mt-4">
-                Space = play/pause · ← → = prev/next · Esc = stop
-              </p>
             </motion.section>
 
             {/* ─── PLAYLIST ─── */}
@@ -427,8 +1234,8 @@ function Music() {
                             transition={{ delay: index * 0.015 }}
                             className={`flex items-center gap-3 px-6 py-3 transition-all cursor-pointer group border-b border-neutral-800/30 last:border-0 ${
                               isActive
-                                ? "bg-white/[0.04]"
-                                : "hover:bg-white/[0.02]"
+                                ? "bg-slate-200/10"
+                                : "hover:bg-slate-200/5"
                             }`}
                             onClick={() => playSong(song)}
                           >
@@ -458,12 +1265,27 @@ function Music() {
                               </p>
                               <p className="text-neutral-500 text-xs truncate">{song.artist}</p>
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleLikedSong(song);
+                              }}
+                              className={`p-1.5 rounded-md transition-colors ${isSongLiked(song) ? "text-rose-400" : "text-neutral-600 hover:text-rose-300"}`}
+                              aria-label={isSongLiked(song) ? "Unlike song" : "Like song"}
+                              title={isSongLiked(song) ? "Unlike" : "Like"}
+                            >
+                              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                              </svg>
+                            </button>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                              song.isBollywood
-                                ? "bg-rose-500/10 text-rose-400/70"
+                              song.language === "Hindi" ? "bg-rose-500/10 text-rose-400/70"
+                                : song.language === "Tamil" ? "bg-amber-500/10 text-amber-400/70"
+                                : song.language === "Telugu" ? "bg-purple-500/10 text-purple-400/70"
+                                : song.language === "Instrumental" ? "bg-cyan-500/10 text-cyan-400/70"
                                 : "bg-teal-500/10 text-teal-400/70"
                             }`}>
-                              {song.isBollywood ? "Hindi" : "EN"}
+                              {song.language === "Hindi" ? "HI" : song.language === "Tamil" ? "TA" : song.language === "Telugu" ? "TE" : song.language === "Instrumental" ? "🎵" : "EN"}
                             </span>
                           </motion.div>
                         );
@@ -473,6 +1295,104 @@ function Music() {
                 </motion.section>
               )}
             </AnimatePresence>
+
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="mb-6"
+              aria-label="Music library"
+            >
+              <div className="bg-neutral-900/50 backdrop-blur-sm border border-neutral-800/80 rounded-2xl overflow-hidden">
+                <button
+                  onClick={() => setShowLibrary((prev) => !prev)}
+                  className="w-full px-6 py-4 border-b border-neutral-800/60 flex items-center justify-between hover:bg-neutral-800/30 transition-colors"
+                >
+                  <div className="text-left">
+                    <h3 className="text-base font-semibold text-neutral-200">Liked Songs & History</h3>
+                    <p className="text-xs text-neutral-500">{likedSongs.length} liked • {listenHistory.length} recently played</p>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-500 transition-transform ${showLibrary ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <AnimatePresence>
+                  {showLibrary && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                        <div className="p-4 border-b lg:border-b-0 lg:border-r border-neutral-800/60">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-rose-300">Liked Songs</h4>
+                            <span className="text-[11px] text-neutral-500">{likedSongs.length}</span>
+                          </div>
+                          <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1.5">
+                            {likedSongs.length ? likedSongs.map((song) => (
+                              <div key={`liked-${song.youtubeId}`} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-neutral-800/60 transition-colors">
+                                <button onClick={() => playSong(song)} className="flex-1 min-w-0 text-left">
+                                  <p className="text-sm text-neutral-200 truncate">{song.title}</p>
+                                  <p className="text-[11px] text-neutral-500 truncate">{song.artist}</p>
+                                </button>
+                                <button
+                                  onClick={() => toggleLikedSong(song)}
+                                  className="p-1.5 text-rose-400 hover:text-rose-300"
+                                  aria-label="Remove liked song"
+                                >
+                                  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )) : (
+                              <p className="text-xs text-neutral-500">No liked songs yet. Tap the heart icon on any track.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-indigo-300">Listening History</h4>
+                            <button
+                              onClick={() => setListenHistory([])}
+                              className="text-[11px] text-neutral-500 hover:text-neutral-300"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1.5">
+                            {listenHistory.length ? listenHistory.map((entry) => (
+                              <button
+                                key={`history-${entry.youtubeId}-${entry.playedAt}`}
+                                onClick={() => playSong(entry)}
+                                className="w-full text-left rounded-lg px-2 py-2 hover:bg-neutral-800/60 transition-colors"
+                              >
+                                <p className="text-sm text-neutral-200 truncate">{entry.title}</p>
+                                <p className="text-[11px] text-neutral-500 truncate">
+                                  {entry.artist} • {new Date(entry.playedAt).toLocaleString()}
+                                </p>
+                              </button>
+                            )) : (
+                              <p className="text-xs text-neutral-500">No history yet. Played tracks will appear here automatically.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.section>
 
             {/* ═══════════════════════════════════════════════════════════════
                 TIER 2: AI & SPOTIFY — Context-Aware Recommendations
@@ -484,6 +1404,12 @@ function Music() {
               className="mb-6 space-y-4"
               aria-label="Music discovery"
             >
+              <MusicIntelligencePanel
+                currentMood={currentMood}
+                currentlyPlaying={currentlyPlaying}
+                onPlaySong={playSong}
+              />
+
               {/* Spotify Connection — integrated, minimal */}
               <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-5">
                 <div className="flex items-center justify-between">
@@ -718,6 +1644,17 @@ function Music() {
                   <p className="text-neutral-600 text-[10px] truncate">{currentlyPlaying.artist}</p>
                 </div>
 
+                <button
+                  onClick={() => toggleLikedSong(currentlyPlaying)}
+                  className={`p-2 transition-colors ${isSongLiked(currentlyPlaying) ? "text-rose-400" : "text-neutral-600 hover:text-rose-300"}`}
+                  aria-label={isSongLiked(currentlyPlaying) ? "Unlike current song" : "Like current song"}
+                  title={isSongLiked(currentlyPlaying) ? "Unlike" : "Like"}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+                  </svg>
+                </button>
+
                 {/* Controls — high contrast, clear */}
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button onClick={playPrev} className="p-2 text-neutral-500 hover:text-white transition-colors" aria-label="Previous">
@@ -727,7 +1664,7 @@ function Music() {
                   </button>
                   <button
                     onClick={togglePlayPause}
-                    className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-md"
+                    className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-md"
                     aria-label={isPlaying ? "Pause" : "Play"}
                   >
                     {isPlaying ? (
@@ -761,6 +1698,26 @@ function Music() {
                     </svg>
                   </button>
                 </div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-3">
+                <span className="text-[10px] text-neutral-500 w-9 text-right">{formatDuration(isSeeking ? seekValue : currentTime)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(1, Math.floor(duration || 0))}
+                  step={1}
+                  value={Math.min(isSeeking ? seekValue : currentTime, Math.max(1, Math.floor(duration || 0)))}
+                  onMouseDown={() => setIsSeeking(true)}
+                  onTouchStart={() => setIsSeeking(true)}
+                  onChange={(e) => setSeekValue(Number(e.target.value) || 0)}
+                  onMouseUp={() => { setIsSeeking(false); seekTo(seekValue); }}
+                  onTouchEnd={() => { setIsSeeking(false); seekTo(seekValue); }}
+                  onKeyUp={() => seekTo(seekValue)}
+                  className="flex-1 h-1.5 accent-indigo-400 bg-neutral-800 rounded-lg cursor-pointer"
+                  aria-label="Seek playback"
+                />
+                <span className="text-[10px] text-neutral-500 w-9">{formatDuration(duration)}</span>
               </div>
             </div>
             <div className="sr-only" aria-hidden="true"><div id="yt-player-container" /></div>

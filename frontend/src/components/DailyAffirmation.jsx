@@ -69,16 +69,16 @@ function DailyAffirmation() {
     getRandomAffirmation();
   }, []);
 
-  const getCategoryEmoji = () => {
-    const emojis = {
-      confidence: "💪",
-      motivation: "🚀",
-      peace: "☮️",
-      gratitude: "🙏",
-      selfLove: "💖",
-      resilience: "🛡️"
+  const getCategoryCode = () => {
+    const codes = {
+      confidence: "CN",
+      motivation: "MV",
+      peace: "PC",
+      gratitude: "GR",
+      selfLove: "SL",
+      resilience: "RS"
     };
-    return emojis[category] || "✨";
+    return codes[category] || "AF";
   };
 
   const getCategoryColor = () => {
@@ -98,21 +98,21 @@ function DailyAffirmation() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-xl"
+      className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-soft"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <span className="text-3xl">✨</span>
+        <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-primary-300 border border-slate-700">AF</span>
           Daily Affirmation
         </h3>
         <motion.button
           whileHover={{ scale: 1.1, rotate: 180 }}
           whileTap={{ scale: 0.9 }}
           onClick={getRandomAffirmation}
-          className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white shadow-lg hover:shadow-purple-500/50 transition-all"
+          className="p-2 bg-primary-700 rounded-full text-white transition-all hover:bg-primary-800"
           title="Get new affirmation"
         >
-          <span className="text-xl">🔄</span>
+          <span className="text-sm font-semibold">New</span>
         </motion.button>
       </div>
 
@@ -128,9 +128,9 @@ function DailyAffirmation() {
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="text-6xl inline-block"
+              className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs font-semibold text-primary-300"
             >
-              ✨
+              AF
             </motion.div>
           </motion.div>
         ) : (
@@ -142,14 +142,16 @@ function DailyAffirmation() {
             transition={{ duration: 0.5 }}
           >
             <div className={`bg-gradient-to-r ${getCategoryColor()} rounded-xl p-6 mb-4 relative overflow-hidden`}>
-              <div className="absolute inset-0 bg-white/10" />
+              <div className="absolute inset-0 bg-slate-900/20" />
               <div className="relative">
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="text-5xl mb-3 text-center"
+                  className="mb-3 text-center"
                 >
-                  {getCategoryEmoji()}
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/60 text-xs font-semibold text-slate-100">
+                    {getCategoryCode()}
+                  </span>
                 </motion.div>
                 <p className="text-white text-lg font-semibold text-center leading-relaxed italic">
                   "{affirmation}"
@@ -158,8 +160,8 @@ function DailyAffirmation() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="bg-white/5 px-4 py-2 rounded-lg">
-                <p className="text-gray-400 text-xs uppercase tracking-wider">
+              <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                <p className="text-slate-300 text-xs uppercase tracking-wider">
                   {category.replace(/([A-Z])/g, ' $1').trim()}
                 </p>
               </div>
@@ -168,11 +170,11 @@ function DailyAffirmation() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   navigator.clipboard.writeText(affirmation);
-                  alert("Affirmation copied to clipboard! 📋");
+                  alert("Affirmation copied to clipboard.");
                 }}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm font-medium transition-all"
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm font-medium transition-all"
               >
-                📋 Copy
+                Copy
               </motion.button>
             </div>
           </motion.div>

@@ -5,6 +5,7 @@ import OptionsMenu from "../components/OptionsMenu";
 import EmptyState from "../components/EmptyState";
 import MoodInsights from "../components/MoodInsights";
 import JournalModal from "../components/JournalModal";
+import WellnessIntelligenceHub from "../components/WellnessIntelligenceHub";
 import SEO from "../components/SEO";
 import { useToast } from "../components/Toast";
 import { useMood } from "../context/MoodContext";
@@ -70,6 +71,24 @@ function Dashboard() {
     return history.filter((h) => new Date(h.createdAt) >= cutoff);
   })();
 
+  const sortedHistory = [...history].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  const getCurrentStreak = (entries) => {
+    if (!entries.length) return 0;
+
+    const uniqueDays = [...new Set(entries.map((entry) => new Date(entry.createdAt).toDateString()))]
+      .map((day) => new Date(day).setHours(0, 0, 0, 0))
+      .sort((a, b) => b - a);
+
+    let streak = 1;
+    for (let i = 1; i < uniqueDays.length; i += 1) {
+      const dayDiff = (uniqueDays[i - 1] - uniqueDays[i]) / (1000 * 60 * 60 * 24);
+      if (dayDiff === 1) streak += 1;
+      else break;
+    }
+    return streak;
+  };
+
   const handleClearData = () => {
     clearHistory();
     setShowClearModal(false);
@@ -104,6 +123,7 @@ function Dashboard() {
   const todayScore = today.score;
   const avgScore = (data.reduce((sum, item) => sum + item.score, 0) / data.length).toFixed(1);
   const best = data.reduce((a, b) => (a.score > b.score ? a : b));
+  const streak = getCurrentStreak(sortedHistory);
 
   // Chart data
   const lineData = {
@@ -111,39 +131,52 @@ function Dashboard() {
     datasets: [{
       label: "Mood Score",
       data: data.map((h) => h.score),
-      borderColor: "rgb(139, 92, 246)",
-      backgroundColor: "rgba(139, 92, 246, 0.1)",
+      borderColor: "rgb(37, 99, 235)",
+      backgroundColor: "rgba(37, 99, 235, 0.08)",
       tension: 0.4, pointRadius: 4, pointHoverRadius: 6,
-      pointBackgroundColor: "rgb(139, 92, 246)",
-      pointBorderColor: "rgb(31, 41, 55)", pointBorderWidth: 2,
+      pointBackgroundColor: "rgb(37, 99, 235)",
+      pointBorderColor: "rgb(248, 250, 252)", pointBorderWidth: 2,
       borderWidth: 3, fill: true,
     }],
   };
 
   const lineOptions = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(31,41,55,0.9)", padding: 12, titleFont: { size: 14, weight: "bold" }, bodyFont: { size: 13 }, borderColor: "rgba(139,92,246,0.3)", borderWidth: 1, callbacks: { title: (items) => { const idx = items[0]?.dataIndex; if (idx == null) return ''; const d = new Date(data[idx].createdAt); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + "  " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } } } },
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 12, titleFont: { size: 14, weight: "bold" }, bodyFont: { size: 13 }, borderColor: "rgba(37,99,235,0.35)", borderWidth: 1, callbacks: { title: (items) => { const idx = items[0]?.dataIndex; if (idx == null) return ''; const d = new Date(data[idx].createdAt); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + "  " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } } } },
     scales: {
-      y: { grid: { color: "rgba(115,115,115,0.1)", drawBorder: false }, ticks: { color: "#a3a3a3", font: { size: 12 } }, max: 10, beginAtZero: true },
-      x: { grid: { display: false }, ticks: { color: "#a3a3a3", font: { size: 11 } } },
+      y: { grid: { color: "rgba(148,163,184,0.18)", drawBorder: false }, ticks: { color: "#cbd5e1", font: { size: 12 } }, max: 10, beginAtZero: true },
+      x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { size: 11 } } },
     },
   };
 
   const moodCounts = {};
   data.forEach((h) => (moodCounts[h.mood] = (moodCounts[h.mood] || 0) + 1));
 
+  const dominantMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || todayMood;
+  const recentSample = sortedHistory.slice(-5);
+  const previousSample = sortedHistory.slice(-10, -5);
+  const recentAverage = recentSample.length
+    ? recentSample.reduce((sum, item) => sum + item.score, 0) / recentSample.length
+    : todayScore;
+  const previousAverage = previousSample.length
+    ? previousSample.reduce((sum, item) => sum + item.score, 0) / previousSample.length
+    : recentAverage;
+  const trendDelta = recentAverage - previousAverage;
+  const trendLabel = trendDelta > 0.1 ? "Improving" : trendDelta < -0.1 ? "Needs care" : "Steady";
+  const trendColor = trendDelta > 0.1 ? "text-emerald-400" : trendDelta < -0.1 ? "text-rose-400" : "text-sky-400";
+
   const doughnutData = {
     labels: Object.keys(moodCounts),
     datasets: [{
       data: Object.values(moodCounts),
-      backgroundColor: ["rgb(251,191,36)", "rgb(56,189,248)", "rgb(248,113,113)", "rgb(52,211,153)", "rgb(244,114,182)", "rgb(167,139,250)"],
-      borderColor: "rgb(23,23,23)", borderWidth: 2, hoverOffset: 8,
+      backgroundColor: ["#1d4ed8", "#0284c7", "#dc2626", "#059669", "#7c3aed", "#475569"],
+      borderColor: "#0f172a", borderWidth: 2, hoverOffset: 6,
     }],
   };
 
   const doughnutOptions = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: "#d4d4d4", font: { size: 12, weight: "600" }, padding: 16 }, position: "bottom" }, tooltip: { backgroundColor: "rgba(31,41,55,0.9)", padding: 12 } },
+    plugins: { legend: { labels: { color: "#cbd5e1", font: { size: 12, weight: "600" }, padding: 16 }, position: "bottom" }, tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 12 } },
     cutout: "65%",
   };
 
@@ -152,8 +185,8 @@ function Dashboard() {
     return colors[mood] || "badge-primary";
   };
 
-  return (
-    <AppShell>
+    return (
+      <AppShell>
       <SEO title="Dashboard" description="Track your emotional wellness journey with ECHONA" path="/dashboard" />
 
       <div className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -166,15 +199,15 @@ function Dashboard() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="heading-1 mb-2">Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!</h1>
-              <p className="text-neutral-300 text-lg">Here's your emotional wellness overview</p>
+              <h1 className="heading-1 mb-2">Wellness Dashboard{user?.name ? ` - ${user.name.split(" ")[0]}` : ""}</h1>
+              <p className="text-slate-300 text-lg">Review your emotional trends, recent activity, and wellness momentum.</p>
             </div>
             {/* Live Clock */}
             <div className="text-right hidden sm:block">
-              <p className="text-2xl font-mono font-light text-white tracking-wider">
+              <p className="text-2xl font-mono font-light text-slate-100 tracking-wider">
                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </p>
-              <p className="text-xs text-neutral-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 {currentTime.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
               </p>
             </div>
@@ -183,7 +216,7 @@ function Dashboard() {
               <motion.button
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={() => setJournalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 hover:border-violet-500/50 text-violet-400 hover:text-violet-300 transition-all text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/60 text-slate-100 transition-colors text-sm font-medium"
                 aria-label="Open journal"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -194,7 +227,7 @@ function Dashboard() {
               <motion.button
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={() => setShowClearModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 transition-colors text-sm font-medium"
                 aria-label="Reset all mood data"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -208,6 +241,44 @@ function Dashboard() {
 
         {/* Mood Insights (#6) */}
         <MoodInsights />
+
+        <WellnessIntelligenceHub
+          history={history}
+          todayMood={todayMood}
+          todayScore={todayScore}
+          trendLabel={trendLabel}
+          streak={streak}
+          onNavigate={(path) => navigate(path)}
+        />
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+        >
+          <div className="card p-4 border border-slate-700/70">
+            <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">Current Streak</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-semibold text-white">{streak} day{streak > 1 ? "s" : ""}</p>
+              <span className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded-full">Consistency</span>
+            </div>
+          </div>
+          <div className="card p-4 border border-slate-700/70">
+            <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">Mood Trend</p>
+            <div className="flex items-end justify-between">
+              <p className={`text-2xl font-semibold ${trendColor}`}>{trendLabel}</p>
+              <span className="text-xs text-slate-300">{trendDelta >= 0 ? "+" : ""}{trendDelta.toFixed(1)} pts</span>
+            </div>
+          </div>
+          <div className="card p-4 border border-slate-700/70">
+            <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">Dominant Mood</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-semibold text-white">{dominantMood}</p>
+              <span className="text-xs text-sky-300 bg-sky-500/10 border border-sky-500/30 px-2 py-1 rounded-full">Most frequent</span>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -246,7 +246,7 @@ function SpotifySearch({ accessToken, deviceId, onPlayTrack }) {
             {results.map((track, index) => (
               <div
                 key={track.id}
-                className="flex items-center gap-3 px-6 py-3 hover:bg-white/5 transition-all group border-b border-gray-800/50 last:border-0"
+                className="flex items-center gap-3 px-6 py-3 hover:bg-slate-200/10 transition-all group border-b border-gray-800/50 last:border-0"
               >
                 {/* Index */}
                 <span className="text-gray-600 text-sm font-mono w-7 text-right flex-shrink-0 group-hover:text-green-400 transition-colors">

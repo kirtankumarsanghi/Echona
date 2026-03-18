@@ -1,0 +1,20 @@
+{
+  "labels": [
+    "Angry",
+    "Disgust",
+    "Fear",
+    "Happy",
+    "Sad",
+    "Surprise",
+    "Neutral"
+  ],
+  "label_map": {
+    "Angry": "Angry",
+    "Disgust": "Angry",
+    "Fear": "Anxious",
+    "Happy": "Happy",
+    "Sad": "Sad",
+    "Surprise": "Excited",
+    "Neutral": "Calm"
+  }
+}

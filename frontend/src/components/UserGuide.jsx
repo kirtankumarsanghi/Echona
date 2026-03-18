@@ -24,7 +24,7 @@ function UserGuide() {
     },
     {
       title: "Step 1: Detect Your Mood",
-      description: "Click 'Detect Mood' in the menu to analyze your emotions using camera, voice, text, or simply pick your mood manually.",
+      description: "Click 'Detect Mood' in the menu to analyze your emotions using camera, voice, text, or the mood picker.",
       action: () => navigate("/mood-detect"),
       actionText: "Go to Mood Detection",
       icon: "STEP 01",
@@ -179,7 +179,7 @@ function UserGuide() {
                   className={`px-6 py-3 rounded-xl font-semibold transition-all ${
                     currentStep === 0
                       ? "opacity-50 cursor-not-allowed bg-gray-700"
-                      : "bg-white/10 hover:bg-white/20 border border-white/20"
+                      : "bg-slate-900/50 hover:bg-slate-900/70 border border-slate-700"
                   }`}
                 >
                   ← Previous

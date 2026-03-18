@@ -1,46 +1,13 @@
-const TOKEN_KEY = "echona_token";
 const USER_KEY = "echona_user";
 const SPOTIFY_TOKEN_KEY = "spotify_token";
 const SPOTIFY_REFRESH_KEY = "spotify_refresh_token";
 
 /**
- * Decode a JWT payload without a library (base64url decode).
- * Returns null if the token is malformed.
- */
-function decodeJwtPayload(token) {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(payload));
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Check if a JWT token is expired (with 60s buffer).
- */
-function isTokenExpired(token) {
-  if (!token) return true;
-  const payload = decodeJwtPayload(token);
-  if (!payload || !payload.exp) return false; // no exp = assume valid
-  const nowSec = Math.floor(Date.now() / 1000);
-  return payload.exp < nowSec + 60; // 60s buffer
-}
-
-/**
- * Returns true if user has a valid, non-expired auth token.
+ * Returns true if the user object is cached in localStorage.
+ * Actual session validity is confirmed server-side via /api/auth/me.
  */
 export function isLoggedIn() {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (!token) return false;
-  if (isTokenExpired(token)) {
-    // Auto-clear expired session
-    logout();
-    return false;
-  }
-  return true;
+  return getUser() !== null;
 }
 
 /**
@@ -60,30 +27,34 @@ export function getCurrentUser() {
 }
 
 /**
- * Get the current auth token.
+ * Persist user profile locally (session cookie is managed by the browser).
  */
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+export function saveUser(user) {
+  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 /**
- * Save auth session (token + user).
+ * Clear user profile and Spotify tokens.
  */
-export function login(token, user) {
-  localStorage.setItem(TOKEN_KEY, token);
-  if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
-}
-
-/**
- * Clear all auth & Spotify session data.
- */
-export function logout() {
-  localStorage.removeItem(TOKEN_KEY);
+export function clearUser() {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(SPOTIFY_TOKEN_KEY);
   localStorage.removeItem(SPOTIFY_REFRESH_KEY);
+}
+
+/** @deprecated Use saveUser() instead (kept for backward compat) */
+export function login(_token, user) {
+  saveUser(user);
+}
+
+/** @deprecated Use clearUser() instead (kept for backward compat) */
+export function logout() {
+  clearUser();
+}
+
+/** @deprecated No longer used — auth is session-based */
+export function getToken() {
+  return null;
 }
 
 /**
@@ -99,6 +70,13 @@ export function getSpotifyToken() {
 export function saveSpotifyTokens(accessToken, refreshToken) {
   if (accessToken) localStorage.setItem(SPOTIFY_TOKEN_KEY, accessToken);
   if (refreshToken) localStorage.setItem(SPOTIFY_REFRESH_KEY, refreshToken);
+}
+
+/**
+ * Get Spotify refresh token from localStorage.
+ */
+export function getSpotifyRefreshToken() {
+  return localStorage.getItem(SPOTIFY_REFRESH_KEY);
 }
 
 /**

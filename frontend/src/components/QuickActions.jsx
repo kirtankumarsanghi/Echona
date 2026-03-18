@@ -48,7 +48,7 @@ const QuickActions = () => {
                     setIsOpen(false);
                   }
                 }}
-                className="flex items-center gap-3 pl-4 pr-2 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-lg hover:bg-white/20 transition-all group w-full justify-end"
+                className="flex items-center gap-3 pl-4 pr-2 py-2 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700 text-white shadow-lg hover:bg-slate-800/90 transition-all group w-full justify-end"
               >
                 <span className="font-medium text-sm pr-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300 absolute right-12">
                   {action.label}
@@ -69,8 +69,8 @@ const QuickActions = () => {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className={`pointer-events-auto relative p-4 rounded-full shadow-2xl transition-all duration-300 border border-white/20 ${
-          isOpen ? "bg-white text-black" : "bg-white/10 backdrop-blur-md text-white hover:bg-white/20"
+        className={`pointer-events-auto relative p-4 rounded-full shadow-2xl transition-all duration-300 border border-slate-700 ${
+          isOpen ? "bg-slate-200 hover:bg-slate-100 text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70" : "bg-slate-900/85 backdrop-blur-md text-white hover:bg-slate-800/90"
         }`}
         title="Menu"
       >

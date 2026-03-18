@@ -1,10 +1,5 @@
 import React from "react";
 
-/**
- * ECHONA Logo Component
- * Unique design featuring concentric circles with a sound wave pattern
- * representing the fusion of mental wellness and music therapy
- */
 const Logo = ({ size = "default", showText = true, className = "" }) => {
   const sizes = {
     small: { container: "w-8 h-8", text: "text-sm", subtext: "text-[8px]" },
@@ -16,46 +11,38 @@ const Logo = ({ size = "default", showText = true, className = "" }) => {
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      {/* Logo Icon */}
       <div className={`relative ${currentSize.container} flex-shrink-0`}>
-        {/* Outer glow */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-violet-500/20 rounded-2xl blur-md" />
-        
-        {/* Main container */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-2xl shadow-lg shadow-indigo-500/30 overflow-hidden">
-          {/* Subtle pattern overlay */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent" />
-          
-          {/* Sound wave pattern */}
-          <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 40 40" fill="none">
-            {/* Center circle */}
-            <circle cx="20" cy="20" r="3" fill="white" opacity="0.9" />
-            
-            {/* Concentric circles */}
-            <circle cx="20" cy="20" r="8" stroke="white" strokeWidth="1.5" opacity="0.6" fill="none" />
-            <circle cx="20" cy="20" r="13" stroke="white" strokeWidth="1.5" opacity="0.4" fill="none" />
-            
-            {/* Sound wave bars */}
-            <g opacity="0.8">
-              <rect x="10" y="15" width="1.5" height="10" rx="0.75" fill="white" />
-              <rect x="14" y="12" width="1.5" height="16" rx="0.75" fill="white" />
-              <rect x="18" y="8" width="1.5" height="24" rx="0.75" fill="white" />
-              <rect x="22" y="8" width="1.5" height="24" rx="0.75" fill="white" />
-              <rect x="26" y="12" width="1.5" height="16" rx="0.75" fill="white" />
-              <rect x="30" y="15" width="1.5" height="10" rx="0.75" fill="white" />
-            </g>
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-sky-500/20 to-cyan-500/20 blur-md" />
+
+        <div className="absolute inset-0 rounded-2xl border border-sky-300/20 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 shadow-lg shadow-sky-500/20 overflow-hidden">
+          <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <circle cx="20" cy="20" r="14" stroke="rgba(125,211,252,0.55)" strokeWidth="1.5" />
+            <circle cx="20" cy="20" r="9" stroke="rgba(125,211,252,0.35)" strokeWidth="1.5" />
+
+            <path
+              d="M12 20c2.4-3.2 4.4-4.8 6.2-4.8 2 0 3 1.3 4.4 3.3 1 1.4 2 2.7 3.8 2.7"
+              stroke="rgba(186,230,253,0.95)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            <rect x="9" y="26" width="3" height="6" rx="1.5" fill="rgba(186,230,253,0.9)" />
+            <rect x="14" y="24" width="3" height="8" rx="1.5" fill="rgba(186,230,253,0.9)" />
+            <rect x="19" y="22" width="3" height="10" rx="1.5" fill="rgba(186,230,253,0.9)" />
+            <rect x="24" y="24" width="3" height="8" rx="1.5" fill="rgba(186,230,253,0.9)" />
+            <rect x="29" y="26" width="3" height="6" rx="1.5" fill="rgba(186,230,253,0.9)" />
           </svg>
         </div>
       </div>
 
-      {/* Logo Text */}
       {showText && (
         <div className="flex flex-col">
           <span className={`font-bold tracking-wide text-neutral-100 leading-none ${currentSize.text}`}>
             ECHONA
           </span>
           <span className={`text-neutral-500 tracking-wider uppercase font-medium leading-none mt-0.5 ${currentSize.subtext}`}>
-            Mental Wellness
+            Wellness Intelligence
           </span>
         </div>
       )}

@@ -5,6 +5,8 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
 const axios = require("axios");
+const session = require("express-session");
+const MongoStore = require("connect-mongo");
 const config = require("./config");
 const requestLogger = require("./middleware/requestLogger");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
@@ -15,6 +17,8 @@ const moodRoutes = require("./routes/moodRoutes");
 const authRoutes = require("./routes/authRoutes");
 const spotifyRoutes = require("./routes/spotifyRoutes");
 const mlRoutes = require("./routes/mlRoutes");
+const wellnessRoutes = require("./routes/wellnessRoutes");
+const musicIntelRoutes = require("./routes/musicIntelRoutes");
 
 // ─── Port availability check ───────────────────────────────────────────────
 function checkPortAvailable(port) {
@@ -94,10 +98,32 @@ app.use(
 
 app.use(express.json({ limit: "4mb" }));
 
-// ─── CSRF Protection — Double-submit cookie pattern (#25) ─────────────────
-// For JSON APIs with JWT auth + strict CORS + SameSite, CSRF risk is already
-// low. This adds defense-in-depth: once the cookie is set (via any response),
-// every subsequent state-changing request must echo it back in a header.
+// ─── Session — replaces JWT ──────────────────────────────────────────────────────
+const isProduction = config.nodeEnv === "production";
+app.use(
+  session({
+    name: "echona_sid",
+    secret: config.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    store:
+      config.mongoUri && config.mongoUri.trim() !== ""
+        ? MongoStore.create({
+            mongoUrl: config.mongoUri,
+            ttl: 7 * 24 * 60 * 60, // 7 days in seconds
+            autoRemove: "native",
+          })
+        : undefined, // falls back to MemoryStore (fine for dev)
+    cookie: {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: config.sessionMaxAgeMs,
+    },
+  })
+);
+
+// ─── CSRF Protection — Double-submit cookie pattern ───────────────────────────
 const crypto = require("crypto");
 
 // Issue CSRF token cookie on every response (so the client can read it)
@@ -205,6 +231,8 @@ app.use("/api/auth", authLimiter, authRoutes);
 
 app.use("/api/spotify", spotifyRoutes);
 app.use("/api/ml", mlRoutes);
+app.use("/api/wellness", wellnessRoutes);
+app.use("/api/music-intel", musicIntelRoutes);
 
 // ─── Health Endpoints ───────────────────────────────────────────────────────
 app.get("/auth/health", (req, res) => res.redirect(307, "/api/auth/health"));

@@ -25,7 +25,7 @@ const MoodStats = () => {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 rounded-2xl bg-gray-800/50 animate-pulse" />
+          <div key={i} className="h-24 rounded-2xl bg-slate-800/60 animate-pulse" />
         ))}
       </div>
     );
@@ -52,10 +52,10 @@ const MoodStats = () => {
           className="relative group"
         >
           <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} rounded-2xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity`} />
-          <div className="relative p-6 rounded-2xl bg-gray-800/50 backdrop-blur-xl border border-gray-700 group-hover:border-gray-500 transition-all">
+          <div className="relative p-6 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-slate-800 group-hover:border-slate-700 transition-all">
             <div className="text-3xl mb-2">{stat.icon}</div>
-            <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-            <div className="text-sm text-gray-400">{stat.label}</div>
+            <div className="text-2xl font-bold text-slate-100 mb-1">{stat.value}</div>
+            <div className="text-sm text-slate-400">{stat.label}</div>
           </div>
         </motion.div>
       ))}

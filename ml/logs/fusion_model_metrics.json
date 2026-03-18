@@ -1,0 +1,207 @@
+{
+  "model": "fusion_model",
+  "timestamp": "2026-03-16T05:42:56.551682Z",
+  "num_samples": 800,
+  "num_classes": 10,
+  "classes": [
+    "Happy",
+    "Sad",
+    "Angry",
+    "Calm",
+    "Excited",
+    "Anxious",
+    "Stressed",
+    "Lonely",
+    "Tired",
+    "Neutral"
+  ],
+  "accuracy": 0.9587,
+  "precision_macro": 0.9595,
+  "recall_macro": 0.9587,
+  "f1_macro": 0.9588,
+  "confusion_matrix": [
+    [
+      77,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      76,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      78,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      78,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      75,
+      0,
+      2,
+      0,
+      1,
+      2
+    ],
+    [
+      0,
+      1,
+      0,
+      1,
+      0,
+      74,
+      1,
+      2,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      76,
+      2,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      78,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      79,
+      0
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2,
+      76
+    ]
+  ],
+  "per_class": {
+    "Happy": {
+      "precision": 1.0,
+      "recall": 0.9625,
+      "f1": 0.9809,
+      "support": 80
+    },
+    "Sad": {
+      "precision": 0.9744,
+      "recall": 0.95,
+      "f1": 0.962,
+      "support": 80
+    },
+    "Angry": {
+      "precision": 0.9512,
+      "recall": 0.975,
+      "f1": 0.963,
+      "support": 80
+    },
+    "Calm": {
+      "precision": 0.975,
+      "recall": 0.975,
+      "f1": 0.975,
+      "support": 80
+    },
+    "Excited": {
+      "precision": 0.9615,
+      "recall": 0.9375,
+      "f1": 0.9494,
+      "support": 80
+    },
+    "Anxious": {
+      "precision": 0.9737,
+      "recall": 0.925,
+      "f1": 0.9487,
+      "support": 80
+    },
+    "Stressed": {
+      "precision": 0.95,
+      "recall": 0.95,
+      "f1": 0.95,
+      "support": 80
+    },
+    "Lonely": {
+      "precision": 0.9176,
+      "recall": 0.975,
+      "f1": 0.9455,
+      "support": 80
+    },
+    "Tired": {
+      "precision": 0.9294,
+      "recall": 0.9875,
+      "f1": 0.9576,
+      "support": 80
+    },
+    "Neutral": {
+      "precision": 0.962,
+      "recall": 0.95,
+      "f1": 0.956,
+      "support": 80
+    }
+  },
+  "best_model": "LogisticRegression"
+}
