@@ -149,7 +149,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
               <button
                 onClick={togglePlay}
-                className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
               >
                 {isPlaying ? (
                   <svg className="w-6 h-6 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -203,7 +203,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full h-full transition-all relative group"
                   style={{ width: `${duration ? (position / duration) * 100 : 0}%` }}
                 >
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-lg"></div>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-200 rounded-full opacity-0 group-hover:opacity-100 shadow-lg"></div>
                 </div>
               </div>
             </div>
@@ -214,7 +214,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
             <div className="flex items-center gap-4">
               <button
                 onClick={skipPrevious}
-                className="text-white hover:text-indigo-300 transition-colors p-2 hover:bg-white/10 rounded-lg"
+                className="text-white hover:text-indigo-300 transition-colors p-2 hover:bg-slate-200/10 rounded-lg"
                 title="Previous Track"
               >
                 <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
@@ -223,7 +223,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
               </button>
               <button
                 onClick={togglePlay}
-                className="w-14 h-14 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg hover:shadow-xl"
+                className="w-14 h-14 bg-slate-200 rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg hover:shadow-xl"
                 title={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
@@ -238,7 +238,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
               </button>
               <button
                 onClick={skipNext}
-                className="text-white hover:text-indigo-300 transition-colors p-2 hover:bg-white/10 rounded-lg"
+                className="text-white hover:text-indigo-300 transition-colors p-2 hover:bg-slate-200/10 rounded-lg"
                 title="Next Track"
               >
                 <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">

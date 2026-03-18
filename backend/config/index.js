@@ -46,6 +46,25 @@ function parseTimeout(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function sanitizeEnvString(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const hasWrappingDoubleQuotes = trimmed.startsWith('"') && trimmed.endsWith('"');
+  const hasWrappingSingleQuotes = trimmed.startsWith("'") && trimmed.endsWith("'");
+  if ((hasWrappingDoubleQuotes || hasWrappingSingleQuotes) && trimmed.length >= 2) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
 const config = {
   // Environment
   nodeEnv: process.env.NODE_ENV || "development",
@@ -57,29 +76,31 @@ const config = {
   mlPort: parsePort(process.env.ML_PORT, defaultMlPort),
 
   // URLs
-  frontendUrl: process.env.FRONTEND_URL || `http://localhost:${defaultFrontendPort}`,
+  frontendUrl: sanitizeEnvString(process.env.FRONTEND_URL) || `http://localhost:${defaultFrontendPort}`,
   // Smart default: use production ML service if NODE_ENV is production
-  mlServiceUrl: process.env.ML_SERVICE_URL || 
+  mlServiceUrl: sanitizeEnvString(process.env.ML_SERVICE_URL) ||
     (process.env.NODE_ENV === "production" 
       ? "https://echona-ml.onrender.com" 
       : `${defaultMlHost}:${defaultMlPort}`),
 
   // Database
-  mongoUri: process.env.MONGODB_URI || "",
+  mongoUri: sanitizeEnvString(process.env.MONGODB_URI),
 
   // Weather
-  weatherApiKey: process.env.WEATHER_API_KEY || "",
-  weatherCity: process.env.WEATHER_CITY || "Delhi",
+  weatherApiKey: sanitizeEnvString(process.env.WEATHER_API_KEY),
+  weatherCity: sanitizeEnvString(process.env.WEATHER_CITY) || "Delhi",
 
   // Spotify
-  spotifyClientId: process.env.SPOTIFY_CLIENT_ID || "",
-  spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET || "",
+  spotifyClientId: sanitizeEnvString(process.env.SPOTIFY_CLIENT_ID),
+  spotifyClientSecret: sanitizeEnvString(process.env.SPOTIFY_CLIENT_SECRET),
   spotifyRedirectUri:
-    process.env.SPOTIFY_REDIRECT_URI || `http://localhost:${defaultBackendPort}/api/spotify/callback`,
+    sanitizeEnvString(process.env.SPOTIFY_REDIRECT_URI) || `http://localhost:${defaultBackendPort}/api/spotify/callback`,
 
-  // Auth
-  jwtSecret: process.env.JWT_SECRET || "echona_dev_secret_change_in_production",
-  authTokenTtl: process.env.AUTH_TOKEN_TTL || "7d",
+  // Auth — Google OAuth
+  googleClientId: sanitizeEnvString(process.env.GOOGLE_CLIENT_ID),
+  googleClientSecret: sanitizeEnvString(process.env.GOOGLE_CLIENT_SECRET),
+  sessionSecret: sanitizeEnvString(process.env.SESSION_SECRET) || "echona_dev_session_secret_change_in_production",
+  sessionMaxAgeMs: 7 * 24 * 60 * 60 * 1000, // 7 days
 
   // Timeouts
   requestTimeoutMs: parseTimeout(process.env.REQUEST_TIMEOUT_MS, shared?.timeouts?.request || 12000),

@@ -29,7 +29,7 @@ function SessionWarning() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { logout(); window.location.href = "/auth"; }}
-                className="px-3 py-1 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                className="px-3 py-1 text-xs font-bold bg-slate-900/30 hover:bg-slate-900/50 rounded-lg transition-colors"
               >
                 Sign in again
               </button>

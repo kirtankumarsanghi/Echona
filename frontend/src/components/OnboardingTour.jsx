@@ -12,7 +12,7 @@ const STEPS = [
   {
     target: "mood-detect",
     title: "Step 1: Detect Your Mood",
-    description: "Use face detection, voice analysis, text input, or manual selection to identify how you're feeling.",
+    description: "Use face detection, voice analysis, text input, or the mood picker to identify how you're feeling.",
     position: "center",
     icon: "🎭",
   },

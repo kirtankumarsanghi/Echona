@@ -1,102 +1,70 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import { getToken, getUser, login as authLogin, logout as authLogout, isLoggedIn } from "../utils/auth";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { getUser, saveUser, clearUser } from "../utils/auth";
+import axiosInstance from "../api/axiosInstance";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getUser());
-  const [authenticated, setAuthenticated] = useState(() => isLoggedIn());
-  const [sessionWarning, setSessionWarning] = useState(false);
-  const warningTimerRef = useRef(null);
-  const logoutTimerRef = useRef(null);
+  const [authenticated, setAuthenticated] = useState(() => Boolean(getUser()));
+  const [loading, setLoading] = useState(true); // verifying session on mount
 
-  // Decode JWT to get expiry
-  const getTokenExpiry = useCallback(() => {
-    const token = getToken();
-    if (!token) return null;
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      return payload.exp ? payload.exp * 1000 : null; // ms
-    } catch {
-      return null;
-    }
+  // On mount, verify session with the server
+  useEffect(() => {
+    axiosInstance
+      .get("/api/auth/me")
+      .then(({ data }) => {
+        if (data.success && data.authenticated && data.user) {
+          saveUser(data.user);
+          setUser(data.user);
+          setAuthenticated(true);
+        } else {
+          clearUser();
+          setUser(null);
+          setAuthenticated(false);
+        }
+      })
+      .catch(() => {
+        // 401 = no active session
+        clearUser();
+        setUser(null);
+        setAuthenticated(false);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  // Session timeout warning (#27)
-  const setupSessionTimers = useCallback(() => {
-    // Clear existing timers
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-
-    const expiry = getTokenExpiry();
-    if (!expiry) return;
-
-    const now = Date.now();
-    const timeLeft = expiry - now;
-    const WARNING_BEFORE = 5 * 60 * 1000; // 5 minutes before expiry
-
-    if (timeLeft <= 0) {
-      // Already expired
-      logout();
-      return;
-    }
-
-    // Show warning 5 minutes before expiry
-    if (timeLeft > WARNING_BEFORE) {
-      warningTimerRef.current = setTimeout(() => {
-        setSessionWarning(true);
-      }, timeLeft - WARNING_BEFORE);
-    } else {
-      // Less than 5 min left, show warning immediately
-      setSessionWarning(true);
-    }
-
-    // Auto-logout at expiry
-    logoutTimerRef.current = setTimeout(() => {
-      logout();
-    }, timeLeft);
-  }, [getTokenExpiry]);
-
-  useEffect(() => {
-    if (authenticated) {
-      setupSessionTimers();
-    }
-    return () => {
-      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-    };
-  }, [authenticated, setupSessionTimers]);
-
-  const login = useCallback((token, userData) => {
-    authLogin(token, userData);
+  const login = useCallback((userData) => {
+    saveUser(userData);
     setUser(userData);
     setAuthenticated(true);
-    setSessionWarning(false);
   }, []);
 
-  const logout = useCallback(() => {
-    authLogout();
+  const logout = useCallback(async () => {
+    try {
+      await axiosInstance.post("/api/auth/logout");
+    } catch {
+      // best-effort
+    }
+    clearUser();
     setUser(null);
     setAuthenticated(false);
-    setSessionWarning(false);
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
   }, []);
 
-  const dismissSessionWarning = useCallback(() => {
-    setSessionWarning(false);
-  }, []);
-
-  // Listen for storage changes (other tabs)
+  // Sync across tabs
   useEffect(() => {
     const handleStorage = (e) => {
-      if (e.key === "echona_token") {
+      if (e.key === "echona_user") {
         if (!e.newValue) {
           setUser(null);
           setAuthenticated(false);
         } else {
-          setUser(getUser());
-          setAuthenticated(true);
+          try {
+            const parsed = JSON.parse(e.newValue);
+            setUser(parsed);
+            setAuthenticated(true);
+          } catch {
+            /* ignore */ 
+          }
         }
       }
     };
@@ -105,7 +73,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, authenticated, login, logout, sessionWarning, dismissSessionWarning }}>
+    <AuthContext.Provider value={{ user, authenticated, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

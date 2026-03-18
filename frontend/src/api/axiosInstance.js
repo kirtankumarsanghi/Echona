@@ -1,15 +1,14 @@
 import axios from "axios";
-import { getToken, logout as authLogout } from "../utils/auth";
+import { clearUser } from "../utils/auth";
 
-// Use relative URLs so Vite proxy handles routing to backend
-// In production, set VITE_API_URL to the actual backend URL
+// In production set VITE_API_URL to the backend URL; leave empty for Vite proxy
 const API_BASE_URL =
   typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL
     ? import.meta.env.VITE_API_URL
     : "";
 
 const MAX_RETRIES = 3;
-const RETRY_BASE_DELAY = 2000; // Longer delay for cold starts
+const RETRY_BASE_DELAY = 2000;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,24 +19,18 @@ function getHeader(headers, key) {
   return headers[key] || headers[key.toLowerCase()] || headers[key.toUpperCase()];
 }
 
-// Create axios instance — empty baseURL means requests go through Vite proxy
-// Longer timeout for production (Render cold starts take 30-60 seconds)
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: API_BASE_URL ? 60000 : 15000, // 60s for production, 15s for dev
+  headers: { "Content-Type": "application/json" },
+  timeout: API_BASE_URL ? 60000 : 15000,
+  // CRITICAL: send session cookie on every request
+  withCredentials: true,
 });
 
-// ─── Request interceptor: inject auth token + CSRF (#25) ─────────────────
+// ─── Request interceptor: inject CSRF token ────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    // CSRF double-submit: read csrf_token cookie and send as header
+    // CSRF double-submit: read csrf_token cookie and echo it in header
     const csrfCookie = document.cookie
       .split(";")
       .find((c) => c.trim().startsWith("csrf_token="));
@@ -110,9 +103,9 @@ axiosInstance.interceptors.response.use(
       const isMlRoute = url.includes("/api/ml/");
       const isHealthRoute = url.includes("/health");
 
-      const isExpiredToken =
-        responseData.code === "TOKEN_EXPIRED" ||
-        responseData.error === "Session expired";
+      const isExpiredSession =
+        responseData.code === "NO_SESSION" ||
+        responseData.error === "Authentication required";
 
       if (
         !isAuthRoute &&
@@ -120,8 +113,8 @@ axiosInstance.interceptors.response.use(
         !isMlRoute &&
         !isHealthRoute
       ) {
-        // Token is invalid/expired — clear entire session via centralized auth
-        authLogout();
+        // Session is gone — clear local user cache and redirect
+        clearUser();
 
         if (
           window.location.pathname !== "/auth" &&
@@ -129,11 +122,11 @@ axiosInstance.interceptors.response.use(
           window.location.pathname !== "/"
         ) {
           window.location.href = "/auth";
-          return Promise.reject(error); // Don't continue processing
+          return Promise.reject(error);
         }
       }
 
-      if (isExpiredToken) {
+      if (isExpiredSession) {
         error.message = "Your session has expired. Please sign in again.";
         error.userFriendly = true;
       }

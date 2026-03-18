@@ -230,7 +230,7 @@ const MusicChallenges = ({ currentSong, mood, inDrawer = false }) => {
             <div className="flex gap-2">
               <button
                 onClick={completeChallenge}
-                className="flex-1 py-2.5 bg-white text-neutral-900 rounded-xl font-semibold text-sm transition-all hover:shadow-md"
+                className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-100 text-slate-900 rounded-xl font-semibold text-sm transition-all hover:shadow-md border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"
               >
                 Complete
               </button>

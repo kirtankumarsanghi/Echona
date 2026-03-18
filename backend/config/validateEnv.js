@@ -29,39 +29,67 @@ function validateDistinctPorts(config) {
 }
 
 function validateJwt(config, errors, warnings) {
-  if (!hasValue(config.jwtSecret)) {
-    // In dev mode, use a fallback to prevent crash
+  // JWT removed — app now uses Google OAuth + express-session
+  const weakSecrets = new Set([
+    "echona_dev_session_secret_change_in_production",
+    "secret",
+    "session_secret",
+    "change_this",
+  ]);
+
+  if (!hasValue(config.sessionSecret)) {
     if (config.nodeEnv === "development") {
-      warnings.push("JWT_SECRET not set — using development fallback. Set a proper secret for production.");
+      warnings.push("SESSION_SECRET not set — using development fallback. Set a strong secret for production.");
       return;
     }
-    errors.push("JWT_SECRET is required.");
+    errors.push("SESSION_SECRET is required.");
     return;
   }
 
-  const weakSecrets = new Set([
-    "change_this_jwt_secret",
-    "your_super_secret_jwt_key_change_this_in_production",
-    "secret",
-    "jwt_secret",
-    "change_this_to_a_strong_random_secret",
-    "replace_with_strong_secret",
-  ]);
+  if (isStrictMode(config) && weakSecrets.has(config.sessionSecret)) {
+    errors.push("SESSION_SECRET is weak/default. Set a strong random secret before running in production/staging.");
+  } else if (weakSecrets.has(config.sessionSecret)) {
+    warnings.push("SESSION_SECRET is using a default value. Set a strong secret for production.");
+  }
 
-  if (isStrictMode(config) && weakSecrets.has(config.jwtSecret)) {
-    errors.push("JWT_SECRET is weak/default. Set a strong secret before running in production/staging.");
-  } else if (weakSecrets.has(config.jwtSecret)) {
-    warnings.push("JWT_SECRET is using a default value. Set a strong secret for production.");
+  if (!hasValue(config.googleClientId)) {
+    if (isStrictMode(config)) {
+      errors.push("GOOGLE_CLIENT_ID is required for Google OAuth.");
+    } else {
+      warnings.push("GOOGLE_CLIENT_ID not set — Google sign-in will not work.");
+    }
+  }
+
+  if (!hasValue(config.googleClientSecret)) {
+    if (isStrictMode(config)) {
+      errors.push("GOOGLE_CLIENT_SECRET is required for Google OAuth.");
+    } else {
+      warnings.push("GOOGLE_CLIENT_SECRET not set — Google sign-in will not work.");
+    }
   }
 }
 
-function validateAuth(config, errors) {
-  if (!hasValue(config.authTokenTtl)) {
-    errors.push("AUTH_TOKEN_TTL is required.");
-  }
+function validateAuth(_config, _errors) {
+  // auth is handled via Google OAuth + session — nothing additional to validate here
 }
 
 function validateSpotify(config, errors, warnings) {
+  const looksLikePlaceholder = (value) => {
+    if (!hasValue(value)) {
+      return false;
+    }
+    const v = String(value).toLowerCase();
+    return (
+      v.includes("your_") ||
+      v.includes("change_me") ||
+      v.includes("example") ||
+      v.includes("client_id") ||
+      v.includes("client_secret") ||
+      v.includes("spotify_client") ||
+      v.includes("dummy")
+    );
+  };
+
   const hasId = hasValue(config.spotifyClientId);
   const hasSecret = hasValue(config.spotifyClientSecret);
   const hasRedirect = hasValue(config.spotifyRedirectUri);
@@ -82,6 +110,13 @@ function validateSpotify(config, errors, warnings) {
 
     // Always warn instead of error - Spotify is optional
     warnings.push(`Spotify partially configured. Missing: ${missing.join(", ")}. Spotify features will be unavailable.`);
+    return;
+  }
+
+  if (looksLikePlaceholder(config.spotifyClientId) || looksLikePlaceholder(config.spotifyClientSecret)) {
+    warnings.push(
+      "Spotify credentials appear to be placeholder values. /api/spotify/health will fail with invalid_client until real credentials are set."
+    );
   }
 }
 

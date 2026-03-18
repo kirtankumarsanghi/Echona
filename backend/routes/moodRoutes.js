@@ -11,7 +11,7 @@ const MAX_MOODS = 500;
 let moods = [];
 let moodIdCounter = 1;
 
-const ALLOWED_MOODS = new Set(["Happy", "Sad", "Angry", "Calm", "Excited", "Anxious"]);
+const ALLOWED_MOODS = new Set(["Happy", "Sad", "Angry", "Calm", "Excited", "Anxious", "Stressed", "Lonely", "Tired", "Neutral"]);
 
 function normalizeMood(rawMood) {
   const value = String(rawMood || "").trim();
@@ -26,6 +26,10 @@ function normalizeMood(rawMood) {
   if (lowered === "calm") return "Calm";
   if (lowered === "excited") return "Excited";
   if (lowered === "anxious") return "Anxious";
+  if (lowered === "stressed") return "Stressed";
+  if (lowered === "lonely") return "Lonely";
+  if (lowered === "tired") return "Tired";
+  if (lowered === "neutral") return "Neutral";
 
   return ALLOWED_MOODS.has(value) ? value : null;
 }
@@ -41,12 +45,16 @@ function parseScore(rawScore, fallback = 5) {
 
 function quickTextMoodFallback(text) {
   const value = String(text || "").toLowerCase();
-  if (/(happy|great|good|awesome|excited|joy)/.test(value)) return "Happy";
-  if (/(sad|down|depressed|cry|upset)/.test(value)) return "Sad";
-  if (/(angry|mad|furious|annoyed)/.test(value)) return "Angry";
-  if (/(anxious|worried|stress|nervous|panic)/.test(value)) return "Anxious";
-  if (/(calm|peaceful|relax|chill)/.test(value)) return "Calm";
-  return "Calm";
+  if (/(happy|great|good|awesome|joy|cheerful)/.test(value)) return "Happy";
+  if (/(sad|down|depressed|cry|upset|heartbroken)/.test(value)) return "Sad";
+  if (/(angry|mad|furious|annoyed|rage|irritated)/.test(value)) return "Angry";
+  if (/(anxious|worried|nervous|panic|uneasy)/.test(value)) return "Anxious";
+  if (/(stressed|overwhelmed|pressure|burnout|tense)/.test(value)) return "Stressed";
+  if (/(lonely|alone|isolated|miss|abandoned)/.test(value)) return "Lonely";
+  if (/(tired|exhausted|sleepy|fatigued|drained|bored)/.test(value)) return "Tired";
+  if (/(excited|thrilled|pumped|hyped|energetic)/.test(value)) return "Excited";
+  if (/(calm|peaceful|relax|chill|serene)/.test(value)) return "Calm";
+  return "Neutral";
 }
 
 // Add mood log (no authentication required)
@@ -288,10 +296,16 @@ router.post("/analyze-text", async (req, res) => {
           "happy": "Happy",
           "sad": "Sad",
           "anger": "Angry",
-          "stressed": "Anxious",
+          "angry": "Angry",
+          "stressed": "Stressed",
+          "anxious": "Anxious",
+          "lonely": "Lonely",
+          "tired": "Tired",
           "romantic": "Excited",
           "excited": "Excited",
-          "random": "Calm"
+          "calm": "Calm",
+          "neutral": "Neutral",
+          "random": "Neutral"
         };
 
         const detectedMood = moodMap[analysis.mood] || "Calm";

@@ -262,7 +262,7 @@ const SpotifyDashboard = ({ spotifyToken }) => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
                     onClick={() => playTrack(item.track.uri)}
-                    className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-all cursor-pointer group"
+                    className="flex items-center gap-3 p-3 hover:bg-slate-200/10 rounded-lg transition-all cursor-pointer group"
                   >
                     <div className="text-gray-600 text-sm font-mono w-6 text-right group-hover:text-green-400">
                       {index + 1}
@@ -304,7 +304,7 @@ const SpotifyDashboard = ({ spotifyToken }) => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03 }}
                     onClick={() => playTrack(track.uri)}
-                    className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-lg transition-all cursor-pointer group"
+                    className="flex items-center gap-3 p-3 hover:bg-slate-200/10 rounded-lg transition-all cursor-pointer group"
                   >
                     <div className={`text-sm font-bold w-6 text-right ${
                       index < 3 ? 'text-green-400' : 'text-gray-600'
@@ -355,7 +355,7 @@ const SpotifyDashboard = ({ spotifyToken }) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.04 }}
-                    className="group relative bg-white/[0.03] rounded-xl p-4 hover:bg-white/[0.07] transition-all cursor-pointer text-center"
+                    className="group relative bg-slate-200/10 rounded-xl p-4 hover:bg-slate-200/15 transition-all cursor-pointer text-center"
                   >
                     <div className={`absolute top-2 left-2 text-xs font-bold px-1.5 py-0.5 rounded ${
                       index < 3 ? 'bg-green-500/20 text-green-400' : 'text-gray-600'

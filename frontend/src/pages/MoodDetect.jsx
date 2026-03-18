@@ -1,15 +1,15 @@
-import { useState, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { analyzeWithFlask } from "../api/flask";
+import { detectFace, detectText, detectVoice } from "../api/flask";
 import { useToast } from "../components/Toast";
 import AppShell from "../components/AppShell";
 import OptionsMenu from "../components/OptionsMenu";
-import { getMoodList } from "../components/MoodIcons";           // #20 extracted SVGs
 import { useMood } from "../context/MoodContext";                // #18 context
 import { useSubmitGuard } from "../hooks/useDebounce";           // #21 debounce
 import { sanitizeText } from "../utils/sanitize";                // #26 sanitize
 import SEO from "../components/SEO";                             // #24 SEO
+import MoodChatDetect from "../components/MoodChatDetect";        // AI chat detection
 
 function MoodDetect() {
   const navigate = useNavigate();
@@ -17,35 +17,70 @@ function MoodDetect() {
   const { saveMood } = useMood();                                 // #18 context
   const { guarded, guard } = useSubmitGuard();                    // #21 debounce
 
-  const [mode, setMode] = useState("manual"); // manual | camera | voice | text
+  const [mode, setMode] = useState("camera"); // camera | voice | text | chat
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedMood, setSelectedMood] = useState(null);
-  const [ripple, setRipple] = useState(null);                     // #14 micro-interaction
+  const [cameraReady, setCameraReady] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const voiceChunksRef = useRef([]);
+  const voiceStreamRef = useRef(null);
 
-  // Use extracted mood icons from MoodIcons.jsx (#20)
-  const moods = getMoodList();
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceAudioBase64, setVoiceAudioBase64] = useState("");
+  const [voiceFormat, setVoiceFormat] = useState("webm");
 
-  /* ---------------- MANUAL ---------------- */
-  
-  const selectManualMood = (moodName) => {
-    if (guarded) return;                                           // #21 debounce guard
-    guard(async () => {
-      setSelectedMood(moodName);
-      setRipple(moodName);                                         // #14 trigger ripple
-      localStorage.setItem("detected_mood", moodName);
-      saveMood(moodName);                                          // #18 context
-      showToast(`Mood set to: ${moodName}`, "success");
-      setTimeout(() => {
-        setRipple(null);
-        navigate("/music");
-      }, 1500);
-    });
+  const modeOptions = [
+    { id: "camera", label: "Face", short: "Visual analysis", hint: "Use camera expression" },
+    { id: "voice", label: "Voice", short: "Speech cues", hint: "Record and analyze voice" },
+    { id: "text", label: "Text", short: "Written context", hint: "Describe how you feel" },
+    { id: "chat", label: "Guided Chat", short: "Structured prompts", hint: "Short mood interview" },
+  ];
+
+  const getModeIcon = (id) => {
+    switch (id) {
+      case "manual":
+      case "camera":
+        return (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        );
+      case "voice":
+        return (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a5 5 0 005-5V8a5 5 0 10-10 0v5a5 5 0 005 5zm0 0v3m-4 0h8" />
+          </svg>
+        );
+      case "text":
+        return (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h8m-8 4h6" />
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+          </svg>
+        );
+      case "chat":
+      default:
+        return (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+    }
   };
+
+  const workflowSteps = [
+    { id: 1, title: "Choose Method" },
+    { id: 2, title: "Provide Input" },
+    { id: 3, title: "Get Mood Result" },
+  ];
+
+  const activeMode = modeOptions.find((item) => item.id === mode) || modeOptions[0];
 
   /* ---------------- CAMERA ---------------- */
 
@@ -54,6 +89,7 @@ function MoodDetect() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
+        setCameraReady(true);
     }
   } catch (err) {
     console.error("Camera access error:", err);
@@ -68,6 +104,32 @@ function MoodDetect() {
 
 const stopCamera = () => {
   videoRef.current?.srcObject?.getTracks().forEach(t => t.stop());
+  setCameraReady(false);
+};
+
+const blobToBase64 = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",", 2)[1] : "";
+      if (!base64) {
+        reject(new Error("Could not encode audio recording"));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+const stopVoiceCapture = () => {
+  if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+    mediaRecorderRef.current.stop();
+  }
+  voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
+  voiceStreamRef.current = null;
+  setIsRecording(false);
 };
 
 const capturePhoto = async () => {
@@ -90,10 +152,7 @@ const capturePhoto = async () => {
 
   setLoading(true);
   try {
-    const res = await analyzeWithFlask({
-      type: "face",
-      image: base64Image,
-    });
+    const res = await detectFace({ image: base64Image });
 
     if (res.error || !res.mood) {
       throw new Error(res.error || "Face detection failed");
@@ -115,6 +174,97 @@ const capturePhoto = async () => {
   
 
   /* ---------------- VOICE ---------------- */
+
+  const startVoiceRecording = async () => {
+    if (guarded || loading) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      showToast("Audio recording is not supported in this browser", "error");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+      voiceChunksRef.current = [];
+
+      const preferredTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ];
+      const mimeType = preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          voiceChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        try {
+          const type = recorder.mimeType || "audio/webm";
+          const blob = new Blob(voiceChunksRef.current, { type });
+          const encoded = await blobToBase64(blob);
+          setVoiceAudioBase64(encoded);
+
+          const mappedFormat = type.includes("wav")
+            ? "wav"
+            : type.includes("mp4")
+              ? "mp4"
+              : "webm";
+          setVoiceFormat(mappedFormat);
+          showToast("Voice recording captured. Tap Analyze Voice.", "success");
+        } catch (err) {
+          console.error("Voice recording processing error:", err);
+          showToast("Could not process recorded audio", "error");
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setVoiceAudioBase64("");
+      setIsRecording(true);
+      showToast("Recording started", "info");
+    } catch (err) {
+      console.error("Microphone access error:", err);
+      showToast(
+        err.name === "NotAllowedError"
+          ? "Microphone permission denied. Please allow microphone access."
+          : "Could not access microphone on this device.",
+        "error"
+      );
+    }
+  };
+
+  const analyzeRecordedVoice = async () => {
+    if (!voiceAudioBase64 || guarded) {
+      showToast("Please record your voice first", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await detectVoice({
+        audio_base64: voiceAudioBase64,
+        format: voiceFormat,
+      });
+
+      if (res.error || !res.mood) {
+        throw new Error(res.error || "Voice analysis failed");
+      }
+
+      localStorage.setItem("detected_mood", res.mood);
+      saveMood(res.mood);
+      showToast(`Detected: ${res.mood}`, "success");
+      setTimeout(() => navigate("/music"), 1500);
+    } catch (err) {
+      console.error("Voice model analysis error:", err);
+      showToast(err.message || "Voice analysis failed", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const startVoice = () => {
     const SpeechRecognition =
@@ -144,8 +294,7 @@ const capturePhoto = async () => {
       }
       setLoading(true);
       try {
-        const res = await analyzeWithFlask({ 
-          type: "text",
+        const res = await detectText({ 
           text: sanitizeText(spokenText)                           // #26 sanitize
         });
         
@@ -167,12 +316,15 @@ const capturePhoto = async () => {
     recog.start();
   };
 
+  const stopVoiceTranscript = () => {
+    recognitionRef.current?.stop?.();
+  };
+
   const analyzeVoice = async () => {
     if (!text.trim() || guarded) return;                           // #21 debounce
     setLoading(true);
     try {
-      const res = await analyzeWithFlask({ 
-        type: "text",
+      const res = await detectText({ 
         text: sanitizeText(text)                                   // #26 sanitize
       });
       
@@ -197,8 +349,7 @@ const capturePhoto = async () => {
     if (!text.trim() || guarded) return;                           // #21 debounce
     setLoading(true);
     try {
-      const res = await analyzeWithFlask({ 
-        type: "text",
+      const res = await detectText({ 
         text: sanitizeText(text)                                   // #26 sanitize
       });
       
@@ -216,6 +367,20 @@ const capturePhoto = async () => {
     }
     setLoading(false);
   };
+
+  const textPrompts = [
+    "I feel calm and focused today.",
+    "I am stressed about deadlines.",
+    "I feel lonely and unmotivated right now.",
+  ];
+
+  useEffect(() => {
+    return () => {
+      stopVoiceCapture();
+      stopVoiceTranscript();
+      stopCamera();
+    };
+  }, []);
 
   return (
     <AppShell>
@@ -277,7 +442,7 @@ const capturePhoto = async () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/70 hover:bg-slate-800/80 backdrop-blur-sm border border-slate-700 rounded-full text-sm text-slate-200 transition-all group"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-slate-100 transition-all group"
           >
             <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -305,10 +470,8 @@ const capturePhoto = async () => {
             animate={{ scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-4">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-violet-300 to-cyan-300">
-                How Are You Feeling?
-              </span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-slate-100">
+              Mood Assessment
             </h1>
           </motion.div>
           <motion.p
@@ -317,8 +480,24 @@ const capturePhoto = async () => {
             transition={{ delay: 0.4 }}
             className="text-slate-300 text-base md:text-lg max-w-2xl mx-auto"
           >
-            Choose your preferred detection method or manually select your current mood
+            Choose a detection method and get a fast, guided mood result.
           </motion.p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="max-w-4xl mx-auto mb-8"
+        >
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
+            {workflowSteps.map((step) => (
+              <div key={step.id} className="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 md:px-4 md:py-3">
+                <p className="text-[10px] md:text-xs uppercase tracking-wider text-slate-400">Step {step.id}</p>
+                <p className="text-xs md:text-sm font-semibold text-slate-100">{step.title}</p>
+              </div>
+            ))}
+          </div>
         </motion.div>
 
         {/* MODE SELECT */}
@@ -326,16 +505,11 @@ const capturePhoto = async () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex justify-center gap-3 md:gap-4 mb-16 flex-wrap max-w-4xl mx-auto"
+          className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8 max-w-6xl mx-auto"
           role="tablist"
           aria-label="Detection method"
         >
-          {[
-            { id: "manual", icon: "●", label: "Manual Selection" },
-            { id: "camera", icon: "◉", label: "Face Detection" },
-            { id: "voice", icon: "◐", label: "Voice Analysis" },
-            { id: "text", icon: "◆", label: "Text Analysis" }
-          ].map((m, index) => (
+          {modeOptions.map((m, index) => (
             <motion.button
               key={m.id}
               role="tab"
@@ -345,155 +519,54 @@ const capturePhoto = async () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + index * 0.1 }}
               onClick={() => setMode(m.id)}
-              whileHover={{ scale: 1.05, y: -3 }}
+              whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.95 }}
-              className={`relative px-6 md:px-8 py-4 rounded-2xl font-bold text-sm md:text-base transition-all duration-300 shadow-lg overflow-hidden border ${
+              className={`relative text-left px-4 py-3 rounded-xl transition-all duration-200 overflow-hidden border ${
                 mode === m.id
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-violet-500/30 border-violet-500/60"
-                  : "bg-slate-900/70 text-slate-300 hover:bg-slate-800/80 backdrop-blur-xl border-slate-700 hover:border-slate-500"
+                  ? "bg-primary-700/20 text-white border-primary-500/60 shadow-lg shadow-primary-700/20"
+                  : "bg-slate-900 text-slate-200 hover:bg-slate-800 border-slate-700"
               }`}
             >
               {mode === m.id && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 -z-10"
+                  className="absolute inset-0 bg-primary-700/15 -z-10"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
-              <span className="relative flex items-center gap-2">
-                <span className="text-xl">{m.icon}</span>
-                <span>{m.label}</span>
+              <span className="relative flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-950/50 border border-slate-600/60 text-slate-200">
+                  {getModeIcon(m.id)}
+                </span>
+                <span className="font-semibold text-sm md:text-base">{m.label}</span>
               </span>
+              <p className={`relative text-xs ${mode === m.id ? "text-slate-100" : "text-slate-400"}`}>{m.short}</p>
             </motion.button>
           ))}
         </motion.div>
 
-        {/* MANUAL MODE */}
-        {mode === "manual" && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-6xl mx-auto"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-12"
-            >
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.5 }}
-                className="inline-block mb-4"
-              >
-                <div className="px-4 py-2 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/30 rounded-full backdrop-blur-sm">
-                  <span className="text-violet-400 font-semibold text-xs tracking-widest uppercase">Manual Selection</span>
-                </div>
-              </motion.div>
-              <h2 className="text-3xl md:text-5xl font-bold mb-4 text-neutral-100 tracking-tight">
-                Select Your Current Mood
-              </h2>
-              <p className="text-neutral-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-                Choose the emotion that resonates with your current state of mind
-              </p>
-            </motion.div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6" role="radiogroup" aria-label="Select your mood">
-              {moods.map((mood, index) => (
-                <motion.button
-                  key={mood.name}
-                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ 
-                    delay: index * 0.1,
-                    type: "spring",
-                    stiffness: 100
-                  }}
-                  whileHover={{ scale: 1.05, y: -8 }}
-                  whileTap={{ scale: 0.92 }}
-                  onClick={() => selectManualMood(mood.name)}
-                  disabled={loading || guarded}
-                  role="radio"
-                  aria-checked={selectedMood === mood.name}
-                  aria-label={`${mood.name} — ${mood.description}`}
-                  className={`relative p-8 md:p-10 rounded-2xl bg-neutral-900/60 backdrop-blur-sm border overflow-hidden group transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    selectedMood === mood.name
-                      ? `${mood.borderColor} ring-2 ring-offset-2 ring-offset-neutral-950 ring-current`
-                      : "border-neutral-700/50 hover:border-neutral-600"
-                  }`}
-                  style={{
-                    boxShadow: '0 4px 24px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)'
-                  }}
-                >
-                  {/* Ripple micro-interaction (#14) */}
-                  <AnimatePresence>
-                    {ripple === mood.name && (
-                      <motion.div
-                        initial={{ scale: 0, opacity: 0.6 }}
-                        animate={{ scale: 4, opacity: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.8 }}
-                        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-gradient-to-r ${mood.color}`}
-                      />
-                    )}
-                  </AnimatePresence>
-                  {/* Gradient Overlay on Hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${mood.bgColor} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-                  
-                  {/* Top Border Accent */}
-                  <motion.div 
-                    className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${mood.color} opacity-0 group-hover:opacity-100`}
-                    initial={{ scaleX: 0 }}
-                    whileHover={{ scaleX: 1 }}
-                    transition={{ duration: 0.4 }}
-                  />
-                  
-                  {/* Radial Glow Effect */}
-                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-2xl bg-gradient-to-br ${mood.color}`} 
-                    style={{ transform: 'scale(0.8)' }} 
-                  />
-                  
-                  <div className="relative z-10">
-                    {/* Icon Container */}
-                    <motion.div
-                      whileHover={{ scale: 1.1, rotate: [0, -3, 3, 0] }}
-                      transition={{ duration: 0.5 }}
-                      className="mb-5 flex justify-center relative"
-                    >
-                      {/* Icon Glow */}
-                      <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${mood.color} opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-300`} />
-                      <div className="relative">
-                        {mood.icon}
-                      </div>
-                    </motion.div>
-                    
-                    {/* Text Content */}
-                    <div className="space-y-2">
-                      <h3 className="text-2xl md:text-3xl font-bold text-neutral-100 tracking-tight">{mood.name}</h3>
-                      <p className="text-sm md:text-base text-neutral-400 font-medium">{mood.description}</p>
-                    </div>
-                    
-                    {/* Animated Bottom Indicator */}
-                    <motion.div 
-                      className={`mt-5 h-1 rounded-full bg-gradient-to-r ${mood.color} mx-auto`}
-                      initial={{ width: "2rem" }}
-                      whileHover={{ width: "4rem" }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  </div>
-                  
-                  {/* Corner Accent */}
-                  <div className={`absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-tl ${mood.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-tl-3xl`} />
-                </motion.button>
-              ))}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="max-w-6xl mx-auto mb-12 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5"
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-slate-400 mb-1">Current Method</p>
+              <h3 className="text-lg font-semibold text-slate-100">{activeMode.label}</h3>
+              <p className="text-sm text-slate-300">{activeMode.hint}</p>
             </div>
-          </motion.div>
-        )}
+            <div className="text-xs text-slate-400 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+              Tip: Best results come from one clear input at a time.
+            </div>
+          </div>
+        </motion.div>
 
         {/* CAMERA MODE */}
         {mode === "camera" && (
           <motion.div
+            id="camera-panel"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
@@ -518,6 +591,15 @@ const capturePhoto = async () => {
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-80 border-2 border-teal-400/50 rounded-full" />
                 </div>
               </div>
+
+              <div className="mb-6 flex flex-wrap gap-2 justify-center text-xs">
+                <span className={`px-3 py-1 rounded-full border ${cameraReady ? "border-emerald-400/40 text-emerald-300" : "border-slate-600 text-slate-400"}`}>
+                  {cameraReady ? "Camera Ready" : "Camera Off"}
+                </span>
+                <span className={`px-3 py-1 rounded-full border ${loading ? "border-violet-400/40 text-violet-300" : "border-slate-600 text-slate-400"}`}>
+                  {loading ? "Analyzing" : "Waiting"}
+                </span>
+              </div>
               
               <div className="flex gap-4 justify-center flex-wrap">
                 <motion.button
@@ -535,7 +617,7 @@ const capturePhoto = async () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={capturePhoto}
-                  disabled={loading}
+                  disabled={loading || !cameraReady}
                   className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl font-bold text-lg shadow-xl hover:shadow-violet-500/35 transition-all disabled:opacity-50 flex items-center gap-2"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -564,6 +646,7 @@ const capturePhoto = async () => {
         {/* VOICE MODE */}
         {mode === "voice" && (
           <motion.div
+            id="voice-panel"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
@@ -593,8 +676,17 @@ const capturePhoto = async () => {
                 Voice Emotion Analysis
               </h2>
               <p className="text-slate-300 mb-8 text-base md:text-lg max-w-lg mx-auto">
-                Speak naturally about your feelings and let our AI analyze your emotional state
+                Record audio to use the voice model directly, or use speech-to-text fallback
               </p>
+
+              <div className="mb-6 flex items-center justify-center gap-2 text-xs text-slate-300">
+                <span className={`px-3 py-1 rounded-full border ${voiceAudioBase64 ? "border-emerald-400/50 text-emerald-300" : "border-slate-600"}`}>
+                  {voiceAudioBase64 ? "Audio Ready" : "No Recording"}
+                </span>
+                <span className={`px-3 py-1 rounded-full border ${isRecording ? "border-rose-400/60 text-rose-300" : "border-slate-600"}`}>
+                  {isRecording ? "Recording" : "Idle"}
+                </span>
+              </div>
               
               {text && (
                 <motion.div
@@ -605,19 +697,47 @@ const capturePhoto = async () => {
                   <p className="text-amber-300 italic text-lg">"{text}"</p>
                 </motion.div>
               )}
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={startVoice}
-                disabled={loading}
-                className="px-12 py-5 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl font-bold text-xl shadow-2xl hover:shadow-violet-500/35 transition-all disabled:opacity-50 flex items-center gap-3 mx-auto"
-              >
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                Start Speaking
-              </motion.button>
+
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={isRecording ? stopVoiceCapture : startVoiceRecording}
+                  disabled={loading}
+                  className="px-8 py-4 bg-gradient-to-r from-rose-600 to-orange-600 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-rose-500/35 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  {isRecording ? "Stop Recording" : "Record with Mic"}
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={analyzeRecordedVoice}
+                  disabled={loading || !voiceAudioBase64}
+                  className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-emerald-500/35 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L4.5 12l5.25-5M14.25 7l5.25 5-5.25 5" />
+                  </svg>
+                  Analyze Voice
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={startVoice}
+                  disabled={loading}
+                  className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-violet-500/35 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  Speech to Text
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -625,6 +745,7 @@ const capturePhoto = async () => {
         {/* TEXT MODE */}
         {mode === "text" && (
           <motion.div
+            id="text-panel"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
@@ -636,7 +757,7 @@ const capturePhoto = async () => {
                   Text Emotion Analysis
                 </h2>
                 <p className="text-slate-300 text-base md:text-lg">
-                  Express your feelings in words and let AI understand your emotional state
+                  Describe your current state in your own words for text-based mood analysis
                 </p>
               </div>
               
@@ -653,6 +774,18 @@ const capturePhoto = async () => {
                   placeholder="Share your thoughts and feelings here...\n\nFor example:\n• 'I feel overwhelmed with all the work I have to do today'\n• 'I'm so excited about my upcoming vacation!'\n• 'Feeling peaceful after a good meditation session'"
                 />
               </motion.div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {textPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => setText(prompt)}
+                    className="px-3 py-1.5 text-xs rounded-full border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 transition-colors"
+                  >
+                    Use: {prompt}
+                  </button>
+                ))}
+              </div>
               
               <motion.div
                 initial={{ opacity: 0 }}
@@ -679,6 +812,42 @@ const capturePhoto = async () => {
                 Analyze My Mood
               </motion.button>
             </div>
+          </motion.div>
+        )}
+
+        {/* CHAT MODE */}
+        {mode === "chat" && (
+          <motion.div
+            id="chat-panel"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <div className="inline-block mb-4">
+                <div className="px-4 py-2 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/30 rounded-full backdrop-blur-sm">
+                  <span className="text-violet-400 font-semibold text-xs tracking-widest uppercase">Guided Conversation</span>
+                </div>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4 text-neutral-100 tracking-tight">
+                Guided Mood Interview
+              </h2>
+              <p className="text-neutral-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                Respond to a short set of structured prompts to estimate your current mood from conversation context
+              </p>
+            </motion.div>
+            <MoodChatDetect
+              onMoodDetected={(detectedMood) => {
+                localStorage.setItem("detected_mood", detectedMood);
+                saveMood(detectedMood);
+                showToast(`Mood detected: ${detectedMood}`, "success");
+                setTimeout(() => navigate("/music"), 1800);
+              }}
+            />
           </motion.div>
         )}
 

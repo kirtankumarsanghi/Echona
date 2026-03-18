@@ -283,7 +283,7 @@ function MoodQuiz({ mood, onClose, onComplete }) {
               </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white"
+                className="p-2 hover:bg-slate-200/10 rounded-full transition-all text-gray-400 hover:text-white"
               >
                 <span className="text-2xl">✕</span>
               </button>
@@ -339,7 +339,7 @@ function MoodQuiz({ mood, onClose, onComplete }) {
                             ? "bg-green-500 text-white"
                             : showIncorrect
                             ? "bg-red-500 text-white"
-                            : "bg-white/5 hover:bg-white/10 text-white"
+                            : "bg-slate-200/10 hover:bg-slate-200/15 text-white"
                         } ${selectedAnswer !== null ? "cursor-not-allowed" : "cursor-pointer"}`}
                       >
                         <div className="flex items-center justify-between">
@@ -381,7 +381,7 @@ function MoodQuiz({ mood, onClose, onComplete }) {
               </div>
 
               {/* Review Answers */}
-              <div className="bg-white/5 rounded-xl p-6 mb-6 max-h-64 overflow-y-auto">
+              <div className="bg-slate-200/10 rounded-xl p-6 mb-6 max-h-64 overflow-y-auto">
                 <h3 className="text-white font-bold mb-4 text-left">Answer Review:</h3>
                 <div className="space-y-3">
                   {answers.map((answer, index) => (

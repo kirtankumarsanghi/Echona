@@ -1,0 +1,208 @@
+{
+  "model": "text_model",
+  "timestamp": "2026-03-16T05:41:49.304098Z",
+  "num_samples": 31684,
+  "num_classes": 10,
+  "classes": [
+    "Angry",
+    "Anxious",
+    "Calm",
+    "Excited",
+    "Happy",
+    "Lonely",
+    "Neutral",
+    "Sad",
+    "Stressed",
+    "Tired"
+  ],
+  "accuracy": 0.4463,
+  "precision_macro": 0.3099,
+  "recall_macro": 0.362,
+  "f1_macro": 0.3192,
+  "confusion_matrix": [
+    [
+      1970,
+      182,
+      332,
+      223,
+      166,
+      0,
+      531,
+      565,
+      358,
+      0
+    ],
+    [
+      63,
+      265,
+      30,
+      24,
+      22,
+      0,
+      32,
+      68,
+      33,
+      0
+    ],
+    [
+      280,
+      128,
+      1217,
+      223,
+      492,
+      0,
+      497,
+      278,
+      180,
+      0
+    ],
+    [
+      148,
+      72,
+      221,
+      1268,
+      304,
+      0,
+      304,
+      121,
+      430,
+      0
+    ],
+    [
+      309,
+      104,
+      910,
+      652,
+      4603,
+      0,
+      531,
+      300,
+      251,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1254,
+      301,
+      1385,
+      952,
+      806,
+      0,
+      3254,
+      808,
+      843,
+      0
+    ],
+    [
+      298,
+      127,
+      135,
+      107,
+      90,
+      0,
+      196,
+      969,
+      169,
+      0
+    ],
+    [
+      132,
+      52,
+      61,
+      173,
+      47,
+      0,
+      140,
+      103,
+      595,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "per_class": {
+    "Angry": {
+      "precision": 0.4423,
+      "recall": 0.4553,
+      "f1": 0.4487,
+      "support": 4327
+    },
+    "Anxious": {
+      "precision": 0.2153,
+      "recall": 0.4935,
+      "f1": 0.2998,
+      "support": 537
+    },
+    "Calm": {
+      "precision": 0.2836,
+      "recall": 0.3693,
+      "f1": 0.3209,
+      "support": 3295
+    },
+    "Excited": {
+      "precision": 0.3501,
+      "recall": 0.4421,
+      "f1": 0.3908,
+      "support": 2868
+    },
+    "Happy": {
+      "precision": 0.7049,
+      "recall": 0.6009,
+      "f1": 0.6488,
+      "support": 7660
+    },
+    "Lonely": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0
+    },
+    "Neutral": {
+      "precision": 0.5933,
+      "recall": 0.3389,
+      "f1": 0.4313,
+      "support": 9603
+    },
+    "Sad": {
+      "precision": 0.3017,
+      "recall": 0.4634,
+      "f1": 0.3655,
+      "support": 2091
+    },
+    "Stressed": {
+      "precision": 0.2081,
+      "recall": 0.4566,
+      "f1": 0.2859,
+      "support": 1303
+    },
+    "Tired": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0
+    }
+  },
+  "vectorizer": "TF-IDF ngram(1,2) 50k",
+  "classifier": "LogisticRegression"
+}

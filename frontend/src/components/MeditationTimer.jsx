@@ -103,7 +103,7 @@ function MeditationTimer({ inline = false }) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-20 z-40 p-3.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl hover:bg-white/20 transition-all group"
+        className="fixed bottom-6 left-20 z-40 p-3.5 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700 text-white shadow-xl hover:bg-slate-800/90 transition-all group"
         title="Meditation Timer"
       >
         <motion.div
@@ -172,7 +172,7 @@ function MeditationModal({
                     key={m}
                     onClick={() => setDuration(m)}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                      duration === m ? 'bg-white text-neutral-900 shadow' : 'text-neutral-500 hover:text-neutral-300'
+                      duration === m ? 'bg-slate-200 hover:bg-slate-100 text-slate-900 shadow border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70' : 'text-neutral-500 hover:text-neutral-300'
                     }`}
                   >
                     {m}
@@ -204,7 +204,7 @@ function MeditationModal({
 
             <button
               onClick={startMeditation}
-              className="w-full py-3.5 bg-white text-neutral-900 rounded-xl font-semibold text-sm hover:shadow-md transition-all"
+              className="w-full py-3.5 bg-slate-200 hover:bg-slate-100 text-slate-900 rounded-xl font-semibold text-sm hover:shadow-md transition-all border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"
             >
               Start Meditation
             </button>

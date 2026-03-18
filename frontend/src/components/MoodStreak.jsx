@@ -91,7 +91,7 @@ function MoodStreak() {
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-xl rounded-2xl p-6 border border-white/10"
+        className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800"
       >
         <div className="animate-pulse">
           <div className="h-8 bg-gray-700 rounded w-3/4 mb-4"></div>
@@ -109,7 +109,7 @@ function MoodStreak() {
       className="bg-gradient-to-br from-orange-500/20 via-yellow-500/20 to-red-500/20 backdrop-blur-xl rounded-2xl p-6 border border-orange-500/30 shadow-xl"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+        <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
           <span className="text-3xl">{getStreakEmoji()}</span>
           Mood Streak
         </h3>
@@ -123,12 +123,12 @@ function MoodStreak() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-white/5 rounded-xl p-4 text-center">
+        <div className="bg-slate-800/60 rounded-xl p-4 text-center border border-slate-700">
           <p className="text-gray-400 text-sm mb-1">Current Streak</p>
           <p className="text-4xl font-bold text-yellow-400">{streak}</p>
           <p className="text-gray-500 text-xs">days</p>
         </div>
-        <div className="bg-white/5 rounded-xl p-4 text-center">
+        <div className="bg-slate-800/60 rounded-xl p-4 text-center border border-slate-700">
           <p className="text-gray-400 text-sm mb-1">Best Streak</p>
           <p className="text-4xl font-bold text-orange-400">{bestStreak}</p>
           <p className="text-gray-500 text-xs">days</p>
@@ -136,7 +136,7 @@ function MoodStreak() {
       </div>
 
       <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-xl p-4 border border-yellow-500/20">
-        <p className="text-white font-semibold text-center">{getStreakMessage()}</p>
+        <p className="text-slate-100 font-semibold text-center">{getStreakMessage()}</p>
       </div>
 
       {/* Streak Milestones */}
@@ -150,7 +150,7 @@ function MoodStreak() {
               className={`flex-1 text-center py-2 rounded-lg ${
                 bestStreak >= milestone
                   ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
-                  : "bg-gray-700/50 text-gray-500"
+                    : "bg-slate-800/60 text-slate-500"
               }`}
             >
               <p className="text-xs font-bold">{milestone}</p>
