@@ -135,7 +135,13 @@ router.get("/me", async (req, res) => {
     return res.json({ success: true, authenticated: true, user: safeUser(user) });
   } catch (err) {
     console.error("[Auth] /me error:", err.message);
-    return res.status(500).json({ success: false, error: "Session check failed" });
+    req.session.destroy(() => {});
+    return res.status(401).json({
+      success: false,
+      authenticated: false,
+      error: "Session unavailable",
+      message: "Session store temporarily unavailable. Please sign in again.",
+    });
   }
 });
 

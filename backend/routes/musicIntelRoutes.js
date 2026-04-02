@@ -333,6 +333,18 @@ async function saveRoom(room) {
   });
 }
 
+async function deleteRoom(code) {
+  const safeCode = String(code || "").trim().toUpperCase();
+  if (!safeCode) return;
+
+  if (useMongoRooms()) {
+    await HealingRoom.deleteOne({ code: safeCode });
+    return;
+  }
+
+  roomStore.delete(safeCode);
+}
+
 function safeRoom(room, req) {
   return {
     code: room.code,
@@ -373,6 +385,257 @@ function inferLanguageHint(text = "") {
   if (/(english|official lyric|official video)/i.test(content)) return "English";
 
   return "Unknown";
+}
+
+const QUERY_MOOD_KEYWORDS = {
+  Happy: ["happy", "joy", "cheerful", "good mood", "feel good", "smile", "positive", "fun"],
+  Sad: ["sad", "down", "depressed", "heartbreak", "cry", "low", "alone", "lonely"],
+  Stressed: ["stressed", "stress", "overwhelmed", "burnout", "pressure", "deadline", "tired"],
+  Anxious: ["anxious", "anxiety", "panic", "nervous", "worried", "restless", "uneasy"],
+  Angry: ["angry", "mad", "rage", "furious", "irritated", "annoyed"],
+  Calm: ["calm", "relax", "relaxing", "peace", "chill", "soothing", "meditation", "sleep"],
+  Excited: ["excited", "hype", "energetic", "pump", "party", "celebrate", "motivation", "workout"],
+  Neutral: ["music", "songs", "playlist", "youtube", "tracks"],
+};
+
+const ML_MOOD_ALIAS = {
+  Stress: "Stressed",
+  stressed: "Stressed",
+  stress: "Stressed",
+  tired: "Stressed",
+  anxiety: "Anxious",
+  worried: "Anxious",
+  fear: "Anxious",
+  neutral: "Neutral",
+  calm: "Calm",
+  happy: "Happy",
+  joy: "Happy",
+  sadness: "Sad",
+  sad: "Sad",
+  angry: "Angry",
+  anger: "Angry",
+  excited: "Excited",
+};
+
+const MOOD_SEARCH_SEEDS = {
+  Happy: ["upbeat songs", "feel good music", "party hits", "happy bollywood songs"],
+  Sad: ["uplifting songs", "comfort songs", "feel good music", "hopeful acoustic songs"],
+  Stressed: ["calming music", "lofi beats", "stress relief music", "relaxing instrumental"],
+  Anxious: ["anxiety relief music", "peaceful piano", "calm ambient music", "slow breathing music"],
+  Angry: ["intense rap songs", "rock workout tracks", "cool down music", "focus beats"],
+  Calm: ["chill relaxing music", "acoustic calm songs", "meditation music", "soft bollywood unplugged"],
+  Excited: ["energetic songs", "dance playlist", "party songs", "high energy bollywood"],
+  Neutral: ["trending songs 2026", "popular songs playlist", "top hits", "new music mix"],
+};
+
+const MOOD_MESSAGES = {
+  Happy: "You seem to be in a positive mood. Here are tracks that match your upbeat vibe.",
+  Sad: "It seems like you may be feeling low. Here are songs selected to gently lift your mood.",
+  Stressed: "You might be feeling stressed. These songs are chosen to help you unwind.",
+  Anxious: "You appear to be feeling anxious. Here are calming tracks to support a steadier rhythm.",
+  Angry: "You may be feeling frustrated. These recommendations can help channel and release that intensity.",
+  Calm: "You appear to be in a relaxed mood. Here are songs that preserve that calm energy.",
+  Excited: "You seem energized. Here are tracks that match your momentum.",
+  Neutral: "Your mood appears balanced. Here is a diverse set of songs to explore.",
+};
+
+function shuffleList(list = []) {
+  const clone = [...list];
+  for (let i = clone.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [clone[i], clone[j]] = [clone[j], clone[i]];
+  }
+  return clone;
+}
+
+function moodToApiValue(mood) {
+  return String(mood || "Neutral").trim().toLowerCase();
+}
+
+function mapToSupportedMood(rawMood = "") {
+  const normalized = String(rawMood || "").trim();
+  if (!normalized) return "Neutral";
+
+  if (ML_MOOD_ALIAS[normalized]) return ML_MOOD_ALIAS[normalized];
+
+  const titled = normalizeMood(normalized);
+  if (QUERY_MOOD_KEYWORDS[titled]) return titled;
+
+  return "Neutral";
+}
+
+function buildMoodMessage(mood) {
+  return MOOD_MESSAGES[mood] || MOOD_MESSAGES.Neutral;
+}
+
+function scoreMoodFromKeywords(query = "") {
+  const text = String(query || "").toLowerCase();
+  if (!text) return { mood: "Neutral", confidence: 0.5, source: "keyword-fallback" };
+
+  const scoreBoard = Object.entries(QUERY_MOOD_KEYWORDS).map(([mood, words]) => {
+    let score = 0;
+    for (const keyword of words) {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`\\b${escaped}\\b`, "gi");
+      const matches = text.match(regex);
+      if (matches?.length) {
+        score += matches.length;
+      }
+    }
+    return { mood, score };
+  });
+
+  const ranked = scoreBoard.sort((a, b) => b.score - a.score);
+  if (!ranked[0]?.score) {
+    return { mood: "Neutral", confidence: 0.56, source: "keyword-fallback" };
+  }
+
+  const top = ranked[0];
+  const total = ranked.reduce((sum, item) => sum + item.score, 0) || 1;
+  const confidence = Math.min(0.92, Math.max(0.58, top.score / total + 0.45));
+  return { mood: top.mood, confidence: Number(confidence.toFixed(2)), source: "keyword-fallback" };
+}
+
+async function detectMoodFromQuery(query = "") {
+  const clean = String(query || "").trim();
+  if (!clean) {
+    return { mood: "Neutral", confidence: 0.5, source: "keyword-fallback" };
+  }
+
+  try {
+    const ml = await axios.post(
+      `${config.mlServiceUrl}/detect-text`,
+      { text: clean },
+      { timeout: Math.min(config.mlTimeoutMs || 15000, 4500) }
+    );
+
+    const payload = ml?.data || {};
+    if (payload?.success && payload?.emotion) {
+      const mood = mapToSupportedMood(payload.emotion);
+      const confRaw = Number(payload.confidence);
+      const confidence = Number.isFinite(confRaw)
+        ? Math.max(0.45, Math.min(0.99, confRaw))
+        : 0.72;
+
+      if (mood) {
+        return {
+          mood,
+          confidence: Number(confidence.toFixed(2)),
+          source: payload.source || "ml-model",
+        };
+      }
+    }
+  } catch {
+    // Keyword fallback handles model outages or timeout.
+  }
+
+  return scoreMoodFromKeywords(clean);
+}
+
+function parseCsvParam(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+function rankByPreferences(videos = [], preferredGenres = [], preferredLanguages = [], detectedMood = "Neutral") {
+  const genreSet = new Set(preferredGenres.map((item) => item.toLowerCase()));
+  const languageSet = new Set(preferredLanguages.map((item) => item.toLowerCase()));
+  const moodNorm = normalizeMood(detectedMood);
+
+  return videos
+    .map((item) => {
+      const title = String(item.title || "").toLowerCase();
+      const artist = String(item.artist || "").toLowerCase();
+      const channel = String(item.channel || "").toLowerCase();
+      const language = String(item.language || "").toLowerCase();
+
+      let score = 0;
+      if (normalizeMood(item.sourceMood) === moodNorm || normalizeMood(item.detectedMood) === moodNorm) score += 4;
+      if (languageSet.has(language)) score += 2;
+
+      for (const genre of genreSet) {
+        if (title.includes(genre) || artist.includes(genre) || channel.includes(genre)) {
+          score += 2;
+          break;
+        }
+      }
+
+      return {
+        ...item,
+        _rankScore: score + Math.random() * 0.35,
+      };
+    })
+    .sort((a, b) => b._rankScore - a._rankScore)
+    .map(({ _rankScore, ...rest }) => rest);
+}
+
+function buildMoodQueries(baseQuery, mood, language = "Any") {
+  const cleanBase = String(baseQuery || "").trim();
+  const safeMood = normalizeMood(mood || "Neutral");
+  const seeds = shuffleList(MOOD_SEARCH_SEEDS[safeMood] || MOOD_SEARCH_SEEDS.Neutral);
+
+  const queries = [cleanBase, ...seeds.slice(0, 2)].filter(Boolean);
+  const withLanguage = queries.map((q) => {
+    if (!language || language === "Any") return q;
+    return `${q} ${language}`;
+  });
+
+  return Array.from(new Set(withLanguage)).slice(0, 3);
+}
+
+async function buildMoodAwareRecommendations({ query, language, maxResults, preferredGenres, preferredLanguages }) {
+  const detection = await detectMoodFromQuery(query);
+  const mood = detection.mood || "Neutral";
+  const message = buildMoodMessage(mood);
+  const searchQueries = buildMoodQueries(query, mood, language);
+
+  const chunks = await Promise.all(
+    searchQueries.map(async (searchQuery) => {
+      try {
+        return await scrapeYoutubeSearch(searchQuery, Math.max(8, maxResults));
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const flattened = chunks.flat();
+  const dedupMap = new Map();
+  for (const video of flattened) {
+    if (!video?.youtubeId || dedupMap.has(video.youtubeId)) continue;
+    dedupMap.set(video.youtubeId, video);
+  }
+
+  let merged = Array.from(dedupMap.values());
+  if (!merged.length) {
+    merged = await scrapeYoutubeSearch(language && language !== "Any" ? `trending songs ${language}` : "trending songs", maxResults);
+  }
+
+  if (language && language !== "Any") {
+    merged = merged.filter((item) => item.language === language || item.language === "Unknown");
+  }
+
+  const ranked = rankByPreferences(merged, preferredGenres, preferredLanguages, mood);
+  const finalResults = ranked.slice(0, maxResults);
+
+  return {
+    mood,
+    confidence: Number(Math.max(0.45, Math.min(0.99, detection.confidence || 0.62)).toFixed(2)),
+    source: detection.source,
+    message,
+    results: finalResults,
+    videos: finalResults.map((item) => ({
+      title: item.title,
+      artist: item.artist,
+      language: item.language,
+      thumbnail: item.thumbnail,
+      youtubeId: item.youtubeId,
+      url: `https://www.youtube.com/watch?v=${item.youtubeId}`,
+    })),
+  };
 }
 
 function safeDecodeHtml(text = "") {
@@ -662,23 +925,35 @@ router.get("/search", async (req, res) => {
     }
 
     const language = String(req.query?.language || "Any").trim();
-    const maxResults = Math.min(50, Math.max(5, Number(req.query?.maxResults) || 30));
-    const searchQuery = language && language !== "Any" ? `${query} ${language} songs` : query;
+    const maxResults = Math.min(50, Math.max(5, Number(req.query?.maxResults) || 10));
+    const preferredGenres = parseCsvParam(req.query?.preferredGenres);
+    const preferredLanguages = parseCsvParam(req.query?.preferredLanguages);
 
-    const videos = await scrapeYoutubeSearch(searchQuery, maxResults);
-
-    const filtered =
-      language && language !== "Any"
-        ? videos.filter((item) => item.language === language || item.language === "Unknown")
-        : videos;
+    const recommendation = await buildMoodAwareRecommendations({
+      query,
+      language,
+      maxResults,
+      preferredGenres,
+      preferredLanguages,
+    });
 
     return res.json({
       success: true,
       query,
       language,
+      mood: moodToApiValue(recommendation.mood),
+      confidence: recommendation.confidence,
+      message: recommendation.message,
+      source: recommendation.source,
       maxResults,
-      count: filtered.length,
-      results: filtered,
+      count: recommendation.results.length,
+      videos: recommendation.videos,
+      results: recommendation.results,
+      personalization: {
+        preferredGenres,
+        preferredLanguages,
+        applied: preferredGenres.length > 0 || preferredLanguages.length > 0,
+      },
       nextPageToken: null,
       prevPageToken: null,
     });
@@ -989,6 +1264,24 @@ router.post("/rooms/:code/message", async (req, res) => {
 
     await saveRoom(room);
     return res.json({ success: true, room: safeRoom(room, req) });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/rooms/:code/close", async (req, res) => {
+  try {
+    const room = await getRoom(req.params.code);
+    if (!room) {
+      return res.status(404).json({ success: false, error: "Room not found" });
+    }
+
+    if (String(room.ownerId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, error: "Only the room owner can close this room" });
+    }
+
+    await deleteRoom(room.code);
+    return res.json({ success: true, code: room.code });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

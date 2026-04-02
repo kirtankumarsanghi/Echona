@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import axiosInstance from "../api/axiosInstance";
 
@@ -8,6 +8,12 @@ const HABIT_KEYS = [
   { key: "exercise", label: "Exercise" },
   { key: "social", label: "Social Time" },
   { key: "screenLimit", label: "Low Screen" },
+];
+
+const COPILOT_TONES = [
+  { key: "calm", label: "Calm" },
+  { key: "coach", label: "Coach" },
+  { key: "direct", label: "Direct" },
 ];
 
 function getDateKey(date = new Date()) {
@@ -80,26 +86,96 @@ function buildInterventionPlan({ mood, score, trendLabel }) {
   };
 }
 
-function buildCopilotReply(message, mood, trendLabel) {
-  const text = message.toLowerCase();
+function extractPrimaryState(text) {
+  if (/(overwhelm|overwhelmed|stress|deadline|pressure|panic|anxious|anxiety)/.test(text)) return "stressed";
+  if (/(sad|down|low|empty|lonely|hopeless|crying)/.test(text)) return "sad";
+  if (/(angry|frustrat|irritat|mad|rage)/.test(text)) return "angry";
+  if (/(tired|drain|exhaust|sleepy|fatigue|burnout|burned out)/.test(text)) return "tired";
+  if (/(happy|great|good|better|excited|motivated|confident|grateful)/.test(text)) return "positive";
+  if (/(horny|lust|sexual urge|turned on)/.test(text)) return "distracted";
+  return "unclear";
+}
 
-  if (/(overwhelm|overwhelmed|stress|deadline|pressure|panic|anx)/.test(text)) {
-    return "I hear that pressure. Let us reduce load now: 1) Pick one must-do task only, 2) Do 2 minutes of box breathing, 3) Start a calm playlist and work in one 25-minute block.";
+function extractNeed(text) {
+  if (/(study|exam|focus|concentrat|work|office|project|deadline)/.test(text)) return "focus";
+  if (/(sleep|night|insomnia|rest)/.test(text)) return "sleep";
+  if (/(friend|family|partner|relationship|alone|lonely)/.test(text)) return "connection";
+  if (/(panic|anxiety|calm|breath|breathe)/.test(text)) return "calm";
+  return "general";
+}
+
+function buildCopilotReply(message, mood, trendLabel, conversation = []) {
+  const raw = String(message || "").trim();
+  const compact = raw.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  if (!compact) {
+    return "Share one clear sentence about what is happening, and I will give you a practical next step.";
   }
 
-  if (/(sad|down|low|empty|lonely|hopeless)/.test(text)) {
-    return "Thanks for sharing that. Try a gentle recovery loop: 1) Move your body for 5-10 minutes, 2) Write one sentence about what hurts most, 3) Message one trusted person.";
+  if (/(suicid|kill myself|self harm|hurt myself|end my life)/.test(compact)) {
+    return "I am really glad you shared this. You deserve immediate support right now. If you may act on these thoughts, call your local emergency number now and contact someone you trust to stay with you while you get help.";
   }
 
-  if (/(tired|drain|exhaust|sleepy|fatigue)/.test(text)) {
-    return "Your system may need restoration. Try this: hydrate now, do a 10-minute low-effort task, and schedule a sleep-protecting wind-down tonight.";
+  if (/^(hi|hello|hey)\b/.test(compact)) {
+    return "I am here with you. Tell me in one line how your mind and body feel right now, and I will help you make a sensible plan for the next 15 minutes.";
   }
 
-  if (/(happy|great|good|better|excited|motivated)/.test(text)) {
-    return "Great energy. Let us lock it in: choose one high-value task, capture what is working today, and save this routine for days when mood drops.";
+  if (/(how are you|who are you|what can you do)/.test(compact)) {
+    return "I am here and ready to support you. I can help you break down what you are feeling, choose one realistic next action, and follow up until you feel more steady.";
   }
 
-  return `Based on your current state (${mood}, trend: ${trendLabel}), I suggest a simple 3-step check-in: name the feeling, choose one tiny action, and schedule a 15-minute follow-up review.`;
+  if (/(thank you|thanks)/.test(compact)) {
+    return "You are welcome. If you want, we can do a quick follow-up check now: what is your stress level from 1 to 10?";
+  }
+
+  const state = extractPrimaryState(compact);
+  const need = extractNeed(compact);
+  const recentUserMessages = conversation
+    .filter((item) => item.role === "user")
+    .slice(-3)
+    .map((item) => String(item.text || "").trim())
+    .filter(Boolean);
+
+  if (/(not calm|not okay|not fine|not good|you are wrong)/.test(compact)) {
+    return "Thank you for correcting me. I understand you are not calm right now. Tell me the strongest feeling in one word, and I will tailor the next step exactly to that feeling.";
+  }
+
+  if (state === "distracted") {
+    return "Thanks for being direct. It sounds like your mind is pulled by strong desire. If you want control and focus now: 1) cold water on face and 10 slow breaths, 2) 5-minute brisk movement, 3) one small task for 15 minutes with no notifications.";
+  }
+
+  if (state === "stressed") {
+    return need === "focus"
+      ? "You sound overloaded and under pressure. Try this work reset now: 1) write only one must-do task, 2) do 2 minutes of box breathing, 3) run one 25-minute focus sprint. After that, message me what changed."
+      : "You sound stressed. Let us reduce load first: 1) breathe slowly for 2 minutes, 2) pick one thing you can control in the next hour, 3) postpone one non-urgent task.";
+  }
+
+  if (state === "sad") {
+    return need === "connection"
+      ? "I hear the heaviness and disconnection. Try this gentle plan: 1) drink water and step outside for 5 minutes, 2) send one short message to someone safe, 3) do one tiny self-care action before sleep."
+      : "That sounds emotionally heavy. For the next 20 minutes: 1) move your body gently, 2) write one honest sentence about what hurts, 3) choose one low-pressure task to regain momentum.";
+  }
+
+  if (state === "angry") {
+    return "I hear strong frustration. Use this de-escalation sequence: 1) pause for 90 seconds, 2) relax jaw and shoulders, 3) write one clear boundary or request before responding to anyone.";
+  }
+
+  if (state === "tired") {
+    return need === "sleep"
+      ? "Your body sounds depleted. Tonight, protect recovery: 1) no heavy screens for 30 minutes before bed, 2) low-light wind-down, 3) set one realistic wake time and keep it tomorrow."
+      : "You sound drained. Let us stabilize energy: hydrate, do one low-effort 10-minute task, then take a short reset break before continuing.";
+  }
+
+  if (state === "positive") {
+    return "Love that you are feeling better. Convert this into progress: choose one high-value task now, finish it in one focused block, then note what helped your mood so you can repeat it.";
+  }
+
+  if (compact.length < 10) {
+    return "I want to understand properly. Please share a bit more: what happened, how you feel, and what you need most right now.";
+  }
+
+  const reference = recentUserMessages.length > 1 ? ` I noticed this has come up across your recent messages too.` : "";
+  return `I hear you.${reference} From what you wrote, the next best step is a short check-in: name the feeling, pick one 5-minute action, and review after 15 minutes. Current context says mood ${mood} with trend ${trendLabel}, so we can keep the plan simple and realistic.`;
 }
 
 function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, streak, onNavigate }) {
@@ -117,9 +193,16 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
   const [syncError, setSyncError] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
   const [refreshingCloud, setRefreshingCloud] = useState(false);
+  const [copilotTone, setCopilotTone] = useState("calm");
+  const chatScrollRef = useRef(null);
 
   const todayKey = getDateKey();
   const todayHabits = habitStore[todayKey] || {};
+
+  useEffect(() => {
+    if (!chatScrollRef.current) return;
+    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [chatMessages, sendingChat]);
 
   useEffect(() => {
     let active = true;
@@ -135,7 +218,12 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
 
         const persistedConversation = data.state?.copilotConversation || [];
         if (persistedConversation.length) {
-          setChatMessages(persistedConversation.map((entry) => ({ role: entry.role, text: entry.text })));
+          const restored = persistedConversation.map((entry) => ({ role: entry.role, text: entry.text }));
+          setChatMessages((current) => {
+            // Do not clobber messages typed before cloud hydration completes.
+            if (current.length > 1) return current;
+            return restored;
+          });
         }
       } catch (err) {
         if (active) setSyncError("Could not load cloud wellness data. Showing latest available view.");
@@ -184,7 +272,11 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
 
         const persistedConversation = data.state?.copilotConversation || [];
         if (persistedConversation.length) {
-          setChatMessages(persistedConversation.map((entry) => ({ role: entry.role, text: entry.text })));
+          const restored = persistedConversation.map((entry) => ({ role: entry.role, text: entry.text }));
+          setChatMessages((current) => {
+            if (current.length > 1) return current;
+            return restored;
+          });
         }
       }
 
@@ -319,26 +411,41 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
   };
 
   const sendMessage = async () => {
+    if (sendingChat) return;
     const trimmed = chatInput.trim();
     if (!trimmed) return;
 
-    const assistantMessage = buildCopilotReply(trimmed, todayMood, trendLabel);
-    const next = [
-      ...chatMessages,
-      { role: "user", text: trimmed },
-      { role: "assistant", text: assistantMessage },
-    ];
-
-    setChatMessages(next);
+    const nextConversation = [...chatMessages, { role: "user", text: trimmed }];
+    setChatMessages(nextConversation);
     setChatInput("");
 
     try {
       setSendingChat(true);
       setSyncError("");
+
       await axiosInstance.post("/api/wellness/copilot", { role: "user", text: trimmed });
-      await axiosInstance.post("/api/wellness/copilot", { role: "assistant", text: assistantMessage });
+
+      const { data } = await axiosInstance.post("/api/wellness/copilot/reply", {
+        message: trimmed,
+        mood: todayMood || "Neutral",
+        trendLabel: trendLabel || "Steady",
+        tone: copilotTone,
+        conversation: nextConversation,
+      });
+
+      const assistantMessage = data?.success
+        ? String(data.reply || "").trim()
+        : "I could not generate a reply right now. Please try again.";
+
+      const fallbackMessage = buildCopilotReply(trimmed, todayMood, trendLabel, chatMessages);
+      const finalReply = assistantMessage || fallbackMessage;
+
+      setChatMessages((prev) => [...prev, { role: "assistant", text: finalReply }]);
+      await axiosInstance.post("/api/wellness/copilot", { role: "assistant", text: finalReply });
     } catch (err) {
-      setSyncError("Message sent locally, but cloud sync failed.");
+      const fallbackMessage = buildCopilotReply(trimmed, todayMood, trendLabel, chatMessages);
+      setChatMessages((prev) => [...prev, { role: "assistant", text: fallbackMessage }]);
+      setSyncError("Live reply failed. Switched to local copilot response.");
       console.error("Failed to persist copilot chat", err);
     } finally {
       setSendingChat(false);
@@ -416,88 +523,30 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
         <p className="text-sm text-slate-300 leading-relaxed">{weeklyReport.summary}</p>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="card-premium p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Emotional Weather Forecast</h3>
-          <span className="text-xs px-2 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-200">Baseline {forecast.baseline || "-"}/10</span>
-        </div>
-
-        {forecast.riskWindows?.length ? (
-          <div className="space-y-2 mb-4">
-            {forecast.riskWindows.map((window) => (
-              <div key={window.label} className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold text-rose-200">{window.label} • {window.zone}</p>
-                  <p className="text-xs text-rose-100/80">{window.avgScore}/10 • {window.confidence}</p>
-                </div>
-                <p className="text-xs text-rose-100/85">{window.suggestion}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-300 mb-4">No major dip windows detected right now. Keep your current routine steady.</p>
-        )}
-
-        <div className="grid grid-cols-4 gap-2">
-          {(forecast.timeline || []).slice(0, 8).map((slot) => (
-            <div key={slot.label} className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-center">
-              <p className="text-[11px] text-slate-400">{slot.label}</p>
-              <p className={`text-xs font-semibold ${slot.zone === "Dip risk" ? "text-rose-300" : slot.zone === "Uplift" ? "text-emerald-300" : "text-sky-300"}`}>
-                {slot.zone}
-              </p>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card-premium p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Habit-Mood Correlation</h3>
-          <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-200">Today</span>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {HABIT_KEYS.map((habit) => {
-            const active = !!todayHabits[habit.key];
-            return (
-              <button
-                key={habit.key}
-                onClick={() => toggleHabit(habit.key)}
-                className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
-                  active
-                    ? "bg-emerald-500/18 text-emerald-200 border-emerald-500/40"
-                    : "bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-800"
-                }`}
-              >
-                {habit.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="space-y-2">
-          {habitCorrelation.map((row) => (
-            <div key={row.key} className="flex items-center justify-between text-sm rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2">
-              <span className="text-slate-300">{row.label}</span>
-              {row.impact == null ? (
-                <span className="text-slate-500">Need more data</span>
-              ) : row.impact >= 0 ? (
-                <span className="text-emerald-300">+{row.impact.toFixed(1)} mood points</span>
-              ) : (
-                <span className="text-rose-300">{row.impact.toFixed(1)} mood points</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5">
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 xl:col-span-2">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">AI Copilot Chat</h3>
           <span className="text-xs px-2 py-1 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-200">Guided Reflection</span>
         </div>
 
-        <div className="h-52 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/60 p-3 space-y-2 mb-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {COPILOT_TONES.map((tone) => (
+            <button
+              key={tone.key}
+              type="button"
+              onClick={() => setCopilotTone(tone.key)}
+              className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                copilotTone === tone.key
+                  ? "bg-violet-500/20 text-violet-100 border-violet-400/40"
+                  : "bg-slate-900/60 text-slate-300 border-slate-700 hover:bg-slate-800"
+              }`}
+            >
+              {tone.label}
+            </button>
+          ))}
+        </div>
+
+        <div ref={chatScrollRef} className="h-72 md:h-80 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/60 p-3 space-y-2 mb-3">
           {chatMessages.map((msg, idx) => (
             <div
               key={`${msg.role}-${idx}`}
@@ -510,6 +559,12 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
               {msg.text}
             </div>
           ))}
+
+          {sendingChat && (
+            <div className="text-sm px-3 py-2 rounded-lg max-w-[92%] bg-slate-800 text-slate-300 border border-slate-700">
+              Thinking...
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">
@@ -517,12 +572,15 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") sendMessage();
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
             }}
             className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
             placeholder="Tell me what you are feeling..."
           />
-          <button onClick={sendMessage} className="btn-primary text-sm">
+          <button onClick={sendMessage} disabled={sendingChat || !chatInput.trim()} className="btn-primary text-sm min-w-[104px] disabled:opacity-60 disabled:cursor-not-allowed">
             {sendingChat ? "Sending..." : "Send"}
           </button>
         </div>

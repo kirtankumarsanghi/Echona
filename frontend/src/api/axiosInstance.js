@@ -9,6 +9,7 @@ const API_BASE_URL =
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY = 2000;
+let csrfTokenCache = "";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -17,6 +18,36 @@ function sleep(ms) {
 function getHeader(headers, key) {
   if (!headers) return undefined;
   return headers[key] || headers[key.toLowerCase()] || headers[key.toUpperCase()];
+}
+
+async function ensureCsrfToken() {
+  if (csrfTokenCache) return csrfTokenCache;
+
+  // First try local cookie (works in same-site/localhost setups)
+  const csrfCookie = document.cookie
+    .split(";")
+    .find((c) => c.trim().startsWith("csrf_token="));
+  if (csrfCookie) {
+    csrfTokenCache = csrfCookie.split("=")[1];
+    return csrfTokenCache;
+  }
+
+  // Cross-domain production fallback (Vercel frontend + Render backend)
+  try {
+    const csrfResponse = await axios.get(`${API_BASE_URL}/api/csrf-token`, {
+      withCredentials: true,
+      timeout: 15000,
+    });
+    const token = csrfResponse?.data?.csrfToken;
+    if (typeof token === "string" && token.trim()) {
+      csrfTokenCache = token.trim();
+      return csrfTokenCache;
+    }
+  } catch {
+    // Do not fail request here; backend will return a clear CSRF error if needed.
+  }
+
+  return "";
 }
 
 const axiosInstance = axios.create({
@@ -29,13 +60,14 @@ const axiosInstance = axios.create({
 
 // ─── Request interceptor: inject CSRF token ────────────────────────────────
 axiosInstance.interceptors.request.use(
-  (config) => {
-    // CSRF double-submit: read csrf_token cookie and echo it in header
-    const csrfCookie = document.cookie
-      .split(";")
-      .find((c) => c.trim().startsWith("csrf_token="));
-    if (csrfCookie) {
-      config.headers["X-CSRF-Token"] = csrfCookie.split("=")[1];
+  async (config) => {
+    const method = String(config.method || "get").toLowerCase();
+    const safeMethods = new Set(["get", "head", "options"]);
+    if (safeMethods.has(method)) return config;
+
+    const token = await ensureCsrfToken();
+    if (token) {
+      config.headers["X-CSRF-Token"] = token;
     }
     return config;
   },

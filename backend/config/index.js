@@ -77,6 +77,10 @@ const config = {
 
   // URLs
   frontendUrl: sanitizeEnvString(process.env.FRONTEND_URL) || `http://localhost:${defaultFrontendPort}`,
+  corsOrigins: String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => sanitizeEnvString(origin))
+    .filter(Boolean),
   // Smart default: use production ML service if NODE_ENV is production
   mlServiceUrl: sanitizeEnvString(process.env.ML_SERVICE_URL) ||
     (process.env.NODE_ENV === "production" 
