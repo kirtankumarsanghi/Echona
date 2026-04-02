@@ -15,6 +15,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  Wellness: () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+  ),
   Music: () => (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
@@ -38,16 +43,16 @@ const MINI_PLAYER_UPDATE_EVENT = "echona-mini-player-updated";
 const MINI_PLAYER_ACTION_EVENT = "echona-mini-player-action";
 
 const moodGlowStyles = {
-  Happy: "shadow-[0_0_22px_rgba(251,191,36,0.32)] border-amber-400/35",
-  Sad: "shadow-[0_0_22px_rgba(96,165,250,0.3)] border-blue-400/35",
-  Angry: "shadow-[0_0_22px_rgba(244,63,94,0.3)] border-rose-400/35",
-  Anxious: "shadow-[0_0_22px_rgba(168,85,247,0.3)] border-purple-400/35",
-  Calm: "shadow-[0_0_22px_rgba(52,211,153,0.3)] border-emerald-400/35",
-  Excited: "shadow-[0_0_22px_rgba(244,114,182,0.3)] border-pink-400/35",
-  Stressed: "shadow-[0_0_22px_rgba(248,113,113,0.3)] border-red-400/35",
-  Lonely: "shadow-[0_0_22px_rgba(148,163,184,0.3)] border-slate-400/35",
-  Tired: "shadow-[0_0_22px_rgba(129,140,248,0.3)] border-indigo-400/35",
-  Neutral: "shadow-[0_0_18px_rgba(148,163,184,0.22)] border-slate-500/30",
+  Happy: "border-amber-400/35 bg-amber-500/5",
+  Sad: "border-blue-400/35 bg-blue-500/5",
+  Angry: "border-rose-400/35 bg-rose-500/5",
+  Anxious: "border-purple-400/35 bg-purple-500/5",
+  Calm: "border-emerald-400/35 bg-emerald-500/5",
+  Excited: "border-pink-400/35 bg-pink-500/5",
+  Stressed: "border-red-400/35 bg-red-500/5",
+  Lonely: "border-slate-400/35 bg-slate-500/5",
+  Tired: "border-indigo-400/35 bg-indigo-500/5",
+  Neutral: "border-slate-500/30 bg-slate-500/5",
 };
 
 function readMiniPlayerState() {
@@ -110,9 +115,10 @@ function AppShell({ children }) {
   }, [sidebarOpen]);
 
   const navItems = [
-    { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
     { path: "/mood-detect", label: "Detect Mood", icon: Icons.MoodDetect },
     { path: "/music", label: "Music", icon: Icons.Music },
+    { path: "/wellness", label: "Wellbeing", icon: Icons.Wellness },
+    { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
     { path: "/todo", label: "Planner", icon: Icons.Todo },
   ];
 
@@ -192,12 +198,12 @@ function AppShell({ children }) {
 
       {/* Sidebar — fixed on all breakpoints, CSS transition for mobile slide */}
       <aside
-        className={`fixed top-0 left-0 h-screen ${collapsed ? "w-[4.75rem]" : "w-64"} bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-slate-800/90 flex flex-col z-50 transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-screen ${collapsed ? "w-[4.75rem]" : "w-64"} bg-slate-950 border-r border-slate-800 flex flex-col z-50 transition-all duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
         aria-label="Main navigation"
       >
-        <div className="p-4 border-b border-slate-800/90">
+        <div className="p-4 border-b border-slate-800">
           <div className="flex items-center justify-between">
             {!collapsed && <Logo size="default" showText={true} />}
             {collapsed && <Logo size="small" showText={false} />}
@@ -219,24 +225,25 @@ function AppShell({ children }) {
           </div>
         </div>
 
-        <nav className={`flex-1 ${collapsed ? "px-3 py-5" : "p-4"} space-y-2 overflow-y-auto`} role="navigation">
+        <nav className={`flex-1 ${collapsed ? "px-3 py-5" : "p-4"} space-y-1.5 overflow-y-auto`} role="navigation">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `group relative flex items-center ${collapsed ? "justify-center" : ""} gap-3 ${collapsed ? "px-2 py-1.5 rounded-full" : "px-3 py-2.5 rounded-2xl"} transition-all duration-200 ${
+                `group relative flex items-center ${collapsed ? "justify-center" : ""} gap-3 ${collapsed ? "px-2 py-1.5 rounded-xl" : "px-3 py-2.5 rounded-xl"} transition-all duration-200 ${
                   isActive
-                    ? `${collapsed ? "bg-gradient-to-b from-primary-500/28 to-primary-600/14 border border-primary-300/45 shadow-[0_12px_26px_rgba(37,99,235,0.26)] ring-1 ring-primary-300/20" : "bg-primary-500/16 border border-primary-500/35 shadow-[0_8px_20px_rgba(37,99,235,0.22)]"} text-primary-100`
-                    : "text-slate-300 hover:text-slate-100 border border-transparent hover:bg-slate-800/75"
+                    ? "bg-slate-900 border border-slate-700 text-slate-100"
+                    : "text-slate-300 border border-transparent hover:bg-slate-900 hover:border-slate-800 hover:text-slate-100"
                 }`
               }
               onClick={() => setSidebarOpen(false)}
             >
               {({ isActive }) => (
                 <>
-                  <span className={`flex h-11 w-11 items-center justify-center ${collapsed ? "rounded-full" : "rounded-xl"} transition-colors ${isActive ? "bg-gradient-to-b from-primary-300/20 to-primary-500/25 text-primary-100 shadow-inner shadow-primary-200/10" : "bg-slate-800/70 text-slate-300 group-hover:text-slate-100"}`}>
+                  {isActive && !collapsed && <span className="absolute left-0 h-6 w-0.5 rounded-full bg-sky-400" />}
+                  <span className={`flex h-11 w-11 items-center justify-center ${collapsed ? "rounded-xl" : "rounded-lg"} transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "bg-slate-900 text-slate-400 group-hover:text-slate-100"}`}>
                     <item.icon />
                   </span>
                   {!collapsed && <span className="text-sm font-medium tracking-wide">{item.label}</span>}
@@ -245,7 +252,7 @@ function AppShell({ children }) {
                       {item.label}
                     </span>
                   )}
-                  {collapsed && isActive && <span className="absolute right-1 h-1.5 w-1.5 rounded-full bg-primary-300" />}
+                  {collapsed && isActive && <span className="absolute right-1 h-1.5 w-1.5 rounded-full bg-sky-300" />}
                 </>
               )}
             </NavLink>
@@ -255,7 +262,7 @@ function AppShell({ children }) {
             <motion.section
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mt-4 rounded-2xl border bg-slate-900/80 backdrop-blur-sm p-3 ${miniGlowClass}`}
+              className={`mt-4 rounded-xl border bg-slate-900/90 p-3 ${miniGlowClass}`}
               aria-label="Mini music player"
             >
               <button
@@ -270,7 +277,7 @@ function AppShell({ children }) {
 
               <div className="mt-2 h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-300 transition-all duration-300"
+                  className="h-full rounded-full bg-sky-400 transition-all duration-300"
                   style={{ width: `${miniProgress}%` }}
                 />
               </div>
@@ -331,9 +338,9 @@ function AppShell({ children }) {
 
         <div className="p-4 border-t border-slate-800 space-y-2">
           {user && !collapsed && (
-            <div className="p-3 rounded-lg bg-slate-800 border border-slate-700 mb-2">
+            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 mb-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-700 flex items-center justify-center font-bold text-white flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-white flex-shrink-0 border border-slate-700">
                   {user.name ? user.name[0].toUpperCase() : "U"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -345,7 +352,7 @@ function AppShell({ children }) {
           )}
           {user && collapsed && (
             <div className="flex justify-center mb-2">
-              <div className="w-11 h-11 rounded-full bg-primary-700 flex items-center justify-center font-bold text-white shadow-[0_8px_20px_rgba(59,130,246,0.3)]" title={user.name || "User"}>
+              <div className="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white" title={user.name || "User"}>
                 {user.name ? user.name[0].toUpperCase() : "U"}
               </div>
             </div>

@@ -8,6 +8,7 @@ import { DashboardSkeleton, MusicSkeleton } from "./components/Skeletons";
 const Home = lazy(() => import("./pages/Home"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Wellness = lazy(() => import("./pages/Wellness"));
 const MoodDetect = lazy(() => import("./pages/MoodDetect"));
 const Music = lazy(() => import("./pages/Music"));
 const TodoPlanner = lazy(() => import("./pages/TodoPlanner"));
@@ -80,6 +81,15 @@ function App() {
             <Suspense fallback={<PageLoader skeleton={<DashboardSkeleton />} />}>
               <RouteErrorBoundary name="Dashboard">
                 <PageTransition><Dashboard /></PageTransition>
+              </RouteErrorBoundary>
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/wellness" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageLoader />}>
+              <RouteErrorBoundary name="Wellness">
+                <PageTransition><Wellness /></PageTransition>
               </RouteErrorBoundary>
             </Suspense>
           </ProtectedRoute>

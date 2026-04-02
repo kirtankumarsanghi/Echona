@@ -38,6 +38,9 @@ function checkPortAvailable(port) {
 // ─── Express app setup ─────────────────────────────────────────────────────
 const app = express();
 
+// Required for secure cookies behind reverse proxies (Render/Heroku/etc.)
+app.set("trust proxy", 1);
+
 // Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -83,12 +86,28 @@ const allowedOrigins = new Set([
   `http://localhost:${config.frontendPort}`,
   `http://127.0.0.1:${config.frontendPort}`,
   `http://localhost:${config.backendPort}`,
+  ...(Array.isArray(config.corsOrigins) ? config.corsOrigins : []),
 ]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+
+  // Allow Vercel preview/production domains for this project family.
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    if (host.endsWith(".vercel.app")) return true;
+  } catch {
+    return false;
+  }
+
+  return false;
+}
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       console.warn(`[CORS] Blocked: ${origin}`);
       return callback(null, false);
     },
@@ -100,28 +119,66 @@ app.use(express.json({ limit: "4mb" }));
 
 // ─── Session — replaces JWT ──────────────────────────────────────────────────────
 const isProduction = config.nodeEnv === "production";
-app.use(
-  session({
-    name: "echona_sid",
-    secret: config.sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    store:
-      config.mongoUri && config.mongoUri.trim() !== ""
-        ? MongoStore.create({
-            mongoUrl: config.mongoUri,
-            ttl: 7 * 24 * 60 * 60, // 7 days in seconds
-            autoRemove: "native",
-          })
-        : undefined, // falls back to MemoryStore (fine for dev)
-    cookie: {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: config.sessionMaxAgeMs,
-    },
-  })
-);
+const sessionBaseConfig = {
+  name: "echona_sid",
+  secret: config.sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    maxAge: config.sessionMaxAgeMs,
+  },
+};
+
+const memorySessionMiddleware = session({
+  ...sessionBaseConfig,
+  store: new session.MemoryStore(),
+});
+
+let mongoSessionMiddleware = null;
+let mongoSessionStoreHealthy = false;
+
+if (config.mongoUri && config.mongoUri.trim() !== "") {
+  try {
+    const mongoStore = MongoStore.create({
+      mongoUrl: config.mongoUri,
+      ttl: 7 * 24 * 60 * 60, // 7 days in seconds
+      autoRemove: "native",
+      mongoOptions: {
+        serverSelectionTimeoutMS: 5000,
+      },
+    });
+
+    mongoStore.on("error", (err) => {
+      mongoSessionStoreHealthy = false;
+      console.warn("⚠️  Session store switched to in-memory mode:", err.message);
+    });
+
+    mongoStore.on("connected", () => {
+      mongoSessionStoreHealthy = true;
+      console.log("✅ Session store connected to MongoDB");
+    });
+
+    mongoSessionMiddleware = session({
+      ...sessionBaseConfig,
+      store: mongoStore,
+    });
+  } catch (err) {
+    mongoSessionStoreHealthy = false;
+    console.warn("⚠️  Failed to initialize Mongo session store:", err.message);
+    console.warn("   Using in-memory sessions");
+  }
+}
+
+app.use((req, res, next) => {
+  const activeSessionMiddleware =
+    mongoSessionStoreHealthy && mongoSessionMiddleware
+      ? mongoSessionMiddleware
+      : memorySessionMiddleware;
+  return activeSessionMiddleware(req, res, next);
+});
 
 // ─── CSRF Protection — Double-submit cookie pattern ───────────────────────────
 const crypto = require("crypto");
@@ -137,7 +194,7 @@ app.use((req, res, next) => {
     csrfToken = crypto.randomBytes(32).toString("hex");
     res.cookie("csrf_token", csrfToken, {
       httpOnly: false,        // JS must read it to send in header
-      sameSite: "Lax",        // Lax to allow normal navigation
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 1000, // 1 hour
     });
@@ -415,6 +472,10 @@ process.on("uncaughtException", (error) => {
 });
 
 process.on("unhandledRejection", (reason) => {
+  if (reason && reason.name === "MongoServerSelectionError") {
+    console.warn("⚠️  Ignoring MongoDB rejection in optional mode:", reason.message);
+    return;
+  }
   console.error("⚠️  Unhandled Rejection:", reason);
   if (config.nodeEnv === "production") {
     closeResourcesAndExit(1);

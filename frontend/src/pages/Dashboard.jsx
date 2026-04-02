@@ -5,7 +5,6 @@ import OptionsMenu from "../components/OptionsMenu";
 import EmptyState from "../components/EmptyState";
 import MoodInsights from "../components/MoodInsights";
 import JournalModal from "../components/JournalModal";
-import WellnessIntelligenceHub from "../components/WellnessIntelligenceHub";
 import SEO from "../components/SEO";
 import { useToast } from "../components/Toast";
 import { useMood } from "../context/MoodContext";
@@ -190,66 +189,72 @@ function Dashboard() {
       <SEO title="Dashboard" description="Track your emotional wellness journey with ECHONA" path="/dashboard" />
 
       <div className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="pointer-events-none absolute inset-x-0 -top-8 -z-10 flex justify-center">
+          <div className="h-44 w-[92%] rounded-full bg-gradient-to-r from-sky-500/15 via-indigo-500/10 to-emerald-500/15 blur-3xl" />
+        </div>
+
         {/* Options Menu */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="absolute top-4 right-4 lg:top-4 lg:right-8">
           <OptionsMenu currentPage="/dashboard" />
         </motion.div>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-start justify-between">
-            <div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 rounded-3xl border border-slate-800/80 bg-slate-900/75 backdrop-blur-sm p-6 md:p-7"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-2">Emotional Analytics</p>
               <h1 className="heading-1 mb-2">Wellness Dashboard{user?.name ? ` - ${user.name.split(" ")[0]}` : ""}</h1>
-              <p className="text-slate-300 text-lg">Review your emotional trends, recent activity, and wellness momentum.</p>
+              <p className="text-slate-300 text-base md:text-lg max-w-2xl">
+                A clear view of your trends, consistency, and progress over time.
+              </p>
             </div>
-            {/* Live Clock */}
-            <div className="text-right hidden sm:block">
+
+            <div className="text-right hidden sm:block flex-shrink-0 min-w-fit pl-2">
               <p className="text-2xl font-mono font-light text-slate-100 tracking-wider">
-                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {currentTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
-                {currentTime.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                {currentTime.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Journal Button (#11) */}
-              <motion.button
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => setJournalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/60 text-slate-100 transition-colors text-sm font-medium"
-                aria-label="Open journal"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <span className="hidden sm:inline">Journal</span>
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => setShowClearModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 transition-colors text-sm font-medium"
-                aria-label="Reset all mood data"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span className="hidden sm:inline">Reset Data</span>
-              </motion.button>
-            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={() => setJournalOpen(true)}
+              className="btn-secondary text-sm"
+              aria-label="Open journal"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              Journal
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/mood-detect")}
+              className="btn-secondary text-sm"
+            >
+              Add Check-In
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              onClick={() => setShowClearModal(true)}
+              className="px-4 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 transition-colors text-sm font-medium"
+              aria-label="Reset all mood data"
+            >
+              Reset Data
+            </motion.button>
           </div>
         </motion.div>
 
         {/* Mood Insights (#6) */}
         <MoodInsights />
-
-        <WellnessIntelligenceHub
-          history={history}
-          todayMood={todayMood}
-          todayScore={todayScore}
-          trendLabel={trendLabel}
-          streak={streak}
-          onNavigate={(path) => navigate(path)}
-        />
 
         <motion.div
           initial={{ opacity: 0, y: 14 }}

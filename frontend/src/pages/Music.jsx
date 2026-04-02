@@ -20,11 +20,7 @@ import musicLibrary, {
 } from "../data/musicLibrary";
 
 // Lazy-load secondary components
-const SmartMoodFeature = lazy(() => import("../components/SmartMoodFeature"));
 const SurpriseMe = lazy(() => import("../components/SurpriseMe"));
-const BreathingExercise = lazy(() => import("../components/BreathingExercise"));
-const MeditationTimer = lazy(() => import("../components/MeditationTimer"));
-const MusicChallenges = lazy(() => import("../components/MusicChallenges"));
 
 const LazyFallback = () => (
   <div className="flex items-center justify-center py-8">
@@ -140,7 +136,7 @@ function Music() {
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentQuote, setCurrentQuote] = useState(null);
-  const [showSongList, setShowSongList] = useState(true);
+  const [showSongList, setShowSongList] = useState(false);
   const [repeatMode, setRepeatMode] = useState("off");
   const [songSearchQuery, setSongSearchQuery] = useState("");
   const [songSearchLanguage, setSongSearchLanguage] = useState("Any");
@@ -150,14 +146,13 @@ function Music() {
   const [songSearchLoadingMore, setSongSearchLoadingMore] = useState(false);
   const [songSearchNextPageToken, setSongSearchNextPageToken] = useState("");
   const [songSearchHasMore, setSongSearchHasMore] = useState(false);
+  const [searchMoodInsight, setSearchMoodInsight] = useState(null);
 
   // Spotify state
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [spotifyDeviceId, setSpotifyDeviceId] = useState(null);
 
   // UI panels
-  const [showWellness, setShowWellness] = useState(false);
-  const [showChallenges, setShowChallenges] = useState(false);
   const [showSpotifyDashboard, setShowSpotifyDashboard] = useState(false);
   const [unavailableTrackIds, setUnavailableTrackIds] = useState(() => loadUnavailableTrackIds());
   const [playlistNotice, setPlaylistNotice] = useState("");
@@ -634,6 +629,48 @@ function Music() {
     return ["Any", ...langs];
   }, [searchableSongs]);
 
+  const preferredGenresForSearch = useMemo(() => {
+    const frequency = {};
+    likedSongs.forEach((song) => {
+      const key = String(song?.genre || "").trim();
+      if (!key) return;
+      frequency[key] = (frequency[key] || 0) + 1;
+    });
+    return Object.entries(frequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([genre]) => genre);
+  }, [likedSongs]);
+
+  const preferredLanguagesForSearch = useMemo(() => {
+    const frequency = {};
+    likedSongs.forEach((song) => {
+      const key = String(song?.language || "").trim();
+      if (!key || key === "Unknown") return;
+      frequency[key] = (frequency[key] || 0) + 1;
+    });
+    return Object.entries(frequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([language]) => language);
+  }, [likedSongs]);
+
+  const recommendationCards = useMemo(() => {
+    const fromInsight = Array.isArray(searchMoodInsight?.videos) ? searchMoodInsight.videos : [];
+    if (fromInsight.length) return fromInsight.slice(0, 8);
+
+    return songSearchResults
+      .filter((song) => song?.youtubeId)
+      .slice(0, 8)
+      .map((song) => ({
+        title: song.title,
+        artist: song.artist,
+        thumbnail: song.thumbnail || getYoutubeThumbnail(song.youtubeId) || THUMBNAIL_PLACEHOLDER,
+        youtubeId: song.youtubeId,
+        url: `https://www.youtube.com/watch?v=${song.youtubeId}`,
+      }));
+  }, [searchMoodInsight, songSearchResults]);
+
   const inferMoodFromSong = useCallback((song) => {
     if (song?.detectedMood && musicLibrary[song.detectedMood]) return song.detectedMood;
     if (song?.sourceMood && musicLibrary[song.sourceMood]) return song.sourceMood;
@@ -664,6 +701,7 @@ function Music() {
       setSongSearchLoading(false);
       setSongSearchNextPageToken("");
       setSongSearchHasMore(false);
+      setSearchMoodInsight(null);
       return;
     }
 
@@ -694,6 +732,7 @@ function Music() {
         setSongSearchResults(cached.results || localSorted);
         setSongSearchNextPageToken(cached.nextPageToken || "");
         setSongSearchHasMore(Boolean(cached.nextPageToken));
+        setSearchMoodInsight(cached.insight || null);
         return;
       }
 
@@ -702,21 +741,36 @@ function Music() {
 
         let youtubeMatches = [];
         let nextPageToken = "";
+        let detectedInsight = null;
         try {
           const { data } = await axiosInstance.get("/api/music-intel/search", {
             params: {
               q: songSearchQuery.trim(),
               language: songSearchLanguage,
               maxResults: 20,
+              preferredGenres: preferredGenresForSearch.join(","),
+              preferredLanguages: preferredLanguagesForSearch.join(","),
             },
             timeout: 4500,
           });
           if (data?.success && Array.isArray(data.results)) {
-            youtubeMatches = data.results;
+            youtubeMatches = Array.isArray(data.videos) && data.videos.length ? data.videos : data.results;
             nextPageToken = data.nextPageToken || "";
+            detectedInsight = {
+              mood: data.mood || "neutral",
+              confidence: Number(data.confidence || 0.55),
+              message: data.message || "Your mood appears balanced. Here are some songs to explore.",
+              videos: Array.isArray(data.videos) ? data.videos : [],
+            };
           }
         } catch {
           // fallback to local library search if online provider fails
+          detectedInsight = {
+            mood: "neutral",
+            confidence: 0.5,
+            message: "Your request was not fully clear, so here are versatile tracks to explore.",
+            videos: [],
+          };
         }
 
         if (cancelled) return;
@@ -736,9 +790,16 @@ function Music() {
         setSongSearchResults(merged);
         setSongSearchNextPageToken(nextPageToken);
         setSongSearchHasMore(Boolean(nextPageToken) && youtubeMatches.length > 0);
+        setSearchMoodInsight(detectedInsight);
         searchCacheRef.current.set(cacheKey, {
           results: merged,
           nextPageToken,
+          insight: {
+            mood: detectedInsight?.mood || "neutral",
+            confidence: Number(detectedInsight?.confidence || 0.55),
+            message: detectedInsight?.message || "Your mood appears balanced. Here are some songs to explore.",
+            videos: Array.isArray(detectedInsight?.videos) ? detectedInsight.videos : [],
+          },
           createdAt: Date.now(),
         });
       } finally {
@@ -750,7 +811,13 @@ function Music() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [songSearchQuery, songSearchLanguage, searchableSongs]);
+  }, [
+    songSearchQuery,
+    songSearchLanguage,
+    searchableSongs,
+    preferredGenresForSearch,
+    preferredLanguagesForSearch,
+  ]);
 
   const loadMoreSearchResults = useCallback(async () => {
     if (!songSearchNextPageToken || songSearchLoadingMore || !songSearchQuery.trim()) return;
@@ -1026,6 +1093,10 @@ function Music() {
               className="relative bg-neutral-900/60 backdrop-blur-sm border border-neutral-800/80 rounded-2xl p-6 md:p-8 mb-6 overflow-visible"
               aria-label="Music player hero"
             >
+              <div className="pointer-events-none absolute inset-x-0 -top-8 -z-10 flex justify-center">
+                <div className="h-40 w-[92%] rounded-full bg-gradient-to-r from-indigo-500/14 via-sky-500/10 to-emerald-500/14 blur-3xl" />
+              </div>
+
               {playlistNotice && (
                 <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
                   {playlistNotice}
@@ -1033,19 +1104,29 @@ function Music() {
               )}
 
               {/* Mood indicator — subtle chip */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${accent.dot}`} />
-                  <span className={`text-xs font-semibold tracking-wider uppercase ${accent.text}`}>
-                    {currentMood} Mood
-                  </span>
+              <div className="flex flex-col gap-5 md:gap-6 mb-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${accent.dot}`} />
+                    <span className={`text-xs font-semibold tracking-wider uppercase ${accent.text}`}>
+                      {currentMood} Mood
+                    </span>
+                    <span className="text-[11px] text-neutral-500">Adaptive playlist session</span>
+                  </div>
+                  <button
+                    onClick={() => navigate("/mood-detect")}
+                    className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    Change mood
+                  </button>
                 </div>
-                <button
-                  onClick={() => navigate("/mood-detect")}
-                  className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
-                >
-                  Change mood
-                </button>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <HeroMetric label="Tracks" value={String(songs.length)} />
+                  <HeroMetric label="Liked" value={String(likedSongs.length)} />
+                  <HeroMetric label="History" value={String(listenHistory.length)} />
+                  <HeroMetric label="Repeat" value={repeatMode === "off" ? "Off" : repeatMode === "all" ? "All" : "One"} />
+                </div>
               </div>
 
               {/* Quote — understated */}
@@ -1079,7 +1160,7 @@ function Music() {
                         setShowSongSearchResults(true);
                       }}
                       onFocus={() => setShowSongSearchResults(true)}
-                      placeholder="Search any song (all languages)..."
+                      placeholder="Search by song, artist, or vibe"
                       className="w-full bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2.5 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     />
                   </div>
@@ -1144,6 +1225,50 @@ function Music() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {songSearchQuery.trim() && (songSearchLoading || searchMoodInsight || recommendationCards.length > 0) && (
+                <div className="mb-6 rounded-xl border border-neutral-800/70 bg-neutral-950/60 p-4">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Search Insight</p>
+                      <p className="text-sm font-semibold text-neutral-100">
+                        {searchMoodInsight?.mood ? String(searchMoodInsight.mood).charAt(0).toUpperCase() + String(searchMoodInsight.mood).slice(1) : "Neutral"}
+                        {Number.isFinite(Number(searchMoodInsight?.confidence)) ? ` (${Math.round(Number(searchMoodInsight.confidence) * 100)}%)` : ""}
+                      </p>
+                    </div>
+                    <p className="text-xs text-neutral-300 max-w-2xl leading-relaxed">
+                      {songSearchLoading
+                        ? "Analyzing intent and preparing recommendations..."
+                        : searchMoodInsight?.message || "Your mood appears balanced. Here are some songs to explore."}
+                    </p>
+                  </div>
+
+                  {!songSearchLoading && recommendationCards.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {recommendationCards.map((song) => (
+                        <button
+                          key={`rec-${song.youtubeId}`}
+                          type="button"
+                          onClick={() => playSongFromSearch(song)}
+                          className="group text-left rounded-xl overflow-hidden border border-neutral-800/80 bg-neutral-900/60 hover:bg-neutral-800/70 transition-colors"
+                        >
+                          <img
+                            src={song.thumbnail || THUMBNAIL_PLACEHOLDER}
+                            alt={song.title || "Recommended track"}
+                            className="w-full h-28 object-cover"
+                            loading="lazy"
+                            onError={(e) => { e.target.src = THUMBNAIL_PLACEHOLDER; }}
+                          />
+                          <div className="p-3">
+                            <p className="text-sm text-neutral-100 font-medium truncate">{song.title}</p>
+                            <p className="text-xs text-neutral-500 truncate">{song.artist || "Unknown Artist"}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Primary Music Controls — dominant, clear */}
               <div className="flex flex-wrap items-center gap-2.5">
@@ -1516,101 +1641,6 @@ function Music() {
               <SurpriseMe />
             </Suspense>
 
-            {/* ═══════════════════════════════════════════════════════════════
-                TIER 4: WELLNESS — Collapsed by default
-            ═══════════════════════════════════════════════════════════════ */}
-            <motion.section
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mt-6 mb-6"
-              aria-label="Wellness support"
-            >
-              <button
-                onClick={() => setShowWellness(!showWellness)}
-                className="w-full flex items-center justify-between px-5 py-4 bg-neutral-900/40 border border-neutral-800/60 rounded-2xl transition-all hover:bg-neutral-800/40 group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-indigo-500/10 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </div>
-                  <div className="text-left">
-                    <h4 className="text-sm font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors">Wellness Corner</h4>
-                    <p className="text-[11px] text-neutral-600">Journaling, breathing & mood support</p>
-                  </div>
-                </div>
-                <svg
-                  className={`w-4 h-4 text-neutral-600 transition-transform duration-300 ${showWellness ? "rotate-180" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              <AnimatePresence>
-                {showWellness && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="pt-3 space-y-4">
-                      <Suspense fallback={<LazyFallback />}>
-                        <SmartMoodFeature mood={currentMood} />
-                      </Suspense>
-
-                      {/* Inline Wellness Tools */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <Suspense fallback={<LazyFallback />}>
-                          <BreathingExercise inline />
-                        </Suspense>
-                        <Suspense fallback={<LazyFallback />}>
-                          <MeditationTimer inline />
-                        </Suspense>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.section>
-
-            {/* ═══════════════════════════════════════════════════════════════
-                TIER 5: GAMIFICATION — Side Drawer Toggle
-            ═══════════════════════════════════════════════════════════════ */}
-            <motion.section
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35 }}
-              className="mb-6"
-              aria-label="Challenges"
-            >
-              <button
-                onClick={() => setShowChallenges(!showChallenges)}
-                className="w-full flex items-center justify-between px-5 py-4 bg-neutral-900/40 border border-neutral-800/60 rounded-2xl transition-all hover:bg-neutral-800/40 group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                  </div>
-                  <div className="text-left">
-                    <h4 className="text-sm font-medium text-neutral-300 group-hover:text-neutral-200 transition-colors">Mini Challenges</h4>
-                    <p className="text-[11px] text-neutral-600">Earn badges while you listen</p>
-                  </div>
-                </div>
-                <svg
-                  className={`w-4 h-4 text-neutral-600 transition-transform duration-300 ${showChallenges ? "rotate-180" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </motion.section>
           </>
         )}
       </div>
@@ -1725,47 +1755,6 @@ function Music() {
         )}
       </AnimatePresence>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          CHALLENGES SIDE DRAWER — slides in from right
-      ═══════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {showChallenges && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowChallenges(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-neutral-950 border-l border-neutral-800 z-[61] overflow-y-auto"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-neutral-200">Mini Challenges</h2>
-                  <button
-                    onClick={() => setShowChallenges(false)}
-                    className="p-2 text-neutral-500 hover:text-neutral-200 transition-colors rounded-lg hover:bg-neutral-800"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <Suspense fallback={<LazyFallback />}>
-                  <MusicChallenges currentSong={currentlyPlaying} mood={currentMood} inDrawer />
-                </Suspense>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1773,6 +1762,15 @@ function Music() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
       `}</style>
     </AppShell>
+  );
+}
+
+function HeroMetric({ label, value }) {
+  return (
+    <div className="rounded-xl border border-neutral-700/80 bg-neutral-900/70 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</p>
+      <p className="text-sm font-semibold text-neutral-100 truncate">{value}</p>
+    </div>
   );
 }
 
