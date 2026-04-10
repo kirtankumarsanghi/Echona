@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import axiosInstance from "../api/axiosInstance";
+import { MOTION } from "../utils/motion";
 
 const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
   const [entry, setEntry] = useState("");
@@ -8,44 +10,85 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
 
   // Load saved entries
   useEffect(() => {
-    const saved = localStorage.getItem("echona_journal_entries");
-    if (saved) {
+    if (!isOpen) return;
+
+    let active = true;
+    const loadEntries = async () => {
       try {
-        setSavedEntries(JSON.parse(saved));
+        const { data } = await axiosInstance.get("/api/wellness/journal");
+        const entries = Array.isArray(data?.entries) ? data.entries : [];
+        if (active) {
+          setSavedEntries(entries);
+          localStorage.setItem("echona_journal_entries", JSON.stringify(entries));
+        }
       } catch (err) {
+        const saved = localStorage.getItem("echona_journal_entries");
+        if (saved) {
+          try {
+            if (active) setSavedEntries(JSON.parse(saved));
+          } catch (parseErr) {
+            console.error("Failed to parse local journal entries:", parseErr);
+          }
+        }
         console.error("Failed to load journal entries:", err);
       }
-    }
+    };
+
+    loadEntries();
+    return () => {
+      active = false;
+    };
   }, [isOpen]);
 
-  const handleSave = () => {
+  const formatEntryDate = (isoDate) =>
+    new Date(isoDate).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  const handleSave = async () => {
     if (!entry.trim()) return;
 
     const newEntry = {
       id: Date.now(),
       content: entry,
       mood: mood,
-      date: new Date().toISOString(),
-      dateFormatted: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      createdAt: new Date().toISOString(),
     };
 
-    const updated = [newEntry, ...savedEntries];
-    setSavedEntries(updated);
-    localStorage.setItem("echona_journal_entries", JSON.stringify(updated));
+    try {
+      const { data } = await axiosInstance.post("/api/wellness/journal", {
+        content: newEntry.content,
+        mood: newEntry.mood,
+        createdAt: newEntry.createdAt,
+      });
+
+      const persisted = data?.entry || newEntry;
+      const updated = [persisted, ...savedEntries];
+      setSavedEntries(updated);
+      localStorage.setItem("echona_journal_entries", JSON.stringify(updated));
+    } catch {
+      const updated = [newEntry, ...savedEntries];
+      setSavedEntries(updated);
+      localStorage.setItem("echona_journal_entries", JSON.stringify(updated));
+    }
 
     setEntry("");
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 2000);
   };
 
-  const handleDelete = (id) => {
-    const updated = savedEntries.filter((e) => e.id !== id);
+  const handleDelete = async (id) => {
+    try {
+      await axiosInstance.delete(`/api/wellness/journal/${id}`);
+    } catch {
+      // Keep UX responsive even when delete API fails.
+    }
+
+    const updated = savedEntries.filter((e) => String(e.id) !== String(id));
     setSavedEntries(updated);
     localStorage.setItem("echona_journal_entries", JSON.stringify(updated));
   };
@@ -70,6 +113,7 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: MOTION.duration.quick, ease: MOTION.ease }}
         className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-50"
         onClick={onClose}
       >
@@ -77,8 +121,9 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
           initial={{ scale: 0.9, y: 30 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 30 }}
+          transition={{ duration: MOTION.duration.base, ease: MOTION.ease }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-neutral-900/95 backdrop-blur-xl border border-neutral-700 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+          className="card-premium backdrop-blur-xl border-neutral-700 rounded-2xl shadow-[0_28px_65px_-45px_rgba(14,116,144,0.45)] max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 p-6 flex items-center justify-between">
@@ -123,7 +168,7 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
                 value={entry}
                 onChange={(e) => setEntry(e.target.value)}
                 placeholder="Express yourself freely... no judgment here."
-                className="w-full h-40 bg-neutral-800/60 border border-neutral-700 rounded-xl p-4 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                className="form-control h-40 resize-none"
               />
               <div className="flex items-center justify-between mt-3">
                 <span className="text-neutral-500 text-sm">
@@ -134,7 +179,7 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setEntry("")}
-                    className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-neutral-300 rounded-lg font-medium transition-all"
+                    className="btn-secondary px-4 py-2"
                   >
                     Clear
                   </motion.button>
@@ -145,8 +190,8 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
                     disabled={!entry.trim()}
                     className={`px-6 py-2 rounded-lg font-bold transition-all ${
                       entry.trim()
-                        ? "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg"
-                        : "bg-neutral-800 text-neutral-600 cursor-not-allowed"
+                        ? "btn-primary"
+                        : "bg-neutral-800 text-neutral-600 cursor-not-allowed px-6 py-2"
                     }`}
                   >
                     Save Entry
@@ -176,7 +221,7 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="bg-neutral-800/60 border border-neutral-700 rounded-xl p-4 group"
+                      className="card-premium p-4 group"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
@@ -185,9 +230,7 @@ const JournalModal = ({ isOpen, onClose, mood = "Angry" }) => {
                               entry.mood
                             )}`}
                           />
-                          <span className="text-neutral-400 text-xs">
-                            {entry.dateFormatted}
-                          </span>
+                          <span className="text-neutral-400 text-xs">{formatEntryDate(entry.createdAt || entry.date || Date.now())}</span>
                           <span className="text-neutral-500 text-xs px-2 py-0.5 bg-neutral-700/60 rounded">
                             {entry.mood}
                           </span>

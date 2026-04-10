@@ -5,7 +5,7 @@ function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center px-6">
+    <div className="app-typography-refresh min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex items-center justify-center px-6">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-[40vw] h-[40vw] bg-indigo-600/5 rounded-full blur-[100px]" />
         <div className="absolute bottom-1/4 right-1/4 w-[30vw] h-[30vw] bg-violet-600/5 rounded-full blur-[100px]" />
@@ -27,8 +27,8 @@ function NotFound() {
           </span>
         </motion.div>
 
-        <h1 className="text-3xl md:text-4xl font-bold mb-4">Page Not Found</h1>
-        <p className="text-neutral-400 text-lg mb-8 leading-relaxed">
+        <h1 className="workspace-title mb-4">Page Not Found</h1>
+        <p className="workspace-subtitle text-neutral-400 text-lg mb-8 leading-relaxed mx-auto">
           The page you're looking for doesn't exist or has been moved. Let's get you back on track.
         </p>
 
@@ -37,7 +37,7 @@ function NotFound() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate("/")}
-            className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full font-bold text-lg hover:shadow-lg hover:shadow-indigo-500/25 transition-all"
+            className="btn-primary px-8 py-3 rounded-full text-lg"
           >
             Go Home
           </motion.button>
@@ -45,7 +45,7 @@ function NotFound() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate(-1)}
-            className="px-8 py-3 bg-neutral-800/60 text-neutral-300 border border-neutral-700 rounded-full font-semibold text-lg hover:bg-neutral-800 hover:text-white transition-all"
+            className="btn-secondary px-8 py-3 rounded-full text-lg"
           >
             Go Back
           </motion.button>

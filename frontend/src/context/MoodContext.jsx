@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import axiosInstance from "../api/axiosInstance";
 
 const MoodContext = createContext(null);
 
@@ -8,43 +9,132 @@ const DETECTED_MOOD_KEY = "detected_mood";
 export function MoodProvider({ children }) {
   const [history, setHistory] = useState([]);
   const [currentMood, setCurrentMood] = useState(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(() => {
     return localStorage.getItem("echona_onboarding_done") === "true";
   });
 
   // Load history on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(MOOD_HISTORY_KEY);
-      if (stored) setHistory(JSON.parse(stored));
-      const mood = localStorage.getItem(DETECTED_MOOD_KEY);
-      if (mood) setCurrentMood(mood);
-    } catch {
-      setHistory([]);
-    }
+    let active = true;
+
+    const load = async () => {
+      try {
+        const response = await axiosInstance.get("/api/mood/history");
+        const list = Array.isArray(response.data) ? response.data : [];
+        const normalized = list
+          .map((entry) => ({
+            ...entry,
+            score: Number(entry.score) || 0,
+            createdAt: entry.createdAt || new Date().toISOString(),
+          }))
+          .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        if (!active) return;
+        setHistory(normalized);
+
+        const latestMood = normalized.length ? normalized[normalized.length - 1].mood : null;
+        setCurrentMood(latestMood);
+
+        localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(normalized));
+        if (latestMood) localStorage.setItem(DETECTED_MOOD_KEY, latestMood);
+      } catch {
+        try {
+          const stored = localStorage.getItem(MOOD_HISTORY_KEY);
+          const localList = stored ? JSON.parse(stored) : [];
+          if (!active) return;
+          setHistory(Array.isArray(localList) ? localList : []);
+          const mood = localStorage.getItem(DETECTED_MOOD_KEY);
+          if (mood) setCurrentMood(mood);
+        } catch {
+          if (!active) return;
+          setHistory([]);
+        }
+      } finally {
+        if (active) setHistoryLoaded(true);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const saveMood = useCallback((moodName, score = null) => {
+  const saveMood = useCallback(async (moodName, score = null) => {
     const moodScores = { Happy: 9, Excited: 8, Calm: 7, Anxious: 4, Sad: 3, Angry: 2 };
-    const entry = {
+    const localEntry = {
       mood: moodName,
       score: score || moodScores[moodName] || 5,
       createdAt: new Date().toISOString(),
     };
-    setHistory((prev) => {
-      const updated = [...prev, entry];
-      localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(updated));
-      return updated;
-    });
+
+    try {
+      const response = await axiosInstance.post("/api/mood/add", {
+        mood: moodName,
+        score: localEntry.score,
+      });
+
+      const persisted = response?.data?.log
+        ? {
+            ...response.data.log,
+            score: Number(response.data.log.score) || localEntry.score,
+            createdAt: response.data.log.createdAt || localEntry.createdAt,
+          }
+        : localEntry;
+
+      setHistory((prev) => {
+        const updated = [...prev, persisted].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    } catch {
+      // Keep UX functional even when backend is temporarily unavailable.
+      setHistory((prev) => {
+        const updated = [...prev, localEntry];
+        localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
+
     setCurrentMood(moodName);
     localStorage.setItem(DETECTED_MOOD_KEY, moodName);
   }, []);
 
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
+    try {
+      await axiosInstance.post("/api/mood/clear");
+    } catch {
+      // If backend clear fails, still clear local UI state.
+    }
+
     localStorage.removeItem(MOOD_HISTORY_KEY);
     localStorage.removeItem(DETECTED_MOOD_KEY);
     setHistory([]);
     setCurrentMood(null);
+  }, []);
+
+  const refreshHistory = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get("/api/mood/history");
+      const list = Array.isArray(response.data) ? response.data : [];
+      const normalized = list
+        .map((entry) => ({
+          ...entry,
+          score: Number(entry.score) || 0,
+          createdAt: entry.createdAt || new Date().toISOString(),
+        }))
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+      setHistory(normalized);
+      const latestMood = normalized.length ? normalized[normalized.length - 1].mood : null;
+      setCurrentMood(latestMood);
+      localStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(normalized));
+      if (latestMood) localStorage.setItem(DETECTED_MOOD_KEY, latestMood);
+      else localStorage.removeItem(DETECTED_MOOD_KEY);
+    } catch {
+      // no-op
+    }
   }, []);
 
   const completeOnboarding = useCallback(() => {
@@ -108,7 +198,7 @@ export function MoodProvider({ children }) {
   }, [history]);
 
   return (
-    <MoodContext.Provider value={{ history, currentMood, saveMood, clearHistory, getInsights, onboardingDone, completeOnboarding }}>
+    <MoodContext.Provider value={{ history, currentMood, saveMood, clearHistory, refreshHistory, historyLoaded, getInsights, onboardingDone, completeOnboarding }}>
       {children}
     </MoodContext.Provider>
   );

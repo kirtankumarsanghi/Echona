@@ -5,10 +5,42 @@ import { useNavigate } from "react-router-dom";
 const OptionsMenu = ({ currentPage = "" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef(null);
+  const buttonRef = useRef(null);
   const navigate = useNavigate();
 
+  const updateMenuPosition = () => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const menuWidth = 224; // w-56
+    const viewportPadding = 8;
+    const left = Math.min(
+      window.innerWidth - menuWidth - viewportPadding,
+      Math.max(viewportPadding, rect.right - menuWidth)
+    );
+    setMenuPosition({
+      top: rect.bottom + 8,
+      left,
+    });
+  };
+
   // Close menu when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    updateMenuPosition();
+
+    const handleReposition = () => updateMenuPosition();
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -45,7 +77,7 @@ const OptionsMenu = ({ currentPage = "" }) => {
       )
     },
     { 
-      label: "Mood Detection", 
+      label: "Check-In", 
       path: "/mood-detect", 
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -54,7 +86,7 @@ const OptionsMenu = ({ currentPage = "" }) => {
       )
     },
     { 
-      label: "Music Therapy", 
+      label: "Music", 
       path: "/music", 
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -63,8 +95,8 @@ const OptionsMenu = ({ currentPage = "" }) => {
       )
     },
     { 
-      label: "Todo Planner", 
-      path: "/todo-planner", 
+      label: "Planner", 
+      path: "/todo", 
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -102,9 +134,10 @@ const OptionsMenu = ({ currentPage = "" }) => {
   };
 
   return (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="relative z-[140]">
       {/* Menu Button */}
       <motion.button
+        ref={buttonRef}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
@@ -114,24 +147,25 @@ const OptionsMenu = ({ currentPage = "" }) => {
           backdrop-blur-sm
           transition-all duration-300
           ${isOpen 
-            ? 'bg-neutral-800 border-violet-500/60 shadow-lg shadow-violet-500/20' 
-            : 'bg-neutral-900/80 border-neutral-700 hover:border-neutral-600 hover:bg-neutral-800/90'
+            ? 'bg-neutral-800 border-cyan-400/70 shadow-lg shadow-cyan-500/20' 
+            : 'bg-neutral-900/95 border-neutral-500/70 hover:border-neutral-300 hover:bg-neutral-800'
           }
         `}
-        aria-label="Options Menu"
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+        title={isOpen ? "Close menu" : "Open menu"}
       >
         <div className="flex flex-col items-center justify-center gap-1">
           <motion.div 
             animate={{ scale: isOpen ? 0.8 : 1 }}
-            className="w-1 h-1 rounded-full bg-neutral-300"
+            className="w-1 h-1 rounded-full bg-neutral-100"
           />
           <motion.div 
             animate={{ scale: isOpen ? 0.8 : 1 }}
-            className="w-1 h-1 rounded-full bg-neutral-300"
+            className="w-1 h-1 rounded-full bg-neutral-100"
           />
           <motion.div 
             animate={{ scale: isOpen ? 0.8 : 1 }}
-            className="w-1 h-1 rounded-full bg-neutral-300"
+            className="w-1 h-1 rounded-full bg-neutral-100"
           />
         </div>
       </motion.button>
@@ -144,7 +178,8 @@ const OptionsMenu = ({ currentPage = "" }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-56 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700 rounded-xl shadow-2xl overflow-hidden z-50"
+            className="fixed mt-0 w-56 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700 rounded-xl shadow-2xl overflow-hidden z-[220]"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
           >
             <div className="py-2">
               {menuItems.map((item, index) => {

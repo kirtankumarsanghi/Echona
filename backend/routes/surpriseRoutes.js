@@ -1,5 +1,6 @@
 const express = require("express");
-const musicLibrary = require("../mockMusic");
+const axios = require("axios");
+const config = require("../config");
 
 const getContext = require("../contextEngine");
 const mapContextToMood = require("../contextToMood");
@@ -7,36 +8,72 @@ const mapEmotionToMood = require("../emotionToMood");
 
 const router = express.Router();
 
+function normalizeMoodLabel(mood) {
+  const value = String(mood || "Neutral").trim();
+  if (!value) return "Neutral";
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
+async function fetchMlRecommendation(finalMood) {
+  try {
+    const response = await axios.get(`${config.mlServiceUrl}/recommend`, {
+      params: {
+        emotion: finalMood,
+        count: 1,
+      },
+      timeout: config.requestTimeoutMs || 12000,
+    });
+
+    const payload = response.data || {};
+    const first = Array.isArray(payload.songs) ? payload.songs[0] : null;
+    if (!first) return null;
+
+    return {
+      title: first.title || first.name || "Recommended Track",
+      artist: first.artist || "Unknown Artist",
+      genre: first.genre || "Unknown",
+      energy: first.energy || payload?.therapy?.energy || "medium",
+      source: "ml-recommend",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function toYoutubeSearchUrl(track = {}) {
+  const query = `${track.title || ""} ${track.artist || ""}`.trim();
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query || "music")}`;
+}
+
+async function buildDynamicTrack(finalMood) {
+  const ml = await fetchMlRecommendation(finalMood);
+  if (ml) {
+    return {
+      ...ml,
+      youtubeUrl: toYoutubeSearchUrl(ml),
+    };
+  }
+
+  return {
+    title: `${finalMood} Playlist Mix`,
+    artist: "YouTube Music",
+    genre: "Mixed",
+    source: "generated-fallback",
+    youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${finalMood} mood playlist`)}`,
+  };
+}
+
 /**
  * � GET - Context-Aware Surprise (No ML Emotion)
  */
 router.get("/", async (req, res) => {
   try {
-    if (!Array.isArray(musicLibrary) || musicLibrary.length === 0) {
-      return res.status(503).json({
-        success: false,
-        error: "Music library unavailable"
-      });
-    }
-
     // 1️⃣ Get context (time + weather)
     const { timeContext, weatherContext } = await getContext();
     
     // 2️⃣ Map context to mood
-    const finalMood = mapContextToMood(timeContext, weatherContext);
-
-    // 3️⃣ Select song
-    const matchingSongs = musicLibrary.filter(
-      (song) => song.mood === finalMood
-    );
-
-    const songPool =
-      matchingSongs.length > 0
-        ? matchingSongs
-        : musicLibrary;
-
-    const selectedSong =
-      songPool[Math.floor(Math.random() * songPool.length)];
+    const finalMood = normalizeMoodLabel(mapContextToMood(timeContext, weatherContext));
+    const selectedSong = await buildDynamicTrack(finalMood);
 
     res.json({
       success: true,
@@ -45,7 +82,7 @@ router.get("/", async (req, res) => {
         weather: weatherContext,
         moodUsed: finalMood
       },
-      track: selectedSong
+      track: selectedSong,
     });
   } catch (error) {
     console.error("Context-aware surprise error:", error);
@@ -65,13 +102,6 @@ router.get("/", async (req, res) => {
  */
 router.post("/", async (req, res) => {
   try {
-    if (!Array.isArray(musicLibrary) || musicLibrary.length === 0) {
-      return res.status(503).json({
-        success: false,
-        error: "Music library unavailable"
-      });
-    }
-
     // 👇 emotion already predicted by ML (from face/voice/text)
     const { mlEmotion } = req.body || {}; // e.g. "happy", "sad", "anxious"
     const safeEmotion = mlEmotion ? String(mlEmotion).trim().toLowerCase() : undefined;
@@ -87,25 +117,16 @@ router.post("/", async (req, res) => {
     const emotionMood = mapEmotionToMood(safeEmotion);
 
     // 3️⃣ Final decision (emotion takes priority if available)
-    const finalMood =
+    const finalMoodRaw =
       emotionMood !== "neutral"
         ? emotionMood
         : contextMood;
+    const finalMood = normalizeMoodLabel(finalMoodRaw);
 
     console.log(`Phase 4: ML Emotion="${safeEmotion || "none"}" -> Mood="${emotionMood}", Context Mood="${contextMood}", Final="${finalMood}"`);
 
-    // 4️⃣ Select song from library
-    const matchingSongs = musicLibrary.filter(
-      (song) => song.mood === finalMood
-    );
-
-    const songPool =
-      matchingSongs.length > 0
-        ? matchingSongs
-        : musicLibrary;
-
-    const selectedSong =
-      songPool[Math.floor(Math.random() * songPool.length)];
+    // 4️⃣ Select live track recommendation
+    const selectedSong = await buildDynamicTrack(finalMood);
 
     res.json({
       success: true,
@@ -116,7 +137,7 @@ router.post("/", async (req, res) => {
         weather: weatherContext,
         moodUsed: finalMood
       },
-      track: selectedSong
+      track: selectedSong,
     });
   } catch (error) {
     console.error("❌ Emotion-aware surprise error:", error);

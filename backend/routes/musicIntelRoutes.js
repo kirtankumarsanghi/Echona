@@ -4,7 +4,6 @@ const mongoose = require("mongoose");
 const crypto = require("crypto");
 const config = require("../config");
 const { authMiddleware } = require("../middleware/authMiddleware");
-const mockMusic = require("../mockMusic");
 
 const router = express.Router();
 
@@ -134,10 +133,26 @@ async function saveMusicData(userId, musicData) {
   userMemory.set(userId, safe);
 }
 
-function getPoolForMood(mood) {
+async function getPoolForMood(mood, maxResults = 18) {
   const normalized = normalizeMood(mood);
   const mapped = STAGE_MOOD_ALIAS[normalized] || normalized;
-  return mockMusic.filter((track) => normalizeMood(track.mood) === mapped);
+  const seeds = MOOD_SEARCH_SEEDS[mapped] || MOOD_SEARCH_SEEDS.Neutral;
+  const seed = seeds[0] || `${mapped} songs`;
+
+  const recommendation = await buildMoodAwareRecommendations({
+    query: seed,
+    language: "Any",
+    maxResults: Math.max(8, maxResults),
+    preferredGenres: [],
+    preferredLanguages: [],
+  });
+
+  const tracks = Array.isArray(recommendation?.results) ? recommendation.results : [];
+  return tracks.map((track) => ({
+    ...track,
+    mood: mapped,
+    genre: track.genre || track.sourceMood || "unknown",
+  }));
 }
 
 function trackKey(track) {
@@ -1010,7 +1025,7 @@ router.get("/transition", async (req, res) => {
       const mlMood = STAGE_MOOD_ALIAS[stageMood] || stageMood;
       const ml = await fetchMlRecommendations(mlMood, 3, i === 0 ? "low" : i === 2 ? "medium" : "");
 
-      const pool = getPoolForMood(stageMood);
+      const pool = await getPoolForMood(stageMood, 20);
       const picks = pickDiverseTracks(pool, recentKeys, 3, controls);
       const diversityScore = computeDiversityScore(picks);
 
@@ -1057,7 +1072,7 @@ router.post("/rescue", async (req, res) => {
     const recentKeys = new Set((data.recentRecommendations || []).slice(-30).map((x) => x.trackKey));
 
     const ml = await fetchMlRecommendations(rescueMood, 6, "low");
-    const pool = getPoolForMood(rescueMood);
+    const pool = await getPoolForMood(rescueMood, 24);
     const picks = pickDiverseTracks(pool, recentKeys, 6, controls);
     const diversityScore = computeDiversityScore(picks);
 

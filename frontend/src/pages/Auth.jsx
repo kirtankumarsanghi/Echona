@@ -8,12 +8,15 @@ import axiosInstance from "../api/axiosInstance";
 import { saveUser, clearUser, getUser } from "../utils/auth";
 import { useAuth } from "../context/AuthContext";
 import SEO from "../components/SEO";
+import { MOTION } from "../utils/motion";
 
 function Auth() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleUnavailable, setGoogleUnavailable] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
   useEffect(() => {
     if (getUser()) navigate("/dashboard");
@@ -21,6 +24,7 @@ function Auth() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setError("");
+    setGoogleUnavailable(false);
     setLoading(true);
     try {
       const { data } = await axiosInstance.post("/api/auth/google", {
@@ -42,11 +46,14 @@ function Auth() {
   };
 
   const handleGoogleError = () => {
-    setError("Google sign-in was cancelled or failed. Please try again.");
+    setGoogleUnavailable(true);
+    setError(
+      "Google Sign-In is currently unavailable for this origin. Add this URL to Authorized JavaScript origins in Google Cloud Console and reload the page."
+    );
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative pt-20">
+    <div className="app-typography-refresh min-h-screen bg-slate-950 flex items-center justify-center p-4 relative pt-20">
       <SEO title="Sign In" description="Sign in to ECHONA with your Google account for AI mood detection and music therapy." />
       <Navbar />
 
@@ -54,12 +61,12 @@ function Auth() {
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 8, repeat: Infinity, ease: MOTION.ease }}
           className="absolute -top-32 -left-32 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl"
         />
         <motion.div
           animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          transition={{ duration: 10, repeat: Infinity, ease: MOTION.ease, delay: 1 }}
           className="absolute -bottom-32 -right-32 w-96 h-96 bg-secondary-500/20 rounded-full blur-3xl"
         />
       </div>
@@ -67,10 +74,10 @@ function Auth() {
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: MOTION.duration.section, ease: MOTION.ease }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="bg-slate-900 shadow-soft rounded-2xl border border-slate-800 p-8 sm:p-10">
+        <div className="workspace-header-surface rounded-2xl p-8 sm:p-10">
           {/* Logo */}
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
@@ -78,12 +85,12 @@ function Auth() {
             transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
             className="flex justify-center mb-8"
           >
-            <Logo size="large" showText={false} />
+            <Logo size="default" showText={false} className="scale-105" />
           </motion.div>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-slate-100 mb-2">Welcome to ECHONA</h1>
-            <p className="text-slate-400 text-sm">Sign in to access your wellness workspace</p>
+            <h1 className="workspace-title text-slate-100">Welcome to ECHONA</h1>
+            <p className="workspace-subtitle text-slate-400 text-sm mx-auto">Sign in to access your wellness workspace</p>
           </div>
 
           {/* Error */}
@@ -91,23 +98,31 @@ function Auth() {
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3"
+              transition={{ duration: MOTION.duration.quick, ease: MOTION.ease }}
+              className="mb-6 p-4 border border-rose-400/30 bg-rose-500/10 rounded-xl flex items-start gap-3"
             >
-              <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 text-rose-300 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <p className="text-sm text-red-700 font-medium">{error}</p>
+              <p className="text-sm text-rose-200 font-medium">{error}</p>
             </motion.div>
           )}
 
           {/* Google Sign-In Button */}
           <div className="flex flex-col items-center gap-4">
+            {!hasGoogleClientId && (
+              <div className="w-full rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(251,191,36,0.2)]">
+                <p className="text-sm text-amber-200 font-medium">Google Sign-In is not configured for this deployment.</p>
+                <p className="text-xs text-amber-100/80 mt-1">Set VITE_GOOGLE_CLIENT_ID in Vercel project environment variables and redeploy.</p>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex items-center gap-3 py-4 text-slate-300">
                 <div className="w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm">Signing you in…</span>
               </div>
-            ) : (
+            ) : hasGoogleClientId && !googleUnavailable ? (
               <div className="w-full flex justify-center">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
@@ -120,7 +135,24 @@ function Auth() {
                   logo_alignment="left"
                 />
               </div>
-            )}
+            ) : hasGoogleClientId && googleUnavailable ? (
+              <div className="w-full rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(251,191,36,0.2)]">
+                <p className="text-sm text-amber-200 font-medium">Google Sign-In is disabled for this browser origin.</p>
+                <p className="text-xs text-amber-100/80 mt-1">
+                  Add <span className="font-semibold">http://localhost:3000</span> (and your deployed domain) to Authorized JavaScript origins in Google Cloud Console.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setGoogleUnavailable(false);
+                  }}
+                  className="mt-3 text-xs font-semibold text-amber-200 hover:text-amber-100 underline underline-offset-2"
+                >
+                  Retry Google button
+                </button>
+              </div>
+            ) : null}
 
             <p className="text-xs text-slate-400 text-center mt-2">
               By continuing, you agree to ECHONA’s Terms of Service and Privacy Policy.

@@ -32,6 +32,14 @@ function getDefaultState() {
     habitsByDate: {},
     copilotConversation: [],
     moodTimeline: [],
+    journalEntries: [],
+    plannerData: {
+      todos: [],
+      habits: [],
+      focusSessions: 0,
+      viewMode: "list",
+      energyBudget: 6,
+    },
   };
 }
 
@@ -49,10 +57,19 @@ async function getUserWellnessState(userId) {
 }
 
 async function saveUserWellnessState(userId, nextState) {
+  const planner = nextState.plannerData || {};
   const safeState = {
     habitsByDate: nextState.habitsByDate || {},
     copilotConversation: (nextState.copilotConversation || []).slice(-200),
     moodTimeline: (nextState.moodTimeline || []).slice(-1000),
+    journalEntries: (nextState.journalEntries || []).slice(-500),
+    plannerData: {
+      todos: Array.isArray(planner.todos) ? planner.todos.slice(-1000) : [],
+      habits: Array.isArray(planner.habits) ? planner.habits.slice(-500) : [],
+      focusSessions: Number.isFinite(Number(planner.focusSessions)) ? Number(planner.focusSessions) : 0,
+      viewMode: ["list", "board"].includes(String(planner.viewMode)) ? String(planner.viewMode) : "list",
+      energyBudget: Number.isFinite(Number(planner.energyBudget)) ? Math.max(1, Math.min(10, Number(planner.energyBudget))) : 6,
+    },
   };
 
   if (useMongo()) {
@@ -61,6 +78,16 @@ async function saveUserWellnessState(userId, nextState) {
   }
 
   memoryWellnessStore.set(userId, safeState);
+}
+
+function makeJournalEntry(input = {}) {
+  const createdAt = new Date(input.createdAt || Date.now()).toISOString();
+  return {
+    id: String(input.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+    content: String(input.content || "").trim().slice(0, 4000),
+    mood: String(input.mood || "Calm").trim().slice(0, 40),
+    createdAt,
+  };
 }
 
 function scoreToZone(score) {
@@ -357,6 +384,87 @@ router.post("/mood-sync", async (req, res) => {
     await saveUserWellnessState(req.user.id, state);
 
     return res.json({ success: true, synced: state.moodTimeline.length, forecast: buildForecast(state.moodTimeline) });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/journal", async (req, res) => {
+  try {
+    const state = await getUserWellnessState(req.user.id);
+    const entries = Array.isArray(state.journalEntries) ? state.journalEntries : [];
+    return res.json({ success: true, entries });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post("/journal", async (req, res) => {
+  try {
+    const entry = makeJournalEntry(req.body || {});
+    if (!entry.content) {
+      return res.status(400).json({ success: false, error: "Journal content is required" });
+    }
+
+    const state = await getUserWellnessState(req.user.id);
+    state.journalEntries = [entry, ...(state.journalEntries || [])].slice(0, 500);
+    await saveUserWellnessState(req.user.id, state);
+    return res.json({ success: true, entry, entries: state.journalEntries });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete("/journal/:id", async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) {
+      return res.status(400).json({ success: false, error: "Journal id is required" });
+    }
+
+    const state = await getUserWellnessState(req.user.id);
+    const before = Array.isArray(state.journalEntries) ? state.journalEntries : [];
+    const after = before.filter((item) => String(item.id) !== id);
+    if (after.length === before.length) {
+      return res.status(404).json({ success: false, error: "Journal entry not found" });
+    }
+
+    state.journalEntries = after;
+    await saveUserWellnessState(req.user.id, state);
+    return res.json({ success: true, entries: after });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get("/planner", async (req, res) => {
+  try {
+    const state = await getUserWellnessState(req.user.id);
+    return res.json({
+      success: true,
+      planner: state.plannerData || getDefaultState().plannerData,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post("/planner", async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const state = await getUserWellnessState(req.user.id);
+    state.plannerData = {
+      todos: Array.isArray(payload.todos) ? payload.todos.slice(-1000) : [],
+      habits: Array.isArray(payload.habits) ? payload.habits.slice(-500) : [],
+      focusSessions: Number.isFinite(Number(payload.focusSessions)) ? Number(payload.focusSessions) : 0,
+      viewMode: ["list", "board"].includes(String(payload.viewMode)) ? String(payload.viewMode) : "list",
+      energyBudget: Number.isFinite(Number(payload.energyBudget))
+        ? Math.max(1, Math.min(10, Number(payload.energyBudget)))
+        : 6,
+    };
+
+    await saveUserWellnessState(req.user.id, state);
+    return res.json({ success: true, planner: state.plannerData });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

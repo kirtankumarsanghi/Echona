@@ -5,10 +5,17 @@ const router = express.Router();
 const MAX_USERS = 200;
 let userScores = {};
 
+function getActor(req) {
+  const userId = req?.session?.userId ? String(req.session.userId) : "";
+  const sessionId = req?.sessionID ? String(req.sessionID) : "";
+  const key = userId || sessionId || "anonymous";
+  return key.slice(0, 64);
+}
+
 // 🎮 Submit challenge result
 router.post("/submit", (req, res) => {
-  const { user = "demo", correct } = req.body || {};
-  const safeUser = String(user || "demo").trim().slice(0, 40) || "demo";
+  const { correct } = req.body || {};
+  const safeUser = getActor(req);
 
   if (typeof correct !== "boolean") {
     return res.status(400).json({
@@ -52,9 +59,9 @@ router.post("/submit", (req, res) => {
 
 // 📊 Get score for a user
 router.get("/score", (req, res) => {
-  const user = String(req.query.user || "demo").trim().slice(0, 40) || "demo";
+  const user = getActor(req);
   const data = userScores[user] || { score: 0, badges: [] };
-  res.json({ success: true, user, ...data });
+  res.json({ success: true, userKey: user, ...data });
 });
 
 module.exports = router;

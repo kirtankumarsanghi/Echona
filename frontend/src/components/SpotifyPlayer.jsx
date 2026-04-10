@@ -105,7 +105,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-8 shadow-2xl border border-gray-700"
+        className="surface-layered rounded-2xl p-8"
       >
         <div className="text-center">
           <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-600/20 border-2 border-indigo-500">
@@ -113,10 +113,10 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-white mb-2">
+          <h3 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">
             {playerReady ? "Player Ready" : "Initializing Player..."}
           </h3>
-          <p className="text-gray-400">
+          <p className="text-[var(--text-secondary)]">
             {playerReady ? "Search and select a song to start listening" : "Connecting to Spotify..."}
           </p>
           {playerReady && (
@@ -134,7 +134,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-gradient-to-br from-indigo-900 via-purple-900 to-gray-900 rounded-2xl p-6 shadow-2xl border border-indigo-500/30"
+      className="surface-layered rounded-3xl p-6"
     >
       <div className="flex flex-col gap-4">
         {/* Main Playback Section */}
@@ -166,25 +166,25 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
 
           {/* Track Info & Progress */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-white truncate">
+            <h3 className="text-xl font-semibold text-[var(--text-primary)] truncate">
               {currentTrack.name}
             </h3>
-            <p className="text-gray-300 truncate mb-1">
+            <p className="text-[var(--text-secondary)] truncate mb-1">
               {currentTrack.artists.map((artist) => artist.name).join(", ")}
             </p>
-            <p className="text-gray-400 text-sm truncate">
+            <p className="text-[var(--text-tertiary)] text-sm truncate mood-badge-calm inline-flex px-2 py-0.5 rounded-full w-fit">
               {currentTrack.album.name}
             </p>
 
             {/* Progress Bar — clickable to seek */}
             <div className="mt-4">
-              <div className="flex justify-between text-xs text-gray-400 mb-2">
+              <div className="flex justify-between text-xs text-[var(--text-tertiary)] mb-2">
                 <span className="font-mono">{formatTime(position)}</span>
                 <span className="font-mono">{formatTime(duration)}</span>
               </div>
               <div
                 ref={progressBarRef}
-                className="w-full bg-gray-700 rounded-full h-2 cursor-pointer hover:h-3 transition-all relative"
+                className="w-full bg-[var(--bg-sunken)] rounded-full h-2 cursor-pointer hover:h-3 transition-all relative"
                 onClick={(e) => {
                   if (!player || !duration) return;
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -200,7 +200,7 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
                 aria-valuemax={duration}
               >
                 <div
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full h-full transition-all relative group"
+                  className="bg-gradient-to-r from-violet-500 to-indigo-400 rounded-full h-full transition-all relative group"
                   style={{ width: `${duration ? (position / duration) * 100 : 0}%` }}
                 >
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-200 rounded-full opacity-0 group-hover:opacity-100 shadow-lg"></div>
@@ -258,7 +258,8 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
                 max="100"
                 value={volume}
                 onChange={handleVolumeChange}
-                className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                className="flex-1 h-2 rounded-lg appearance-none cursor-pointer slider"
+                style={{ background: "var(--bg-sunken)" }}
                 title={`Volume: ${volume}%`}
               />
             </div>
@@ -271,19 +272,20 @@ function SpotifyPlayer({ accessToken, onPlayerReady }) {
           appearance: none;
           width: 14px;
           height: 14px;
-          background: white;
+          background: var(--accent);
           border-radius: 50%;
           cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          box-shadow: var(--shadow-xs);
+          border: 1px solid var(--border-soft);
         }
         .slider::-moz-range-thumb {
           width: 14px;
           height: 14px;
-          background: white;
+          background: var(--accent);
           border-radius: 50%;
           cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          border: 1px solid var(--border-soft);
+          box-shadow: var(--shadow-xs);
         }
       `}</style>
     </motion.div>

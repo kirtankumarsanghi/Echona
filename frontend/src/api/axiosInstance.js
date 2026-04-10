@@ -1,10 +1,10 @@
 import axios from "axios";
 import { clearUser } from "../utils/auth";
 
-// In production set VITE_API_URL to the backend URL; leave empty for Vite proxy
+// In development always use Vite proxy (/api) to avoid hard-coupling to :5000.
 const API_BASE_URL =
-  typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL
-    ? import.meta.env.VITE_API_URL
+  typeof import.meta !== "undefined" && import.meta.env
+    ? (import.meta.env.DEV ? "" : (import.meta.env.VITE_API_URL || ""))
     : "";
 
 const MAX_RETRIES = 3;

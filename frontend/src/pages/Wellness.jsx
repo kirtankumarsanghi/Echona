@@ -5,7 +5,9 @@ import AppShell from "../components/AppShell";
 import OptionsMenu from "../components/OptionsMenu";
 import SEO from "../components/SEO";
 import WellnessIntelligenceHub from "../components/WellnessIntelligenceHub";
+import WorkspaceStateMessage from "../components/WorkspaceStateMessage";
 import { useMood } from "../context/MoodContext";
+import { MOTION } from "../utils/motion";
 
 const SmartMoodFeature = lazy(() => import("../components/SmartMoodFeature"));
 const BreathingExercise = lazy(() => import("../components/BreathingExercise"));
@@ -115,54 +117,107 @@ function Wellness() {
     <AppShell>
       <SEO title="Wellness" description="Copilot support, wellness tools, and mini challenges in one focused page." path="/wellness" />
 
-      <div className="relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="app-typography-refresh music-typography relative z-10 pt-14 lg:pt-4 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="pointer-events-none absolute inset-x-0 -top-8 -z-10 flex justify-center">
-          <div className="h-44 w-[92%] rounded-full bg-gradient-to-r from-sky-500/15 via-indigo-500/10 to-emerald-500/15 blur-3xl" />
+          <div className="h-44 w-[92%] rounded-full bg-gradient-to-r from-cyan-500/12 via-slate-500/8 to-amber-500/10 blur-3xl" />
         </div>
-
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="absolute top-4 right-4 lg:top-4 lg:right-8">
-          <OptionsMenu currentPage="/wellness" />
-        </motion.div>
 
         <motion.header
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 rounded-3xl border border-slate-800/80 bg-slate-900/75 backdrop-blur-sm p-6 md:p-7"
+          transition={{ duration: MOTION.duration.section, ease: MOTION.ease }}
+          className="workspace-header-surface mb-6 backdrop-blur-sm p-4 sm:p-6 md:p-7"
         >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex items-start justify-between gap-3 mb-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400 mb-2">Wellness Workspace</p>
-              <h1 className="heading-1 mb-2">Wellness Studio</h1>
-              <p className="text-slate-300 text-base md:text-lg max-w-2xl">
-                Focused support for reflection, recovery routines, and daily momentum.
+              <p className="music-kicker">Wellness Workspace</p>
+              <h1 className="workspace-title">Wellness Studio Dashboard</h1>
+              <p className="workspace-subtitle">
+                A structured wellness flow for reflection, regulation, and consistent progress.
               </p>
             </div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: MOTION.duration.base, ease: MOTION.ease }}
+              className="shrink-0"
+            >
+              <OptionsMenu currentPage="/wellness" />
+            </motion.div>
+          </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 min-w-[280px]">
-              <MetricPill label="Mood" value={wellnessMood} />
-              <MetricPill label="Score" value={`${todayScore}/10`} />
-              <MetricPill label="Streak" value={`${streak}d`} />
-              <MetricPill label="Trend" value={trendLabel} toneClass={moodToneClass} />
+          <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="workspace-surface w-full lg:w-auto p-3 sm:p-4 min-w-0 lg:min-w-[360px]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-0">
+                <MetricPill label="Mood" value={wellnessMood} bordered />
+                <MetricPill label="Score" value={`${todayScore}/10`} bordered />
+                <MetricPill label="Streak" value={`${streak}d`} bordered />
+                <MetricPill label="Trend" value={trendLabel} toneClass={moodToneClass} />
+              </div>
             </div>
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => navigate("/mood-detect")} className="btn-secondary text-sm">
-              New Check-In
+              Check In Now
             </button>
             <button type="button" onClick={() => navigate("/music")} className="btn-secondary text-sm">
-              Open Music
+              Music Therapy
             </button>
             <button type="button" onClick={() => navigate("/todo")} className="btn-secondary text-sm">
-              Plan Focus Block
+              Task Planner
             </button>
             {miniPlayer?.song?.title && (
               <span className="ml-auto text-xs text-slate-400">
-                Active track: <span className="text-slate-200">{miniPlayer.song.title}</span>
+                Current track: <span className="text-slate-200">{miniPlayer.song.title}</span>
               </span>
             )}
           </div>
         </motion.header>
+
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: MOTION.stagger.fast, duration: MOTION.duration.base, ease: MOTION.ease }}
+          className="workspace-surface mb-8 p-5"
+          aria-label="Guided wellness sequence"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-4 border-b border-slate-800/70">
+            <div>
+              <p className="music-kicker mb-1">Daily Wellness Protocol</p>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-100">Follow one clear support sequence</h2>
+              <p className="text-sm text-slate-400 mt-1">Run this flow in order for better emotional recovery and daily consistency.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => navigate("/mood-detect")} className="btn-secondary text-sm">Start Flow</button>
+              <button onClick={() => navigate("/todo")} className="btn-secondary text-sm">Plan Actions</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
+            {[
+              "Review guidance and your latest trend context.",
+              "Complete one breathing, meditation, or challenge block.",
+              "Continue in Music or Planner to convert insight into action.",
+            ].map((step, idx) => (
+              <div key={step} className="workspace-surface-soft p-3">
+                <p className="music-kicker mb-1">Step {idx + 1}</p>
+                <p className="text-sm text-slate-300 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {!history.length && (
+          <div className="mb-6">
+            <WorkspaceStateMessage
+              title="No recent check-ins yet"
+              description="Wellness recommendations improve after your first check-in. Start a quick detection to personalize this dashboard."
+              actionLabel="Start Check-In"
+              onAction={() => navigate("/mood-detect")}
+              variant="warning"
+            />
+          </div>
+        )}
 
         <WellnessIntelligenceHub
           history={history}
@@ -177,16 +232,16 @@ function Wellness() {
           <motion.section
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="card-premium p-5 md:p-6"
+            transition={{ delay: MOTION.stagger.fast, duration: MOTION.duration.base, ease: MOTION.ease }}
+            className="workspace-surface p-5 md:p-6"
             aria-label="Wellness corner"
           >
             <SectionHeader
               eyebrow="Guided Tools"
-              title="Wellness Corner"
-              subtitle="Quick interventions for breathing, calming, and regulation."
+              title="Regulation Toolkit"
+              subtitle="Targeted interventions for breathing, calming, and reset routines."
               badge="Recovery"
-              badgeClass="text-indigo-200 border-indigo-500/30 bg-indigo-500/10"
+              badgeClass="text-cyan-200 border-cyan-500/30 bg-cyan-500/10"
             />
 
             <div className="mb-4">
@@ -208,22 +263,22 @@ function Wellness() {
           <motion.section
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="card-premium p-5 md:p-6"
+            transition={{ delay: MOTION.stagger.base, duration: MOTION.duration.base, ease: MOTION.ease }}
+            className="workspace-surface p-5 md:p-6"
             aria-label="Mini challenges"
           >
             <SectionHeader
               eyebrow="Progress Layer"
-              title="Mini Challenges"
-              subtitle="Small, measurable wins that keep your routine consistent."
+              title="Challenge Track"
+              subtitle="Small measurable wins that make your routine repeatable."
               badge="Gamified"
-              badgeClass="text-amber-200 border-amber-500/30 bg-amber-500/10"
+              badgeClass="text-emerald-200 border-emerald-500/30 bg-emerald-500/10"
             />
 
             <p className="text-sm text-slate-300 mb-4 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
               {miniPlayer?.song?.title
-                ? `Now linked to: ${miniPlayer.song.title}`
-                : "Start a track in Music to unlock song-specific challenge tracking here."}
+                ? `Linked track: ${miniPlayer.song.title}`
+                : "Start a track in Music to unlock track-based challenge tracking."}
             </p>
 
             <Suspense fallback={<LazyFallback />}>
@@ -236,9 +291,9 @@ function Wellness() {
   );
 }
 
-function MetricPill({ label, value, toneClass }) {
+function MetricPill({ label, value, toneClass, bordered = false }) {
   return (
-    <div className={`rounded-xl border border-slate-700/80 bg-slate-900/60 px-3 py-2 ${toneClass || ""}`}>
+    <div className={`px-2 sm:px-3 py-1.5 ${bordered ? "sm:border-r sm:border-slate-800/70" : ""} ${toneClass || ""}`}>
       <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-100 truncate">{value}</p>
     </div>
@@ -250,7 +305,7 @@ function SectionHeader({ eyebrow, title, subtitle, badge, badgeClass }) {
     <div className="mb-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 mb-1">{eyebrow}</p>
+          <p className="music-kicker mb-1">{eyebrow}</p>
           <h3 className="text-xl font-semibold text-white leading-tight">{title}</h3>
           <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
         </div>

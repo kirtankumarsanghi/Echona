@@ -10,6 +10,8 @@ import { getSpotifyToken, clearSpotifyTokens } from "../utils/auth";
 import AppShell from "../components/AppShell";
 import OptionsMenu from "../components/OptionsMenu";
 import SEO from "../components/SEO";
+import WorkspaceStateMessage from "../components/WorkspaceStateMessage";
+import { MOTION } from "../utils/motion";
 import musicLibrary, {
   getPlaylist,
   getYoutubeThumbnail,
@@ -28,8 +30,8 @@ const LazyFallback = () => (
   </div>
 );
 
-// Get API base URL for Spotify OAuth
-const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+// Use Vite proxy in development; explicit API URL in production.
+const API_BASE_URL = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_URL || "");
 const UNAVAILABLE_TRACKS_KEY = "echona_unavailable_tracks";
 const LIKED_SONGS_KEY = "echona_liked_songs";
 const LISTEN_HISTORY_KEY = "echona_listen_history";
@@ -1054,47 +1056,91 @@ function Music() {
       </div>
 
       {/* Main Content */}
-      <div className={`relative z-10 pt-14 lg:pt-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto ${currentlyPlaying ? "pb-36" : "pb-12"}`}>
+      <div className={`app-typography-refresh music-typography relative z-10 pt-14 lg:pt-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto ${currentlyPlaying ? "pb-36" : "pb-12"}`}>
 
         {/* ─── HEADER ─── */}
-        <div className="flex items-center justify-between mb-6">
-          <motion.button
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/mood-detect")}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-neutral-900/60 hover:bg-neutral-800/80 border border-neutral-800 rounded-xl text-sm text-neutral-400 hover:text-neutral-200 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span className="font-medium">Back</span>
-          </motion.button>
-          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
-            <OptionsMenu currentPage="/music" />
-          </motion.div>
-        </div>
+        <motion.header
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: MOTION.duration.base, ease: MOTION.ease }}
+          className="workspace-header-surface mb-6 p-4 sm:p-5"
+        >
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <p className="music-kicker">Music Therapy Workspace</p>
+              <h1 className="workspace-title text-2xl sm:text-3xl mb-1">Adaptive Music Studio</h1>
+              <p className="workspace-subtitle text-sm sm:text-base max-w-2xl">A structured listening workflow built for your current emotional state.</p>
+            </div>
+            <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: MOTION.duration.base, ease: MOTION.ease }} className="shrink-0">
+              <OptionsMenu currentPage="/music" />
+            </motion.div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate("/mood-detect")}
+              className="btn-secondary text-sm"
+            >
+              Check-In
+            </motion.button>
+            <button onClick={() => navigate("/wellness")} className="btn-secondary text-sm">Wellness</button>
+            <button onClick={refreshSongs} className="btn-secondary text-sm">Refresh Session</button>
+          </div>
+        </motion.header>
+
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: MOTION.stagger.fast, duration: MOTION.duration.base, ease: MOTION.ease }}
+          className="workspace-surface mb-8 p-5"
+          aria-label="Guided music sequence"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-4 border-b border-neutral-800/70">
+            <div>
+              <p className="music-kicker mb-1">Session Protocol</p>
+              <h2 className="text-xl sm:text-2xl font-semibold text-neutral-100">From mood signal to intentional listening</h2>
+              <p className="text-sm text-neutral-400 mt-1">Set context, listen with purpose, then capture what helped your state.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={refreshSongs} className="btn-secondary text-sm">Refresh Session</button>
+              <button onClick={() => navigate("/wellness")} className="btn-secondary text-sm">Open Wellness</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
+            {[
+              "Confirm your mood and active playlist context.",
+              "Play or search tracks that align with your state.",
+              "Use impact tools to improve your next session.",
+            ].map((step, idx) => (
+              <div key={step} className="workspace-surface-soft p-3">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-1">Step {idx + 1}</p>
+                <p className="text-sm text-neutral-300 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
 
         {/* ═══════════════════════════════════════════════════════════════
             TIER 1: MUSIC HERO — Primary Focus
         ═══════════════════════════════════════════════════════════════ */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-12 h-12 border-2 border-neutral-700 border-t-indigo-500 rounded-full animate-spin mb-4" />
-            <p className="text-neutral-400 text-sm">Curating your music...</p>
-          </div>
+          <WorkspaceStateMessage
+            title="Preparing your music session"
+            description="Building your mood-aware queue and syncing recommendation signals."
+            variant="info"
+          />
         ) : (
           <>
             {/* Music Hero Card */}
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="relative bg-neutral-900/60 backdrop-blur-sm border border-neutral-800/80 rounded-2xl p-6 md:p-8 mb-6 overflow-visible"
+              transition={{ duration: MOTION.duration.section, ease: MOTION.ease }}
+              className="relative workspace-header-surface backdrop-blur-sm p-6 md:p-8 mb-6 overflow-visible"
               aria-label="Music player hero"
             >
               <div className="pointer-events-none absolute inset-x-0 -top-8 -z-10 flex justify-center">
-                <div className="h-40 w-[92%] rounded-full bg-gradient-to-r from-indigo-500/14 via-sky-500/10 to-emerald-500/14 blur-3xl" />
+                <div className="h-40 w-[92%] rounded-full bg-gradient-to-r from-cyan-500/12 via-slate-500/8 to-amber-500/10 blur-3xl" />
               </div>
 
               {playlistNotice && (
@@ -1111,13 +1157,13 @@ function Music() {
                     <span className={`text-xs font-semibold tracking-wider uppercase ${accent.text}`}>
                       {currentMood} Mood
                     </span>
-                    <span className="text-[11px] text-neutral-500">Adaptive playlist session</span>
+                    <span className="text-[11px] text-neutral-500">System-guided playlist session</span>
                   </div>
                   <button
                     onClick={() => navigate("/mood-detect")}
                     className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
                   >
-                    Change mood
+                    Update mood
                   </button>
                 </div>
 
@@ -1160,7 +1206,7 @@ function Music() {
                         setShowSongSearchResults(true);
                       }}
                       onFocus={() => setShowSongSearchResults(true)}
-                      placeholder="Search by song, artist, or vibe"
+                      placeholder="Search by song, artist, mood, or vibe"
                       className="w-full bg-neutral-900/80 border border-neutral-700/60 rounded-xl px-4 py-2.5 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     />
                   </div>
@@ -1206,7 +1252,7 @@ function Music() {
                             </p>
                           </button>
                         )) : (
-                          !songSearchLoading && <p className="px-4 py-3 text-xs text-neutral-500">No songs found. Try another title, artist, or language.</p>
+                          !songSearchLoading && <p className="px-4 py-3 text-xs text-neutral-500">No matching tracks yet. Try a different artist, mood keyword, or language filter.</p>
                         )}
 
                         {!songSearchLoading && songSearchHasMore && (
@@ -1227,7 +1273,7 @@ function Music() {
               </div>
 
               {songSearchQuery.trim() && (songSearchLoading || searchMoodInsight || recommendationCards.length > 0) && (
-                <div className="mb-6 rounded-xl border border-neutral-800/70 bg-neutral-950/60 p-4">
+                <div className="mb-6 workspace-surface-soft p-4">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">Search Insight</p>
@@ -1275,7 +1321,7 @@ function Music() {
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => playSong(songs[0])}
-                  className="px-6 py-2.5 bg-slate-200 hover:bg-slate-100 text-slate-900 font-semibold rounded-full text-sm shadow-sm hover:shadow-md transition-all flex items-center gap-2 border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"
+                  className="btn-primary text-sm px-5"
                   aria-label="Play all songs"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -1286,23 +1332,23 @@ function Music() {
 
                 <button
                   onClick={refreshSongs}
-                  className="px-5 py-2.5 bg-neutral-800/80 hover:bg-neutral-700/80 border border-neutral-700/50 text-neutral-300 text-sm font-medium rounded-full transition-all flex items-center gap-2"
+                  className="btn-secondary text-sm px-5"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Shuffle
+                  Refresh Queue
                 </button>
 
                 <button
                   onClick={replaceBrokenSongs}
-                  className="px-5 py-2.5 bg-emerald-900/30 hover:bg-emerald-800/30 border border-emerald-600/30 text-emerald-300 text-sm font-medium rounded-full transition-all flex items-center gap-2"
+                  className="btn-secondary text-sm px-5"
                   title="Clear blocked songs and replace with fresh picks"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h5l2-2h4l2 2h5M7 7v10a2 2 0 002 2h6a2 2 0 002-2V7m-7 4v4m4-4v4" />
                   </svg>
-                  Replace Broken Songs{unavailableTrackIds.length > 0 ? ` (${unavailableTrackIds.length})` : ""}
+                  Replace Unavailable{unavailableTrackIds.length > 0 ? ` (${unavailableTrackIds.length})` : ""}
                 </button>
 
                 <button
@@ -1310,7 +1356,7 @@ function Music() {
                   className={`px-4 py-2.5 border rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
                     repeatMode === "off"
                       ? "border-neutral-700/50 text-neutral-500 hover:text-neutral-300"
-                      : "border-indigo-500/40 text-indigo-400 bg-indigo-500/10"
+                      : "border-cyan-500/40 text-cyan-300 bg-cyan-500/10"
                   }`}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1321,7 +1367,7 @@ function Music() {
 
                 <button
                   onClick={() => setShowSongList(!showSongList)}
-                  className="px-4 py-2.5 bg-neutral-800/80 hover:bg-neutral-700/80 border border-neutral-700/50 text-neutral-300 text-sm font-medium rounded-full transition-all flex items-center gap-2"
+                  className="btn-secondary text-sm px-4"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -1339,13 +1385,13 @@ function Music() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: MOTION.duration.base, ease: MOTION.ease }}
                   className="mb-6 overflow-hidden"
                   aria-label="Playlist"
                 >
-                  <div className="bg-neutral-900/50 backdrop-blur-sm border border-neutral-800/80 rounded-2xl">
+                  <div className="workspace-surface backdrop-blur-sm">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800/50">
-                      <h3 className="text-base font-semibold text-neutral-200">Your Playlist</h3>
+                      <h3 className="text-lg font-semibold text-neutral-100">Session Playlist</h3>
                       <span className="text-neutral-500 text-xs">{songs.length} songs</span>
                     </div>
                     <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
@@ -1404,13 +1450,13 @@ function Music() {
                               </svg>
                             </button>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                              song.language === "Hindi" ? "bg-rose-500/10 text-rose-400/70"
-                                : song.language === "Tamil" ? "bg-amber-500/10 text-amber-400/70"
-                                : song.language === "Telugu" ? "bg-purple-500/10 text-purple-400/70"
-                                : song.language === "Instrumental" ? "bg-cyan-500/10 text-cyan-400/70"
-                                : "bg-teal-500/10 text-teal-400/70"
+                              song.language === "Hindi" ? "bg-cyan-500/10 text-cyan-300"
+                                : song.language === "Tamil" ? "bg-amber-500/10 text-amber-300"
+                                : song.language === "Telugu" ? "bg-sky-500/10 text-sky-300"
+                                : song.language === "Instrumental" ? "bg-emerald-500/10 text-emerald-300"
+                                : "bg-slate-500/10 text-slate-300"
                             }`}>
-                              {song.language === "Hindi" ? "HI" : song.language === "Tamil" ? "TA" : song.language === "Telugu" ? "TE" : song.language === "Instrumental" ? "🎵" : "EN"}
+                              {song.language === "Hindi" ? "HI" : song.language === "Tamil" ? "TA" : song.language === "Telugu" ? "TE" : song.language === "Instrumental" ? "INS" : "EN"}
                             </span>
                           </motion.div>
                         );
@@ -1428,13 +1474,13 @@ function Music() {
               className="mb-6"
               aria-label="Music library"
             >
-              <div className="bg-neutral-900/50 backdrop-blur-sm border border-neutral-800/80 rounded-2xl overflow-hidden">
+              <div className="workspace-surface backdrop-blur-sm overflow-hidden">
                 <button
                   onClick={() => setShowLibrary((prev) => !prev)}
                   className="w-full px-6 py-4 border-b border-neutral-800/60 flex items-center justify-between hover:bg-neutral-800/30 transition-colors"
                 >
                   <div className="text-left">
-                    <h3 className="text-base font-semibold text-neutral-200">Liked Songs & History</h3>
+                    <h3 className="text-lg font-semibold text-neutral-100">Liked Songs & History</h3>
                     <p className="text-xs text-neutral-500">{likedSongs.length} liked • {listenHistory.length} recently played</p>
                   </div>
                   <svg
@@ -1536,7 +1582,7 @@ function Music() {
               />
 
               {/* Spotify Connection — integrated, minimal */}
-              <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-5">
+              <div className="workspace-surface p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 24 24">
@@ -1609,7 +1655,7 @@ function Music() {
               <SpotifySearch accessToken={spotifyToken} deviceId={spotifyDeviceId} />
 
               {/* Extended Playlist Link */}
-              <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-5">
+              <div className="workspace-surface p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
@@ -1758,8 +1804,8 @@ function Music() {
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 2px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 2px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
       `}</style>
     </AppShell>
   );
@@ -1767,7 +1813,7 @@ function Music() {
 
 function HeroMetric({ label, value }) {
   return (
-    <div className="rounded-xl border border-neutral-700/80 bg-neutral-900/70 px-3 py-2">
+    <div className="pl-3 border-l border-neutral-700/70 py-1">
       <p className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</p>
       <p className="text-sm font-semibold text-neutral-100 truncate">{value}</p>
     </div>

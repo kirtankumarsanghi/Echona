@@ -39,6 +39,20 @@ export function AuthProvider({ children }) {
     setAuthenticated(true);
   }, []);
 
+  const updateUser = useCallback((updater) => {
+    setUser((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (next) {
+        saveUser(next);
+        setAuthenticated(true);
+      } else {
+        clearUser();
+        setAuthenticated(false);
+      }
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await axiosInstance.post("/api/auth/logout");
@@ -73,7 +87,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, authenticated, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, authenticated, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

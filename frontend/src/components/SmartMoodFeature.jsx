@@ -2,13 +2,27 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import JournalModal from "./JournalModal";
 
+async function shareText(text) {
+  if (navigator.share) {
+    await navigator.share({ text });
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  throw new Error("Share not supported on this device");
+}
+
 // Define features with actions
 const smartFeatures = {
   Happy: {
     title: "Share Your Joy!",
     description: "Capture this happy moment with a selfie or share what's making you smile.",
     buttonText: "Share Moment",
-    action: () => alert("Sharing to social media! (Not really, this is a demo)"),
+    action: () => shareText("I am feeling happy right now and taking a wellness moment with ECHONA."),
   },
   Sad: {
     title: "A Moment for Reflection",
@@ -38,7 +52,7 @@ const smartFeatures = {
     title: "Capture the Excitement!",
     description: "Your energy is contagious! Share this moment with friends.",
     buttonText: "Share Excitement",
-    action: () => alert("Sharing with friends! (Not really, this is a demo)"),
+    action: () => shareText("I am feeling excited right now and tracking my mood with ECHONA."),
   },
 };
 
@@ -85,7 +99,9 @@ function SmartMoodFeature({ mood }) {
     } else if (feature.action === "journal") {
       setIsJournalOpen(true);
     } else if (typeof feature.action === "function") {
-      feature.action();
+      feature.action().catch(() => {
+        alert("Sharing is unavailable right now.");
+      });
     } else {
       // For other moods that might have string actions
       if (mood === "Happy" || mood === "Excited") {

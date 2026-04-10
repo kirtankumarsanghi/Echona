@@ -311,6 +311,7 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
         dominantMood: "No data",
         bestDay: "-",
         toughDay: "-",
+        weeklyBars: [],
         summary: "Add more mood check-ins to unlock your weekly report.",
       };
     }
@@ -335,6 +336,12 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
       avg: scores.reduce((a, b) => a + b, 0) / scores.length,
     }));
 
+    const weekdayOrder = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const weeklyBars = weekdayOrder.map((day) => {
+      const row = dayAverages.find((item) => item.day === day);
+      return { day, avg: row?.avg ?? 0 };
+    });
+
     dayAverages.sort((a, b) => b.avg - a.avg);
 
     return {
@@ -343,6 +350,7 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
       dominantMood,
       bestDay: dayAverages[0]?.day || "-",
       toughDay: dayAverages[dayAverages.length - 1]?.day || "-",
+      weeklyBars,
       summary:
         trendLabel === "Improving"
           ? "Your emotional baseline is improving. Keep your current recovery habits consistent."
@@ -497,30 +505,50 @@ function WellnessIntelligenceHub({ history, todayMood, todayScore, trendLabel, s
         </div>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-5">
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="card-premium p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Weekly Wellness Report</h3>
-          <span className="text-xs px-2 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-200">{weeklyReport.total} logs</span>
+          <h3 className="text-xl font-semibold text-[var(--text-primary)]">Weekly Wellness Report</h3>
+          <span className="text-xs px-2 py-1 rounded-full bg-[var(--accent-subtle)] border border-[var(--border-soft)] text-[var(--accent)]">{weeklyReport.total} logs</span>
         </div>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
-            <p className="text-xs text-slate-400">Average Mood</p>
-            <p className="text-xl text-white font-semibold">{weeklyReport.avg ? weeklyReport.avg.toFixed(1) : "-"}/10</p>
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 metric-accent metric-accent-violet">
+            <p className="text-xs text-[var(--text-tertiary)]">Average Mood</p>
+            <p className="text-xl text-[var(--text-primary)] font-semibold">{weeklyReport.avg ? weeklyReport.avg.toFixed(1) : "-"}/10</p>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
-            <p className="text-xs text-slate-400">Dominant Mood</p>
-            <p className="text-xl text-white font-semibold">{weeklyReport.dominantMood}</p>
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 metric-accent metric-accent-sage">
+            <p className="text-xs text-[var(--text-tertiary)]">Dominant Mood</p>
+            <p className="text-xl text-[var(--text-primary)] font-semibold">{weeklyReport.dominantMood}</p>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
-            <p className="text-xs text-slate-400">Best Day</p>
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 metric-accent metric-accent-amber">
+            <p className="text-xs text-[var(--text-tertiary)]">Best Day</p>
             <p className="text-xl text-emerald-300 font-semibold">{weeklyReport.bestDay}</p>
           </div>
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
-            <p className="text-xs text-slate-400">Recovery Streak</p>
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3">
+            <p className="text-xs text-[var(--text-tertiary)]">Recovery Streak</p>
             <p className="text-xl text-amber-300 font-semibold">{streak}d</p>
           </div>
         </div>
-        <p className="text-sm text-slate-300 leading-relaxed">{weeklyReport.summary}</p>
+
+        {weeklyReport.weeklyBars?.length > 0 && (
+          <div className="mb-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-sunken)] px-3 py-3">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-2">Daily Rhythm</p>
+            <div className="grid grid-cols-7 gap-2 items-end h-20">
+              {weeklyReport.weeklyBars.map((bar) => (
+                <div key={bar.day} className="flex flex-col items-center gap-1">
+                  <div className="w-full bg-[var(--bg-elevated)] rounded-full h-14 flex items-end overflow-hidden">
+                    <div
+                      className="w-full rounded-full bg-gradient-to-t from-indigo-500/80 to-violet-400/80"
+                      style={{ height: `${Math.max((bar.avg / 10) * 100, 6)}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">{bar.day}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{weeklyReport.summary}</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card-premium p-5 xl:col-span-2">

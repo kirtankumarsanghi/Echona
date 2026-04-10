@@ -8,6 +8,19 @@ const MoodJournal = ({ mood, onSave }) => {
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
+  const moodScores = {
+    Happy: 9,
+    Excited: 8,
+    Calm: 7,
+    Neutral: 6,
+    Stressed: 4,
+    Anxious: 4,
+    Tired: 4,
+    Lonely: 3,
+    Sad: 3,
+    Angry: 2,
+  };
+
   const saveNote = async () => {
     if (!note.trim()) return;
     
@@ -16,7 +29,7 @@ const MoodJournal = ({ mood, onSave }) => {
       const response = await axiosInstance.post("/api/mood/add-note", {
         mood,
         note: note.trim(),
-        score: Math.floor(Math.random() * 10) + 1,
+        score: moodScores[mood] || 5,
       });
       
       console.log("[MoodJournal] Note saved:", response.data);

@@ -457,8 +457,7 @@ const capturePhoto = async () => {
             <OptionsMenu currentPage="/mood-detect" />
           </motion.div>
         </div>
-        
-        {/* Header */}
+
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -490,11 +489,11 @@ const capturePhoto = async () => {
           transition={{ delay: 0.18 }}
           className="max-w-4xl mx-auto mb-8"
         >
-          <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
             {workflowSteps.map((step) => (
-              <div key={step.id} className="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 md:px-4 md:py-3">
-                <p className="text-[10px] md:text-xs uppercase tracking-wider text-slate-400">Step {step.id}</p>
-                <p className="text-xs md:text-sm font-semibold text-slate-100">{step.title}</p>
+              <div key={step.id} className="workspace-surface-soft px-4 py-3 md:px-5 md:py-4">
+                <p className="text-[10px] md:text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Step {step.id}</p>
+                <p className="text-xs md:text-sm font-semibold text-[var(--text-primary)] mt-0.5">{step.title}</p>
               </div>
             ))}
           </div>
@@ -505,7 +504,7 @@ const capturePhoto = async () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8 max-w-6xl mx-auto"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10 max-w-6xl mx-auto"
           role="tablist"
           aria-label="Detection method"
         >
@@ -519,28 +518,29 @@ const capturePhoto = async () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + index * 0.1 }}
               onClick={() => setMode(m.id)}
-              whileHover={{ scale: 1.02, y: -2 }}
+              whileHover={{ scale: 1.01, y: -3 }}
               whileTap={{ scale: 0.95 }}
-              className={`relative text-left px-4 py-3 rounded-xl transition-all duration-200 overflow-hidden border ${
+              className={`relative text-left px-4 py-4 sm:px-5 sm:py-5 rounded-2xl transition-all duration-200 overflow-hidden border min-h-[132px] sm:min-h-[150px] ${
                 mode === m.id
-                  ? "bg-primary-700/20 text-white border-primary-500/60 shadow-lg shadow-primary-700/20"
-                  : "bg-slate-900 text-slate-200 hover:bg-slate-800 border-slate-700"
+                  ? "surface-layered text-[var(--text-primary)] border-[var(--accent)] shadow-lg shadow-indigo-900/25 ring-1 ring-[var(--accent)]/70"
+                  : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] border-[var(--border-default)]"
               }`}
             >
               {mode === m.id && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-primary-700/15 -z-10"
+                  className="absolute inset-0 bg-[var(--accent-subtle)] -z-10"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
-              <span className="relative flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-950/50 border border-slate-600/60 text-slate-200">
+              <span className="relative flex items-center gap-2.5 sm:gap-3 mb-1.5 sm:mb-2">
+                <span className="inline-flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-violet-500/35 via-indigo-500/30 to-sky-500/30 border border-white/10 text-[var(--text-primary)]">
                   {getModeIcon(m.id)}
                 </span>
-                <span className="font-semibold text-sm md:text-base">{m.label}</span>
+                <span className="font-semibold text-sm sm:text-base">{m.label}</span>
               </span>
-              <p className={`relative text-xs ${mode === m.id ? "text-slate-100" : "text-slate-400"}`}>{m.short}</p>
+              <p className={`relative text-xs sm:text-sm leading-relaxed ${mode === m.id ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}>{m.short}</p>
+              <p className={`relative text-xs mt-2 hidden sm:block ${mode === m.id ? "text-[var(--accent)]" : "text-[var(--text-tertiary)]"}`}>{m.hint}</p>
             </motion.button>
           ))}
         </motion.div>
@@ -549,15 +549,15 @@ const capturePhoto = async () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="max-w-6xl mx-auto mb-12 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5"
+          className="max-w-6xl mx-auto mb-12 workspace-surface p-5 md:p-6"
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-widest text-slate-400 mb-1">Current Method</p>
-              <h3 className="text-lg font-semibold text-slate-100">{activeMode.label}</h3>
-              <p className="text-sm text-slate-300">{activeMode.hint}</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-1">Current Method</p>
+              <h3 className="text-2xl font-semibold text-[var(--text-primary)]">{activeMode.label}</h3>
+              <p className="text-sm text-[var(--text-secondary)]">{activeMode.hint}</p>
             </div>
-            <div className="text-xs text-slate-400 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+            <div className="text-xs text-[var(--text-secondary)] bg-[var(--bg-sunken)] border border-[var(--border-soft)] rounded-xl px-3 py-2">
               Tip: Best results come from one clear input at a time.
             </div>
           </div>

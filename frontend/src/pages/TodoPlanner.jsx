@@ -4,7 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import OptionsMenu from '../components/OptionsMenu';
 import SEO from '../components/SEO';
+import WorkspaceStateMessage from '../components/WorkspaceStateMessage';
 import { useMood } from '../context/MoodContext';
+import axiosInstance from '../api/axiosInstance';
+import { MOTION } from '../utils/motion';
 
 // ─── Constants ──────────────────────────────────────────────
 const STORAGE_KEY = 'echona_todos';
@@ -18,12 +21,12 @@ const STATUS_FLOW = ['backlog', 'today', 'in-progress', 'done'];
 const EFFORT_VALUES = [1, 2, 3, 5, 8];
 
 const moodConfig = {
-  Happy:   { accent: 'amber',   emoji: '😊', bg: 'bg-amber-500/10',   border: 'border-amber-500/25',  text: 'text-amber-400',   dot: 'bg-amber-400' },
-  Calm:    { accent: 'emerald', emoji: '😌', bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', text: 'text-emerald-400', dot: 'bg-emerald-400' },
-  Excited: { accent: 'pink',    emoji: '🤩', bg: 'bg-pink-500/10',    border: 'border-pink-500/25',    text: 'text-pink-400',    dot: 'bg-pink-400' },
-  Sad:     { accent: 'blue',    emoji: '😢', bg: 'bg-blue-500/10',    border: 'border-blue-500/25',    text: 'text-blue-400',    dot: 'bg-blue-400' },
-  Angry:   { accent: 'rose',    emoji: '😤', bg: 'bg-rose-500/10',    border: 'border-rose-500/25',    text: 'text-rose-400',    dot: 'bg-rose-400' },
-  Anxious: { accent: 'purple',  emoji: '😰', bg: 'bg-purple-500/10',  border: 'border-purple-500/25',  text: 'text-purple-400',  dot: 'bg-purple-400' },
+  Happy:   { accent: 'amber', bg: 'bg-amber-500/10',   border: 'border-amber-500/25',  text: 'text-amber-400',   dot: 'bg-amber-400' },
+  Calm:    { accent: 'emerald', bg: 'bg-emerald-500/10', border: 'border-emerald-500/25', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+  Excited: { accent: 'pink', bg: 'bg-pink-500/10',    border: 'border-pink-500/25',    text: 'text-pink-400',    dot: 'bg-pink-400' },
+  Sad:     { accent: 'blue', bg: 'bg-blue-500/10',    border: 'border-blue-500/25',    text: 'text-blue-400',    dot: 'bg-blue-400' },
+  Angry:   { accent: 'rose', bg: 'bg-rose-500/10',    border: 'border-rose-500/25',    text: 'text-rose-400',    dot: 'bg-rose-400' },
+  Anxious: { accent: 'purple', bg: 'bg-purple-500/10',  border: 'border-purple-500/25',  text: 'text-purple-400',  dot: 'bg-purple-400' },
 };
 
 const priorityConfig = {
@@ -137,6 +140,7 @@ const TodoPlanner = () => {
   const [viewMode, setViewMode] = useState('list'); // list | board
   const [quickCapture, setQuickCapture] = useState('');
   const [energyBudget, setEnergyBudget] = useState(6);
+  const [plannerLoaded, setPlannerLoaded] = useState(false);
 
   // Focus timer
   const [focusMinutes, setFocusMinutes] = useState(25);
@@ -161,28 +165,85 @@ const TodoPlanner = () => {
 
   // ─── Persistence ────────────────────────────────────────
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const p = JSON.parse(saved);
-        if (Array.isArray(p)) setTodos(p.map(normalizeTodo));
+    let active = true;
+
+    const applyLocalFallback = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const p = JSON.parse(saved);
+          if (Array.isArray(p)) setTodos(p.map(normalizeTodo));
+        }
+        const savedH = localStorage.getItem(HABITS_KEY);
+        if (savedH) { const p = JSON.parse(savedH); if (Array.isArray(p)) setHabits(p); }
+        const savedF = localStorage.getItem(FOCUS_LOG_KEY);
+        if (savedF) setFocusSessions(parseInt(savedF, 10) || 0);
+        const savedView = localStorage.getItem('echona_planner_view');
+        if (savedView === 'list' || savedView === 'board') setViewMode(savedView);
+        const savedEnergy = Number(localStorage.getItem('echona_planner_energy'));
+        if (Number.isFinite(savedEnergy) && savedEnergy >= 1 && savedEnergy <= 10) setEnergyBudget(savedEnergy);
+      } catch {
+        // ignore fallback parse errors
       }
-      const savedH = localStorage.getItem(HABITS_KEY);
-      if (savedH) { const p = JSON.parse(savedH); if (Array.isArray(p)) setHabits(p); }
-      const savedF = localStorage.getItem(FOCUS_LOG_KEY);
-      if (savedF) setFocusSessions(parseInt(savedF, 10) || 0);
-      const savedView = localStorage.getItem('echona_planner_view');
-      if (savedView === 'list' || savedView === 'board') setViewMode(savedView);
-      const savedEnergy = Number(localStorage.getItem('echona_planner_energy'));
-      if (Number.isFinite(savedEnergy) && savedEnergy >= 1 && savedEnergy <= 10) setEnergyBudget(savedEnergy);
-    } catch { /* ignore */ }
+    };
+
+    const loadPlanner = async () => {
+      applyLocalFallback();
+
+      try {
+        const { data } = await axiosInstance.get('/api/wellness/planner');
+        const planner = data?.planner || {};
+        if (!active) return;
+
+        if (Array.isArray(planner.todos)) setTodos(planner.todos.map(normalizeTodo));
+        if (Array.isArray(planner.habits)) setHabits(planner.habits);
+        if (Number.isFinite(Number(planner.focusSessions))) setFocusSessions(Number(planner.focusSessions));
+        if (planner.viewMode === 'list' || planner.viewMode === 'board') setViewMode(planner.viewMode);
+        if (Number.isFinite(Number(planner.energyBudget))) {
+          setEnergyBudget(Math.max(1, Math.min(10, Number(planner.energyBudget))));
+        }
+      } catch {
+        // local fallback already applied
+      } finally {
+        if (active) setPlannerLoaded(true);
+      }
+    };
+
+    loadPlanner();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(todos)); }, [todos]);
-  useEffect(() => { localStorage.setItem(HABITS_KEY, JSON.stringify(habits)); }, [habits]);
-  useEffect(() => { localStorage.setItem(FOCUS_LOG_KEY, String(focusSessions)); }, [focusSessions]);
-  useEffect(() => { localStorage.setItem('echona_planner_view', viewMode); }, [viewMode]);
-  useEffect(() => { localStorage.setItem('echona_planner_energy', String(energyBudget)); }, [energyBudget]);
+  useEffect(() => {
+    if (!plannerLoaded) return;
+
+    // Keep local cache for quick reload while also persisting live.
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+      localStorage.setItem(HABITS_KEY, JSON.stringify(habits));
+      localStorage.setItem(FOCUS_LOG_KEY, String(focusSessions));
+      localStorage.setItem('echona_planner_view', viewMode);
+      localStorage.setItem('echona_planner_energy', String(energyBudget));
+    } catch {
+      // ignore local cache issues
+    }
+
+    const timeout = setTimeout(() => {
+      axiosInstance.post('/api/wellness/planner', {
+        todos,
+        habits,
+        focusSessions,
+        viewMode,
+        energyBudget,
+      }).catch(() => {
+        // keep local state intact if network fails
+      });
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [plannerLoaded, todos, habits, focusSessions, viewMode, energyBudget]);
 
   // Auto-set mood when detected
   useEffect(() => {
@@ -414,6 +475,23 @@ const TodoPlanner = () => {
   const detectedMood = currentMood || 'Calm';
   const mc = moodConfig[detectedMood] || moodConfig.Calm;
 
+  if (!plannerLoaded) {
+    return (
+      <AppShell>
+        <div className="app-typography-refresh">
+          <SEO title="Wellness Planner" description="Mood-aware planner with focus timer, habits, and music integration" path="/todo" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <WorkspaceStateMessage
+              title="Loading your planner workspace"
+              description="Syncing tasks, habits, focus sessions, and personal settings from live storage."
+              variant="info"
+            />
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  RENDER
   // ═══════════════════════════════════════════════════════════
@@ -421,7 +499,7 @@ const TodoPlanner = () => {
     <AppShell>
       <SEO title="Wellness Planner" description="Mood-aware planner with focus timer, habits, and music integration" path="/todo" />
 
-      <div className="relative z-10 pt-14 lg:pt-4 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="app-typography-refresh relative z-10 pt-14 lg:pt-4 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
 
         {/* ─── Top Bar ────────────────────────────────────── */}
         <div className="flex items-center justify-between mb-6">
@@ -439,12 +517,12 @@ const TodoPlanner = () => {
 
         {/* ─── Header + Mood Affirmation ───────────────────── */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-neutral-100 mb-2">Wellness Planner</h1>
-          <p className="text-neutral-500 text-sm mb-4">Plan tasks around your emotional capacity</p>
+          <h1 className="workspace-title text-neutral-100">Wellness Planner</h1>
+          <p className="workspace-subtitle text-neutral-400 text-sm mb-4">Plan tasks around your emotional capacity</p>
 
           {/* Mood affirmation banner */}
           <div className={`${mc.bg} border ${mc.border} rounded-xl px-5 py-3.5 flex items-center gap-3`}>
-            <span className="text-xl">{mc.emoji}</span>
+            <span className={`w-2.5 h-2.5 rounded-full ${mc.dot}`} aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <p className={`text-xs font-semibold ${mc.text} uppercase tracking-wider mb-0.5`}>
                 Current Mood: {detectedMood}
@@ -457,30 +535,63 @@ const TodoPlanner = () => {
           </div>
         </motion.div>
 
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: MOTION.stagger.fast, duration: MOTION.duration.base, ease: MOTION.ease }}
+          className="mb-8 px-1"
+          aria-label="Guided planner sequence"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-4 border-b border-neutral-800/70">
+            <div>
+              <p className="workspace-kicker mb-1">Guided Planner</p>
+              <h2 className="text-xl sm:text-2xl font-semibold text-neutral-100">Plan by emotional capacity, not just urgency</h2>
+              <p className="text-sm text-neutral-400 mt-1">Capture quickly, prioritize by effort, then execute with focus.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => navigate('/mood-detect')} className="btn-secondary text-sm">Start Check-In</button>
+              <button onClick={() => navigate('/music')} className="btn-secondary text-sm">Open Music</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
+            {[
+              'Capture and sort tasks into today or backlog.',
+              'Use energy budget and suggested next task.',
+              'Run a focus session and close completed work.',
+            ].map((step, idx) => (
+              <div key={step} className="pl-4 border-l border-neutral-700/70">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-neutral-500 mb-1">Step {idx + 1}</p>
+                <p className="text-sm text-neutral-300 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
         {/* ─── Planner Cockpit ───────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
-          {[
-            { label: 'Active Tasks', value: stats.active, color: 'text-indigo-300', hint: 'Not completed yet' },
-            { label: 'Done Today', value: stats.todayDone, color: 'text-emerald-300', hint: 'Completed this day' },
-            { label: 'Overdue', value: stats.overdue, color: stats.overdue > 0 ? 'text-rose-300' : 'text-neutral-400', hint: 'Needs immediate attention' },
-            { label: 'Completion', value: `${completionRate}%`, color: 'text-amber-300', hint: 'Overall finish rate' },
-          ].map((s, i) => (
-            <motion.div
-              key={s.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * i }}
-              className="rounded-2xl border border-neutral-800/70 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.08),transparent_40%),rgba(10,14,24,0.8)] px-4 py-3"
-            >
-              <p className="text-[11px] text-neutral-500 font-medium uppercase tracking-wider">{s.label}</p>
-              <p className={`text-2xl font-bold ${s.color} mt-0.5`}>{s.value}</p>
-              <p className="text-[10px] text-neutral-600 mt-1">{s.hint}</p>
-            </motion.div>
-          ))}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: MOTION.duration.base, ease: MOTION.ease }}
+          className="workspace-surface mb-6 p-4 sm:p-5"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 xl:gap-0">
+            {[
+              { label: 'Active Tasks', value: stats.active, color: 'text-indigo-300', hint: 'Not completed yet' },
+              { label: 'Done Today', value: stats.todayDone, color: 'text-emerald-300', hint: 'Completed this day' },
+              { label: 'Overdue', value: stats.overdue, color: stats.overdue > 0 ? 'text-rose-300' : 'text-neutral-400', hint: 'Needs immediate attention' },
+              { label: 'Completion', value: `${completionRate}%`, color: 'text-amber-300', hint: 'Overall finish rate' },
+            ].map((s, i) => (
+              <div key={s.label} className={`${i < 3 ? 'xl:pr-4 xl:border-r xl:border-neutral-800/70' : 'xl:pl-4'}`}>
+                <p className="text-[11px] text-neutral-500 font-medium uppercase tracking-wider">{s.label}</p>
+                <p className={`text-2xl font-bold ${s.color} mt-0.5`}>{s.value}</p>
+                <p className="text-[10px] text-neutral-600 mt-1">{s.hint}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
-          <div className="lg:col-span-2 rounded-2xl border border-neutral-800/70 bg-neutral-900/50 p-4">
+          <div className="lg:col-span-2 workspace-surface p-4">
             <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold mb-2">Quick Capture</p>
             <div className="flex flex-col sm:flex-row gap-2">
               <input
@@ -493,11 +604,11 @@ const TodoPlanner = () => {
                   }
                 }}
                 placeholder="Dump a task fast... it lands in Today"
-                className="flex-1 px-4 py-2.5 bg-neutral-950/70 border border-neutral-800 rounded-xl text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
+                className="form-control flex-1"
               />
               <button
                 onClick={addQuickTask}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-indigo-500/80 hover:bg-indigo-500 text-white transition-colors"
+                className="btn-primary px-4 py-2.5 rounded-xl text-sm"
               >
                 Add Quick Task
               </button>
@@ -513,7 +624,7 @@ const TodoPlanner = () => {
             )}
           </div>
 
-          <div className="rounded-2xl border border-neutral-800/70 bg-neutral-900/50 p-4">
+          <div className="workspace-surface p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Energy Budget</p>
               <span className="text-xs text-neutral-300">{energyBudget}/10</span>
@@ -524,7 +635,7 @@ const TodoPlanner = () => {
               max="10"
               value={energyBudget}
               onChange={(e) => setEnergyBudget(Number(e.target.value))}
-              className="w-full"
+              className="w-full energy-budget-slider"
               aria-label="Energy budget"
             />
             <div className="mt-3 flex items-center justify-between text-xs">
@@ -537,18 +648,18 @@ const TodoPlanner = () => {
         </div>
 
         {/* ─── Tabs ───────────────────────────────────────── */}
-        <div className="flex items-center gap-1 bg-neutral-900/40 border border-neutral-800/60 rounded-xl p-1 mb-6 w-fit">
+        <div className="workspace-surface-soft flex items-center gap-1 p-1 mb-6 w-fit">
           {[
-            { key: 'tasks', label: 'Planner', icon: '📋' },
-            { key: 'habits', label: 'Habits', icon: '🔄' },
-            { key: 'focus', label: 'Focus', icon: '⏱️' },
+            { key: 'tasks', label: 'Planner' },
+            { key: 'habits', label: 'Habits' },
+            { key: 'focus', label: 'Focus' },
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key ? 'bg-neutral-800 text-white shadow' : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
-              <span className="text-sm">{tab.icon}</span> {tab.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -561,7 +672,7 @@ const TodoPlanner = () => {
             {/* Action bar */}
             <div className="flex flex-col gap-3 mb-6">
               <div className="flex flex-wrap items-center gap-2 justify-between">
-                <div className="inline-flex items-center gap-1 rounded-xl border border-neutral-800/70 bg-neutral-900/45 p-1">
+                <div className="workspace-surface-soft inline-flex items-center gap-1 p-1">
                   {[{ key: 'list', label: 'List' }, { key: 'board', label: 'Board' }].map((mode) => (
                     <button
                       key={mode.key}
@@ -593,7 +704,7 @@ const TodoPlanner = () => {
                 <input
                   type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search tasks..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-neutral-900/50 border border-neutral-800/60 rounded-xl text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-neutral-700 transition-colors"
+                  className="form-control w-full pl-10 pr-4"
                 />
               </div>
 
@@ -609,7 +720,7 @@ const TodoPlanner = () => {
 
                 {/* Sort */}
                 <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1.5 bg-neutral-900/50 border border-neutral-800/60 rounded-lg text-xs text-neutral-400 focus:outline-none"
+                  className="form-control px-3 py-1.5 text-xs text-neutral-300 w-[110px]"
                 >
                   <option value="newest">Newest</option>
                   <option value="priority">Priority</option>
@@ -623,19 +734,19 @@ const TodoPlanner = () => {
             <AnimatePresence>
               {showForm && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-6">
-                  <form onSubmit={handleAddTodo} className="bg-neutral-900/50 border border-neutral-800/60 rounded-2xl p-6 space-y-4">
+                  <form onSubmit={handleAddTodo} className="card-premium rounded-2xl p-6 space-y-4 border border-neutral-700/70">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="sm:col-span-2">
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Task Title *</label>
                         <input type="text" required value={newTodo.title} onChange={(e) => setNewTodo({ ...newTodo, title: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-600"
+                          className="form-control"
                           placeholder="What do you need to do?"
                         />
                       </div>
                       <div className="sm:col-span-2">
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Description</label>
                         <textarea value={newTodo.description} onChange={(e) => setNewTodo({ ...newTodo, description: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-neutral-600 resize-none"
+                          className="form-control resize-none"
                           placeholder="Add details..." rows={2}
                         />
                       </div>
@@ -656,7 +767,7 @@ const TodoPlanner = () => {
                       <div>
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Category</label>
                         <select value={newTodo.category} onChange={(e) => setNewTodo({ ...newTodo, category: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-300 focus:outline-none"
+                          className="form-control"
                         >
                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -664,7 +775,7 @@ const TodoPlanner = () => {
                       <div>
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Workflow</label>
                         <select value={newTodo.status} onChange={(e) => setNewTodo({ ...newTodo, status: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-300 focus:outline-none"
+                          className="form-control"
                         >
                           {STATUS_FLOW.filter((s) => s !== 'done').map((status) => (
                             <option key={status} value={status}>{statusConfig[status].label}</option>
@@ -681,7 +792,7 @@ const TodoPlanner = () => {
                                   ? `${moodConfig[m].bg} ${moodConfig[m].border} border ${moodConfig[m].text}`
                                   : 'bg-neutral-800/40 border border-neutral-800/60 text-neutral-500'
                               }`}
-                            >{moodConfig[m].emoji} {m}</button>
+                            ><span className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${moodConfig[m].dot}`} aria-hidden="true" />{m}</button>
                           ))}
                         </div>
                       </div>
@@ -708,29 +819,29 @@ const TodoPlanner = () => {
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Due Date & Time</label>
                         <div className="flex gap-2">
                           <input type="date" value={newTodo.dueDate} onChange={(e) => setNewTodo({ ...newTodo, dueDate: e.target.value })}
-                            className="flex-1 px-3 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-300 focus:outline-none"
+                            className="form-control flex-1 px-3"
                           />
                           <input type="time" value={newTodo.dueTime} onChange={(e) => setNewTodo({ ...newTodo, dueTime: e.target.value })}
-                            className="w-28 px-3 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-300 focus:outline-none"
+                            className="form-control w-28 px-3"
                           />
                         </div>
                       </div>
                       <div className="sm:col-span-2">
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Tags <span className="text-neutral-600">(comma separated)</span></label>
                         <input type="text" value={newTodo.tags} onChange={(e) => setNewTodo({ ...newTodo, tags: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none"
+                          className="form-control"
                           placeholder="deep-work, writing, sprint"
                         />
                       </div>
                       <div className="sm:col-span-2">
                         <label className="block text-xs text-neutral-500 font-semibold uppercase tracking-wider mb-1.5">Subtasks <span className="text-neutral-600">(one per line)</span></label>
                         <textarea value={newTodo.subtasks} onChange={(e) => setNewTodo({ ...newTodo, subtasks: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-700/50 rounded-xl text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none resize-none"
+                          className="form-control resize-none"
                           placeholder={"Research topic\nWrite draft\nReview & submit"} rows={3}
                         />
                       </div>
                     </div>
-                    <button type="submit" className="w-full py-3 bg-neutral-700 hover:bg-neutral-600 text-neutral-100 rounded-xl font-semibold text-sm transition-all">
+                    <button type="submit" className="btn-primary w-full py-3 rounded-xl text-sm">
                       Add Task
                     </button>
                   </form>
@@ -743,13 +854,12 @@ const TodoPlanner = () => {
                 {/* Task List */}
                 <div className="lg:col-span-2 space-y-3">
                   {filteredTodos.length === 0 ? (
-                    <div className="bg-neutral-900/30 border border-neutral-800/40 rounded-2xl p-10 text-center">
-                      <div className="w-14 h-14 mx-auto mb-4 bg-neutral-800/60 rounded-xl flex items-center justify-center">
-                        <svg className="w-6 h-6 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                      </div>
-                      <h3 className="text-neutral-300 font-semibold mb-1">No tasks found</h3>
-                      <p className="text-neutral-600 text-sm">Create a new task to get started</p>
-                    </div>
+                    <WorkspaceStateMessage
+                      compact
+                      title="No tasks in this view"
+                      description="Create a task or switch filters to continue planning with clarity."
+                      variant="warning"
+                    />
                   ) : (
                     <AnimatePresence>
                       {filteredTodos.map((todo, idx) => {
@@ -766,13 +876,13 @@ const TodoPlanner = () => {
                             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}
                             transition={{ delay: idx * 0.03 }}
                             onClick={() => setSelectedTodo(todo)}
-                            className={`bg-neutral-900/40 border rounded-xl p-4 cursor-pointer transition-all hover:bg-neutral-800/40 group ${
+                            className={`planner-task-row bg-neutral-900/40 border rounded-xl p-4 cursor-pointer transition-all hover:bg-neutral-800/40 group ${
                               selectedTodo?.id === todo.id ? 'border-indigo-500/40 bg-neutral-800/30' : 'border-neutral-800/60'
                             } ${todo.completed ? 'opacity-60' : ''}`}
                           >
                             <div className="flex items-start gap-3">
                               <button onClick={(e) => { e.stopPropagation(); toggleComplete(todo.id); }}
-                                className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center transition-all ${
+                                className={`planner-task-checkbox flex-shrink-0 w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center transition-all ${
                                   todo.completed ? 'bg-emerald-500/80 border-emerald-500/80' : 'border-neutral-600 hover:border-indigo-400 group-hover:border-neutral-500'
                                 }`}
                               >
@@ -811,7 +921,7 @@ const TodoPlanner = () => {
                                     <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} /> {pc.label}
                                   </span>
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${mc2.bg} ${mc2.border} border ${mc2.text}`}>
-                                    {mc2.emoji} {todo.mood}
+                                    <span className={`w-1.5 h-1.5 rounded-full ${mc2.dot}`} aria-hidden="true" /> {todo.mood}
                                   </span>
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${status.bg} ${status.border} ${status.tone}`}>
                                     {status.label}
@@ -826,7 +936,7 @@ const TodoPlanner = () => {
                                   ))}
                                   {due && (
                                     <span className={`text-[10px] font-medium ${overdue ? 'text-rose-400' : 'text-neutral-500'}`}>
-                                      {overdue && '⚠ '}{due}
+                                      {due}
                                     </span>
                                   )}
                                 </div>
@@ -841,7 +951,7 @@ const TodoPlanner = () => {
 
                 {/* Detail / Music Panel */}
                 <div className="lg:col-span-1">
-                  <div className="bg-neutral-900/40 border border-neutral-800/60 rounded-2xl p-5 sticky top-20">
+                  <div className="workspace-surface p-5 sticky top-20">
                     {selectedTodo ? (
                       <SelectedTodoPanel
                         todo={selectedTodo}
@@ -884,7 +994,7 @@ const TodoPlanner = () => {
                           column.map((task) => {
                             const priority = priorityConfig[task.priority] || priorityConfig.medium;
                             return (
-                              <div key={task.id} className="rounded-xl border border-neutral-800/70 bg-neutral-950/70 p-3">
+                              <div key={task.id} className="workspace-surface-soft p-3">
                                 <p className="text-sm font-semibold text-neutral-100 truncate">{task.title}</p>
                                 <p className="text-[11px] text-neutral-500 mt-0.5">Effort {task.effort || 2} • {priority.label}</p>
 
@@ -984,11 +1094,11 @@ const TodoPlanner = () => {
             </AnimatePresence>
 
             {habits.length === 0 ? (
-              <div className="bg-neutral-900/30 border border-neutral-800/40 rounded-2xl p-10 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 bg-neutral-800/60 rounded-xl flex items-center justify-center text-2xl">🔄</div>
-                <h3 className="text-neutral-300 font-semibold mb-1">No habits yet</h3>
-                <p className="text-neutral-600 text-sm">Create a daily habit to build consistency</p>
-              </div>
+              <WorkspaceStateMessage
+                title="No habits configured yet"
+                description="Create your first daily habit to turn intention into consistent progress."
+                variant="warning"
+              />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {habits.map((h, idx) => {
@@ -1064,7 +1174,8 @@ const TodoPlanner = () => {
                         <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-2 text-xs text-neutral-400 hover:text-neutral-200 transition-colors"
                         >
-                          <span className="text-[10px]">▶</span> {s.title}
+                          <svg className="w-3 h-3 text-neutral-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.34-5.89a1.5 1.5 0 000-2.54L6.3 2.84z" /></svg>
+                          {s.title}
                         </a>
                       ))}
                     </div>
@@ -1078,13 +1189,13 @@ const TodoPlanner = () => {
                 /* Complete */
                 <>
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-16 h-16 mx-auto mb-4 bg-emerald-500/15 border border-emerald-500/25 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">✨</span>
+                    <svg className="w-7 h-7 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                   </motion.div>
                   <h3 className="text-lg font-semibold text-neutral-100 mb-1">Focus Complete!</h3>
                   <p className="text-neutral-500 text-sm mb-6">{focusMinutes} minutes of deep work — well done.</p>
                   <div className="flex gap-3">
                     <button onClick={() => { resetFocus(); navigate('/music'); }} className="flex-1 py-2.5 bg-neutral-800/60 hover:bg-neutral-800 rounded-xl text-sm font-medium text-neutral-300 transition-all">
-                      🎵 Listen to Music
+                      Listen to Music
                     </button>
                     <button onClick={resetFocus} className="flex-1 py-2.5 bg-neutral-700 hover:bg-neutral-600 text-neutral-100 rounded-xl text-sm font-semibold transition-all">
                       New Session
@@ -1115,7 +1226,7 @@ const TodoPlanner = () => {
                   </div>
                   <div className="flex gap-3 justify-center">
                     <button onClick={pauseFocus} className="px-6 py-2.5 bg-neutral-800/60 hover:bg-neutral-700/60 border border-neutral-700/50 rounded-xl text-sm font-medium text-neutral-300 transition-all">
-                      {focusPaused ? '▶ Resume' : '⏸ Pause'}
+                      {focusPaused ? 'Resume' : 'Pause'}
                     </button>
                     <button onClick={resetFocus} className="px-6 py-2.5 bg-neutral-800/30 hover:bg-neutral-800/50 border border-neutral-800/50 rounded-xl text-sm font-medium text-neutral-600 hover:text-neutral-400 transition-all">
                       Stop
@@ -1128,12 +1239,16 @@ const TodoPlanner = () => {
             {/* Quick links */}
             <div className="grid grid-cols-2 gap-3 mt-6">
               <button onClick={() => navigate('/music')} className="bg-neutral-900/40 border border-neutral-800/60 rounded-xl p-4 text-left hover:bg-neutral-800/40 transition-all group">
-                <span className="text-lg mb-1 block">🎵</span>
+                <span className="w-7 h-7 rounded-md bg-neutral-800/60 border border-neutral-700/60 mb-2 flex items-center justify-center" aria-hidden="true">
+                  <svg className="w-3.5 h-3.5 text-neutral-300" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.34-5.89a1.5 1.5 0 000-2.54L6.3 2.84z" /></svg>
+                </span>
                 <h4 className="text-sm font-semibold text-neutral-300 group-hover:text-white transition-colors">Music Page</h4>
                 <p className="text-[11px] text-neutral-600">Listen while you work</p>
               </button>
               <button onClick={() => navigate('/mood-detect')} className="bg-neutral-900/40 border border-neutral-800/60 rounded-xl p-4 text-left hover:bg-neutral-800/40 transition-all group">
-                <span className="text-lg mb-1 block">🔍</span>
+                <span className="w-7 h-7 rounded-md bg-neutral-800/60 border border-neutral-700/60 mb-2 flex items-center justify-center" aria-hidden="true">
+                  <svg className="w-3.5 h-3.5 text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.35-5.15a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </span>
                 <h4 className="text-sm font-semibold text-neutral-300 group-hover:text-white transition-colors">Detect Mood</h4>
                 <p className="text-[11px] text-neutral-600">Update current state</p>
               </button>
@@ -1263,7 +1378,7 @@ function SelectedTodoPanel({ todo, toggleSubtask, updateNote, navigate, moveTask
 
       {/* Go to music */}
       <button onClick={() => navigate('/music')} className="w-full mt-4 py-2 bg-neutral-800/40 hover:bg-neutral-800/60 border border-neutral-800/50 rounded-lg text-[11px] font-medium text-neutral-500 hover:text-neutral-300 transition-all">
-        🎵 Open Music Page
+                      Open Music
       </button>
     </>
   );

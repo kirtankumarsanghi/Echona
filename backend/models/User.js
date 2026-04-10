@@ -23,6 +23,47 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    profile: {
+      username: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      dateOfBirth: {
+        type: Date,
+        default: null,
+      },
+      city: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      country: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      phone: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      gender: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      occupation: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      bio: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+    },
     moodHistory: {
       type: [
         {

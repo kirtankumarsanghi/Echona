@@ -1,15 +1,22 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const config = require("../config");
-// const Mood = require("../models/Mood.js");
 
-// In-memory storage for demo mode (capped to prevent memory leak)
+let Mood;
+try {
+  Mood = require("../models/mood");
+} catch {
+  Mood = null;
+}
+
+// In-memory storage partitioned by user/session key (capped per user)
 const MAX_MOODS = 500;
-let moods = [];
-let moodIdCounter = 1;
+const moodStoreByUser = new Map();
+const moodIdCountersByUser = new Map();
 
 const ALLOWED_MOODS = new Set(["Happy", "Sad", "Angry", "Calm", "Excited", "Anxious", "Stressed", "Lonely", "Tired", "Neutral"]);
 
@@ -57,6 +64,86 @@ function quickTextMoodFallback(text) {
   return "Neutral";
 }
 
+function useMongoMoodStore(req) {
+  return Boolean(Mood)
+    && mongoose.connection.readyState === 1
+    && Boolean(req?.session?.userId)
+    && mongoose.Types.ObjectId.isValid(String(req.session.userId));
+}
+
+function toSerializableMoodLog(doc) {
+  if (!doc) return null;
+  return {
+    _id: doc._id?.toString() || doc.id,
+    userId: doc.userId?.toString?.() || doc.userId,
+    mood: doc.mood,
+    score: Number(doc.score) || 0,
+    note: doc.note || "",
+    intensity: Number(doc.intensity) || undefined,
+    tags: Array.isArray(doc.tags) ? doc.tags : [],
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+async function getHistory(req) {
+  if (useMongoMoodStore(req)) {
+    const docs = await Mood.find({ userId: req.session.userId })
+      .sort({ createdAt: -1 })
+      .limit(MAX_MOODS)
+      .lean();
+    return docs.map(toSerializableMoodLog);
+  }
+  return sortedActorHistory(req);
+}
+
+async function clearHistoryStore(req) {
+  if (useMongoMoodStore(req)) {
+    await Mood.deleteMany({ userId: req.session.userId });
+    return;
+  }
+  setActorMoods(req, []);
+}
+
+function getActorKey(req) {
+  if (req?.session?.userId) {
+    return `user:${req.session.userId}`;
+  }
+
+  // Keep anonymous users isolated per browser/session cookie when available.
+  const sid = req?.sessionID ? String(req.sessionID) : "";
+  if (sid) {
+    return `anon:${sid}`;
+  }
+
+  const ip = req?.ip || "global";
+  return `ip:${ip}`;
+}
+
+function getActorMoods(req) {
+  const key = getActorKey(req);
+  if (!moodStoreByUser.has(key)) {
+    moodStoreByUser.set(key, []);
+  }
+  return moodStoreByUser.get(key);
+}
+
+function setActorMoods(req, items) {
+  const key = getActorKey(req);
+  moodStoreByUser.set(key, items.slice(-MAX_MOODS));
+}
+
+function nextActorMoodId(req) {
+  const key = getActorKey(req);
+  const next = (moodIdCountersByUser.get(key) || 0) + 1;
+  moodIdCountersByUser.set(key, next);
+  return next;
+}
+
+function sortedActorHistory(req) {
+  return [...getActorMoods(req)].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
 // Add mood log (no authentication required)
 router.post("/add", async (req, res) => {
   try {
@@ -74,20 +161,28 @@ router.post("/add", async (req, res) => {
       });
     }
 
-    // Use in-memory storage
-    const log = {
-      _id: moodIdCounter++,
-      userId: "anonymous",
-      mood: normalizedMood,
-      score: parseScore(score),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    moods.push(log);
-    // Evict oldest entries if over cap
-    if (moods.length > MAX_MOODS) {
-      moods = moods.slice(-MAX_MOODS);
+    let log;
+
+    if (useMongoMoodStore(req)) {
+      const created = await Mood.create({
+        userId: req.session.userId,
+        mood: normalizedMood,
+        score: parseScore(score),
+      });
+      log = toSerializableMoodLog(created);
+    } else {
+      log = {
+        _id: nextActorMoodId(req),
+        userId: "anonymous",
+        mood: normalizedMood,
+        score: parseScore(score),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const actorMoods = getActorMoods(req);
+      actorMoods.push(log);
+      setActorMoods(req, actorMoods);
     }
 
     console.log("[MoodRoutes] Mood created:", log);
@@ -101,8 +196,17 @@ router.post("/add", async (req, res) => {
 // Get all moods (no authentication required)
 router.get("/history", async (req, res) => {
   try {
-    // Return in-memory moods sorted by creation date
-    const history = [...moods].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const history = await getHistory(req);
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Backward-compatible alias used by some components
+router.get("/", async (req, res) => {
+  try {
+    const history = await getHistory(req);
     res.json(history);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -112,8 +216,7 @@ router.get("/history", async (req, res) => {
 // Get mood statistics (no authentication required)
 router.get("/stats", async (req, res) => {
   try {
-    // Get all moods from memory (copy to avoid in-place mutation)
-    const allMoods = [...moods].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const allMoods = await getHistory(req);
     
     // Calculate stats
     const total = allMoods.length;
@@ -177,19 +280,35 @@ router.post("/add-note", async (req, res) => {
       });
     }
 
-    const log = {
-      _id: moodIdCounter++,
-      userId: "anonymous",
-      mood: normalizedMood,
-      note: note || "",
-      score: parseScore(score),
-      intensity: parseScore(intensity),
-      tags: Array.isArray(tags) ? tags : [],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    moods.push(log);
+    let log;
+
+    if (useMongoMoodStore(req)) {
+      const created = await Mood.create({
+        userId: req.session.userId,
+        mood: normalizedMood,
+        note: note || "",
+        score: parseScore(score),
+        intensity: parseScore(intensity),
+        tags: Array.isArray(tags) ? tags : [],
+      });
+      log = toSerializableMoodLog(created);
+    } else {
+      log = {
+        _id: nextActorMoodId(req),
+        userId: "anonymous",
+        mood: normalizedMood,
+        note: note || "",
+        score: parseScore(score),
+        intensity: parseScore(intensity),
+        tags: Array.isArray(tags) ? tags : [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const actorMoods = getActorMoods(req);
+      actorMoods.push(log);
+      setActorMoods(req, actorMoods);
+    }
 
     res.json({ success: true, message: "Mood with note saved", log });
   } catch (err) {
@@ -201,22 +320,54 @@ router.post("/add-note", async (req, res) => {
 // Delete mood (no authentication required)
 router.delete("/:id", async (req, res) => {
   try {
-    const moodId = parseInt(req.params.id);
-    if (!Number.isInteger(moodId)) {
-      return res.status(400).json({ success: false, error: "Mood id must be a number" });
+    const rawId = String(req.params.id || "").trim();
+    let mood;
+
+    if (useMongoMoodStore(req)) {
+      if (!mongoose.Types.ObjectId.isValid(rawId)) {
+        return res.status(400).json({ success: false, error: "Mood id must be a valid ObjectId" });
+      }
+
+      const deleted = await Mood.findOneAndDelete({
+        _id: rawId,
+        userId: req.session.userId,
+      }).lean();
+
+      if (!deleted) {
+        return res.status(404).json({ success: false, error: "Mood not found" });
+      }
+      mood = toSerializableMoodLog(deleted);
+    } else {
+      const moodId = parseInt(rawId, 10);
+      if (!Number.isInteger(moodId)) {
+        return res.status(400).json({ success: false, error: "Mood id must be a number" });
+      }
+
+      const actorMoods = getActorMoods(req);
+      const moodIndex = actorMoods.findIndex((m) => m._id === moodId);
+
+      if (moodIndex === -1) {
+        return res.status(404).json({ success: false, error: "Mood not found" });
+      }
+
+      mood = actorMoods[moodIndex];
+      actorMoods.splice(moodIndex, 1);
+      setActorMoods(req, actorMoods);
     }
-    const moodIndex = moods.findIndex(m => m._id === moodId);
-    
-    if (moodIndex === -1) {
-      return res.status(404).json({ success: false, error: "Mood not found" });
-    }
-    
-    const mood = moods[moodIndex];
-    moods.splice(moodIndex, 1);
 
     res.json({ success: true, message: "Mood deleted", mood });
   } catch (err) {
     console.error("[MoodRoutes] Delete error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Clear current user/session mood history
+router.post("/clear", async (req, res) => {
+  try {
+    await clearHistoryStore(req);
+    res.json({ success: true, message: "Mood history cleared" });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });

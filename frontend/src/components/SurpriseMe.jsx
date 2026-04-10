@@ -2,6 +2,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import axiosInstance from "../api/axiosInstance";
 
+const buildTrackUrl = (track = {}) => {
+  if (track.youtubeId) {
+    return `https://www.youtube.com/watch?v=${track.youtubeId}`;
+  }
+  if (track.youtubeUrl) {
+    return track.youtubeUrl;
+  }
+  const query = `${track.title || ""} ${track.artist || ""}`.trim();
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query || "music")}`;
+};
+
 function SurpriseMe() {
   const [isLoading, setIsLoading] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -26,9 +37,8 @@ function SurpriseMe() {
         setSurpriseData(response.data);
         setShowResult(true);
 
-        if (response.data.track?.youtubeId) {
-          window.open(`https://www.youtube.com/watch?v=${response.data.track.youtubeId}`, '_blank');
-        }
+        const trackUrl = buildTrackUrl(response.data.track || {});
+        window.open(trackUrl, '_blank');
       } else {
         setError("Couldn't find a recommendation right now");
       }
@@ -171,10 +181,10 @@ function SurpriseMe() {
                     </span>
                   )}
                   <h2 className="text-xl font-semibold text-neutral-100 mb-1">
-                    {surpriseData.track.title}
+                    {surpriseData.track?.title || "Recommended Track"}
                   </h2>
-                  <p className="text-neutral-400 text-sm">{surpriseData.track.artist}</p>
-                  {surpriseData.track.genre && (
+                  <p className="text-neutral-400 text-sm">{surpriseData.track?.artist || "Unknown Artist"}</p>
+                  {surpriseData.track?.genre && (
                     <span className="inline-block text-[10px] px-2 py-0.5 bg-neutral-800/60 text-neutral-500 rounded-full mt-2 font-medium">
                       {surpriseData.track.genre}
                     </span>
@@ -198,7 +208,7 @@ function SurpriseMe() {
                 {/* Actions — clean buttons */}
                 <div className="flex gap-2.5">
                   <a
-                    href={`https://www.youtube.com/watch?v=${surpriseData.track.youtubeId}`}
+                    href={buildTrackUrl(surpriseData.track || {})}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-100 text-slate-900 rounded-xl font-semibold text-sm text-center transition-all hover:shadow-md border border-slate-300/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"

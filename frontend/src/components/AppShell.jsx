@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { logout, getCurrentUser } from "../utils/auth";
+import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
+import ThemeToggle from "./ThemeToggle";
 
 const Icons = {
   Dashboard: () => (
@@ -78,8 +80,23 @@ function AppShell({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const user = getCurrentUser();
+  const { user, logout, updateUser } = useAuth();
   const [miniPlayer, setMiniPlayer] = useState(() => readMiniPlayerState());
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState("");
+  const [profileForm, setProfileForm] = useState({
+    username: "",
+    dateOfBirth: "",
+    city: "",
+    country: "",
+    phone: "",
+    gender: "",
+    occupation: "",
+    bio: "",
+  });
 
   // #16 — Persist sidebar collapsed state on desktop
   const [collapsed, setCollapsed] = useState(() => {
@@ -115,16 +132,61 @@ function AppShell({ children }) {
   }, [sidebarOpen]);
 
   const navItems = [
-    { path: "/mood-detect", label: "Detect Mood", icon: Icons.MoodDetect },
+    { path: "/mood-detect", label: "Check-In", icon: Icons.MoodDetect },
     { path: "/music", label: "Music", icon: Icons.Music },
-    { path: "/wellness", label: "Wellbeing", icon: Icons.Wellness },
+    { path: "/wellness", label: "Wellness", icon: Icons.Wellness },
     { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
     { path: "/todo", label: "Planner", icon: Icons.Todo },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/auth");
+  };
+
+  const openProfile = async () => {
+    setProfileOpen(true);
+    setProfileLoading(true);
+    setProfileError("");
+    setProfileSuccess("");
+    try {
+      const { data } = await axiosInstance.get("/api/auth/profile");
+      if (data?.success && data?.profile) {
+        setProfileForm({
+          username: data.profile.username || "",
+          dateOfBirth: data.profile.dateOfBirth || "",
+          city: data.profile.city || "",
+          country: data.profile.country || "",
+          phone: data.profile.phone || "",
+          gender: data.profile.gender || "",
+          occupation: data.profile.occupation || "",
+          bio: data.profile.bio || "",
+        });
+      }
+    } catch (err) {
+      setProfileError(err?.response?.data?.error || "Could not load profile details");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
+      setProfileSaving(true);
+      setProfileError("");
+      setProfileSuccess("");
+      const { data } = await axiosInstance.put("/api/auth/profile", profileForm);
+      if (data?.success) {
+        setProfileSuccess("Profile saved successfully");
+        if (data?.user) {
+          updateUser(data.user);
+        }
+      }
+    } catch (err) {
+      setProfileError(err?.response?.data?.error || "Could not save profile details");
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -182,7 +244,7 @@ function AppShell({ children }) {
       : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)]">
       {/* Mobile backdrop overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -198,26 +260,27 @@ function AppShell({ children }) {
 
       {/* Sidebar — fixed on all breakpoints, CSS transition for mobile slide */}
       <aside
-        className={`fixed top-0 left-0 h-screen ${collapsed ? "w-[4.75rem]" : "w-64"} bg-slate-950 border-r border-slate-800 flex flex-col z-50 transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-screen ${collapsed ? "w-[5rem]" : "w-[17.5rem]"} glass-card border-r border-[var(--border-soft)] flex flex-col z-50 transition-all duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
         aria-label="Main navigation"
       >
-        <div className="p-4 border-b border-slate-800">
+        <div className="p-5 border-b border-[var(--border-ghost)]">
           <div className="flex items-center justify-between">
-            {!collapsed && <Logo size="default" showText={true} />}
-            {collapsed && <Logo size="small" showText={false} />}
+            {!collapsed && <Logo size="small" showText={true} className="origin-left" />}
+            {collapsed && <Logo size="small" showText={false} className="scale-90" />}
+            <ThemeToggle compact className="hidden sm:inline-flex" />
             {/* Collapse toggle for desktop */}
             <button
               onClick={toggleCollapse}
-              className="hidden lg:flex p-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+              className="hidden lg:flex p-2 rounded-xl border border-[var(--border-soft)] text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)] transition-colors"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <svg className={`w-4 h-4 transition-transform ${collapsed ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 rounded-lg hover:bg-slate-800 transition-colors" aria-label="Close menu">
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 rounded-lg hover:bg-[var(--accent-subtle)] transition-colors" aria-label="Close menu">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -225,28 +288,28 @@ function AppShell({ children }) {
           </div>
         </div>
 
-        <nav className={`flex-1 ${collapsed ? "px-3 py-5" : "p-4"} space-y-1.5 overflow-y-auto`} role="navigation">
+        <nav className={`flex-1 ${collapsed ? "px-3 py-6" : "p-5"} space-y-2 overflow-y-auto`} role="navigation">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
-                `group relative flex items-center ${collapsed ? "justify-center" : ""} gap-3 ${collapsed ? "px-2 py-1.5 rounded-xl" : "px-3 py-2.5 rounded-xl"} transition-all duration-200 ${
+                `group relative flex items-center ${collapsed ? "justify-center" : ""} ${collapsed ? "gap-2" : "gap-2.5 xl:gap-3"} ${collapsed ? "px-2 py-2 rounded-xl" : "px-2.5 xl:px-3 py-2.5 xl:py-3 rounded-xl"} transition-all duration-200 ${
                   isActive
-                    ? "bg-slate-900 border border-slate-700 text-slate-100"
-                    : "text-slate-300 border border-transparent hover:bg-slate-900 hover:border-slate-800 hover:text-slate-100"
+                    ? "surface-layered border border-[var(--border-soft)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)] border border-transparent hover:bg-[var(--accent-subtle)] hover:border-[var(--border-ghost)] hover:text-[var(--text-primary)]"
                 }`
               }
               onClick={() => setSidebarOpen(false)}
             >
               {({ isActive }) => (
                 <>
-                  {isActive && !collapsed && <span className="absolute left-0 h-6 w-0.5 rounded-full bg-sky-400" />}
-                  <span className={`flex h-11 w-11 items-center justify-center ${collapsed ? "rounded-xl" : "rounded-lg"} transition-colors ${isActive ? "bg-slate-800 text-slate-100" : "bg-slate-900 text-slate-400 group-hover:text-slate-100"}`}>
+                  {isActive && !collapsed && <span className="absolute left-0 h-7 w-0.5 rounded-full bg-[var(--accent)]" />}
+                  <span className={`flex h-11 w-11 items-center justify-center ${collapsed ? "rounded-xl" : "rounded-lg"} transition-colors ${isActive ? "bg-[var(--accent-subtle)] text-[var(--accent)]" : "bg-[var(--bg-sunken)] text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)]"}`}>
                     <item.icon />
                   </span>
-                  {!collapsed && <span className="text-sm font-medium tracking-wide">{item.label}</span>}
+                  {!collapsed && <span className="text-[13px] xl:text-sm font-medium tracking-wide truncate">{item.label}</span>}
                   {collapsed && (
                     <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 shadow-xl group-hover:lg:block">
                       {item.label}
@@ -336,25 +399,36 @@ function AppShell({ children }) {
           )}
         </nav>
 
-        <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="p-4 border-t border-[var(--border-ghost)] space-y-2">
           {user && !collapsed && (
-            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 mb-2">
+            <button
+              onClick={openProfile}
+              className="w-full p-3 rounded-xl surface-layered mb-2 text-left hover:bg-[var(--accent-subtle)] transition-colors"
+              title="View and edit profile"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-white flex-shrink-0 border border-slate-700">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 via-indigo-500 to-sky-500 flex items-center justify-center font-bold text-white flex-shrink-0 border border-white/20">
                   {user.name ? user.name[0].toUpperCase() : "U"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-100 truncate">{user.name || "User"}</p>
                   <p className="text-xs text-slate-400 truncate">{user.email || ""}</p>
                 </div>
+                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-            </div>
+            </button>
           )}
           {user && collapsed && (
             <div className="flex justify-center mb-2">
-              <div className="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white" title={user.name || "User"}>
+              <button
+                onClick={openProfile}
+                className="w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 via-indigo-500 to-sky-500 border border-white/20 flex items-center justify-center font-bold text-white"
+                title="View and edit profile"
+              >
                 {user.name ? user.name[0].toUpperCase() : "U"}
-              </div>
+              </button>
             </div>
           )}
           {user ? (
@@ -382,26 +456,123 @@ function AppShell({ children }) {
       </aside>
 
       {/* Main content area — offset by sidebar width on desktop */}
-      <div className={`${collapsed ? "lg:ml-[4.75rem]" : "lg:ml-64"} min-h-screen transition-all duration-300`}>
+      <div className={`${collapsed ? "lg:ml-[5rem]" : "lg:ml-[17.5rem]"} min-h-screen transition-all duration-300`}>
         {/* Mobile top bar with hamburger menu */}
-        <div className="lg:hidden sticky top-0 z-30 p-4 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
+        <div className="lg:hidden sticky top-0 z-30 p-4 bg-[var(--bg-surface)]/95 backdrop-blur-md border-b border-[var(--border-ghost)]">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 hover:bg-slate-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-soft)] rounded-lg text-sm text-[var(--text-primary)] hover:bg-[var(--accent-subtle)] transition-colors"
+              aria-label="Open menu"
+              title="Open menu"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
               Menu
             </button>
-            <Logo size="small" showText={true} />
+            <Logo size="small" showText={true} className="scale-95 origin-left" />
           </div>
         </div>
 
-        <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="p-5 md:p-8 lg:p-10 animate-slide-up">{children}</main>
       </div>
+
+      <AnimatePresence>
+        {profileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setProfileOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl workspace-surface p-5 sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-label="User profile details"
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <p className="workspace-kicker mb-1">Profile Details</p>
+                  <h3 className="text-2xl font-semibold text-[var(--text-primary)]">Manage your account details</h3>
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">Saved to backend and available across sessions.</p>
+                </div>
+                <button
+                  onClick={() => setProfileOpen(false)}
+                  className="p-2 rounded-lg border border-[var(--border-soft)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--accent-subtle)]"
+                  aria-label="Close profile dialog"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-sunken)] px-4 py-3">
+                <p className="text-sm text-[var(--text-primary)] font-medium">{user?.name || "User"}</p>
+                <p className="text-xs text-[var(--text-secondary)]">{user?.email || ""}</p>
+              </div>
+
+              {profileError && <p className="mb-3 text-sm text-rose-300">{profileError}</p>}
+              {profileSuccess && <p className="mb-3 text-sm text-emerald-300">{profileSuccess}</p>}
+
+              {profileLoading ? (
+                <div className="py-8 text-sm text-[var(--text-secondary)]">Loading profile...</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="User Name">
+                    <input className="input" value={profileForm.username} onChange={(e) => setProfileForm((p) => ({ ...p, username: e.target.value }))} placeholder="Set a user name" />
+                  </Field>
+                  <Field label="Date of Birth">
+                    <input type="date" className="input" value={profileForm.dateOfBirth} onChange={(e) => setProfileForm((p) => ({ ...p, dateOfBirth: e.target.value }))} />
+                  </Field>
+                  <Field label="City">
+                    <input className="input" value={profileForm.city} onChange={(e) => setProfileForm((p) => ({ ...p, city: e.target.value }))} placeholder="Your city" />
+                  </Field>
+                  <Field label="Country">
+                    <input className="input" value={profileForm.country} onChange={(e) => setProfileForm((p) => ({ ...p, country: e.target.value }))} placeholder="Your country" />
+                  </Field>
+                  <Field label="Phone Number">
+                    <input className="input" value={profileForm.phone} onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" />
+                  </Field>
+                  <Field label="Gender">
+                    <input className="input" value={profileForm.gender} onChange={(e) => setProfileForm((p) => ({ ...p, gender: e.target.value }))} placeholder="Gender" />
+                  </Field>
+                  <Field label="Occupation">
+                    <input className="input" value={profileForm.occupation} onChange={(e) => setProfileForm((p) => ({ ...p, occupation: e.target.value }))} placeholder="Occupation" />
+                  </Field>
+                  <Field label="Bio">
+                    <input className="input" value={profileForm.bio} onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))} placeholder="Short bio" />
+                  </Field>
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap gap-2 justify-end">
+                <button className="btn-secondary text-sm" onClick={() => setProfileOpen(false)}>Close</button>
+                <button className="btn-primary text-sm" onClick={saveProfile} disabled={profileSaving || profileLoading}>
+                  {profileSaving ? "Saving..." : "Save Details"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="block text-xs uppercase tracking-wide text-[var(--text-tertiary)] mb-1.5">{label}</span>
+      {children}
+    </label>
   );
 }
 

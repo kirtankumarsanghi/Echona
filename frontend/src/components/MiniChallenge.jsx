@@ -1,27 +1,24 @@
 import { useState } from "react";
+import axiosInstance from "../api/axiosInstance";
 
 export default function MiniChallenge({ correctMood }) {
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
 
   const submitAnswer = async () => {
     const isCorrect =
       answer.toLowerCase() === correctMood.toLowerCase();
 
-    const res = await fetch(
-      "/api/game/submit",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user: "demo",
-          correct: isCorrect
-        })
-      }
-    );
-
-    const data = await res.json();
-    setResult(data);
+    try {
+      setError("");
+      const { data } = await axiosInstance.post("/api/game/submit", {
+        correct: isCorrect,
+      });
+      setResult(data);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Could not submit challenge");
+    }
   };
 
   return (
@@ -52,6 +49,8 @@ export default function MiniChallenge({ correctMood }) {
           )}
         </div>
       )}
+
+      {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
     </div>
   );
 }

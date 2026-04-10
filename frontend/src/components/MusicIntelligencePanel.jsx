@@ -34,7 +34,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
     transition: false,
     rescue: false,
     rooms: false,
-    impact: true,
+    impact: false,
   });
 
   const togglePanel = (key) => {
@@ -244,11 +244,11 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
         <PanelToggleChip label="Transition" open={openPanels.transition} onClick={() => togglePanel("transition")} />
         <PanelToggleChip label="Rescue" open={openPanels.rescue} onClick={() => togglePanel("rescue")} />
         <PanelToggleChip label="Rooms" open={openPanels.rooms} onClick={() => togglePanel("rooms")} />
-        <PanelToggleChip label="Impact" open={openPanels.impact} onClick={() => togglePanel("impact")} />
+        <PanelToggleChip label="Weekly Report" open={openPanels.impact} onClick={() => togglePanel("impact")} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-        <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-4">
+        <div className="workspace-surface-soft p-4">
           <button
             type="button"
             onClick={() => togglePanel("transition")}
@@ -256,7 +256,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
             aria-expanded={openPanels.transition}
           >
             <div>
-              <h4 className="text-sm font-semibold text-neutral-200">Mood Transition Playlists</h4>
+              <h4 className="text-base font-semibold text-neutral-100">Mood Transition Playlists</h4>
               <p className="text-[11px] text-neutral-500 mt-0.5">
                 {transition?.stages?.length ? `${transition.stages.length} stages ready` : "Generate a guided 3-stage flow"}
               </p>
@@ -303,7 +303,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
           </Collapsible>
         </div>
 
-        <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-4">
+        <div className="workspace-surface-soft p-4">
           <button
             type="button"
             onClick={() => togglePanel("rescue")}
@@ -311,7 +311,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
             aria-expanded={openPanels.rescue}
           >
             <div>
-              <h4 className="text-sm font-semibold text-neutral-200">Rescue Mix</h4>
+              <h4 className="text-base font-semibold text-neutral-100">Rescue Mix</h4>
               <p className="text-[11px] text-neutral-500 mt-0.5">
                 {rescueMix?.tracks?.length ? `${rescueMix.tracks.length} tracks ready` : "Emergency low-friction set"}
               </p>
@@ -355,7 +355,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-        <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-4 self-start">
+        <div className="workspace-surface-soft p-4 self-start">
           <button
             type="button"
             onClick={() => togglePanel("rooms")}
@@ -363,7 +363,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
             aria-expanded={openPanels.rooms}
           >
             <div>
-              <h4 className="text-sm font-semibold text-neutral-200 mb-1">Collaborative Healing Rooms</h4>
+              <h4 className="text-base font-semibold text-neutral-100 mb-1">Collaborative Healing Rooms</h4>
               <p className="text-[11px] text-neutral-500">{room ? `Active room ${room.code}` : "Create or join with a 6-character code"}</p>
             </div>
             <span className="text-xs text-neutral-400">{openPanels.rooms ? "Close" : "Open"}</span>
@@ -442,7 +442,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
           </Collapsible>
         </div>
 
-        <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-2xl p-4 self-start">
+        <div className="workspace-surface-soft p-4 self-start">
           <button
             type="button"
             onClick={() => togglePanel("impact")}
@@ -450,7 +450,7 @@ function MusicIntelligencePanel({ currentMood, onPlaySong, currentlyPlaying }) {
             aria-expanded={openPanels.impact}
           >
             <div>
-              <h4 className="text-sm font-semibold text-neutral-200 mb-1">Weekly Music Impact Report</h4>
+              <h4 className="text-base font-semibold text-neutral-100 mb-1">Weekly Music Impact Report</h4>
               <p className="text-[11px] text-neutral-500">
                 {weeklyImpact && Number(weeklyImpact.samples) > 0
                   ? `Avg mood lift ${Number(weeklyImpact.avgMoodLift).toFixed(2)} • ${weeklyImpact.samples} samples`

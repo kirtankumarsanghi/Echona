@@ -6,7 +6,7 @@ If you are reading this with no technical background, this guide is written for 
 
 This is not a short summary. This is a step-by-step learning book that explains:
 
-- what a website really is,
+- what a website reall/y is,
 - how each part works,
 - why each technology exists,
 - how all parts connect,

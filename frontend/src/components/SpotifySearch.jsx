@@ -351,7 +351,7 @@ function SpotifySearch({ accessToken, deviceId, onPlayTrack }) {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
         }
