@@ -10,7 +10,8 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://echona.onrender.com",
-    "VITE_ML_API_URL": "https://echona.onrender.com"
+    "VITE_API_URL": "https://echona-1.onrender.com",
+    "VITE_ML_API_URL": "https://echona.onrender.com",
+    "VITE_GOOGLE_CLIENT_ID": "767728604444-7016feh1d5f37f11a1qc1a3ha4nqj4nc.apps.googleusercontent.com"
   }
 }
