@@ -155,7 +155,7 @@ router.post("/analyze", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/detect-face", authMiddleware, async (req, res) => {
+router.post("/detect-face", async (req, res) => {
   const { image } = req.body || {};
   if (!image) {
     return res.status(400).json({ success: false, error: "Image payload is required" });
@@ -163,7 +163,7 @@ router.post("/detect-face", authMiddleware, async (req, res) => {
   return proxyJsonRoute(req, res, "/detect-face");
 });
 
-router.post("/detect-voice", authMiddleware, async (req, res) => {
+router.post("/detect-voice", async (req, res) => {
   const { audio_base64, audioBase64, format } = req.body || {};
   const payload = {
     audio_base64: audio_base64 || audioBase64,
@@ -182,7 +182,7 @@ router.post("/detect-voice", authMiddleware, async (req, res) => {
   return proxyJsonRoute(req, res, "/detect-voice");
 });
 
-router.post("/detect-text", authMiddleware, async (req, res) => {
+router.post("/detect-text", async (req, res) => {
   const { text } = req.body || {};
   if (!text || !String(text).trim()) {
     return res.status(400).json({ success: false, error: "Text payload is required" });
@@ -190,7 +190,7 @@ router.post("/detect-text", authMiddleware, async (req, res) => {
   return proxyJsonRoute(req, res, "/detect-text");
 });
 
-router.post("/detect-multimodal", authMiddleware, async (req, res) => {
+router.post("/detect-multimodal", async (req, res) => {
   const { image, text, audio_base64, audioBase64 } = req.body || {};
   const hasAny = Boolean(image) || Boolean(text && String(text).trim()) || Boolean(audio_base64 || audioBase64);
 

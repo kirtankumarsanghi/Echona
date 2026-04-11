@@ -16,7 +16,7 @@ LABELS_PATH = os.path.join(os.path.dirname(__file__), "models", "face_labels.jso
 
 _DEFAULT_LABEL_MAP = {
     "Angry": "Angry", "Disgust": "Angry", "Fear": "Anxious",
-    "Happy": "Happy", "Sad": "Sad", "Surprise": "Excited", "Neutral": "Calm",
+    "Happy": "Happy", "Sad": "Sad", "Surprise": "Excited", "Neutral": "Neutral",
 }
 
 
@@ -58,7 +58,17 @@ def _predict_with_model(img_gray):
     idx   = int(np.argmax(probs))
     conf  = float(probs[idx])
     label = _LABELS[idx] if _LABELS else str(idx)
-    return (_LABEL_MAP or _DEFAULT_LABEL_MAP).get(label, "Calm"), conf
+    return (_LABEL_MAP or _DEFAULT_LABEL_MAP).get(label, "Neutral"), conf
+
+
+def _decode_base64_image(image_base64):
+    """Decode base64 image safely whether data URL header is present or not."""
+    if not image_base64:
+        return None
+    encoded = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
+    image_bytes = base64.b64decode(encoded)
+    np_arr = np.frombuffer(image_bytes, np.uint8)
+    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
 
 def analyze_face_emotion(image_base64):
@@ -78,30 +88,41 @@ def analyze_face_emotion(image_base64):
 def _analyze_face_emotion_full(image_base64):
     """Return dict with emotion, confidence, source."""
     try:
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        img = _decode_base64_image(image_base64)
 
         if img is None:
-            return {"emotion": "Calm", "confidence": 0.0, "source": "fallback"}
+            return {
+                "emotion": "Neutral",
+                "confidence": 0.0,
+                "source": "error",
+                "details": "Invalid image payload",
+            }
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         )
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(48, 48))
         if len(faces) == 0:
-            faces = [(0, 0, gray.shape[1], gray.shape[0])]  # full image fallback
-
-        x, y, w, h = faces[0]
-        face_gray = gray[y:y+h, x:x+w]
+            # Fallback to full frame when detector misses due angle/lighting.
+            face_gray = gray
+            face_found = False
+        else:
+            # Use the largest detected face in frame for better stability.
+            x, y, w, h = max(faces, key=lambda box: box[2] * box[3])
+            face_gray = gray[y:y+h, x:x+w]
+            face_found = True
 
         # 1️⃣  Trained CNN
         emotion, conf = _predict_with_model(face_gray)
         if emotion is not None:
             print(f"✅ Face (trained model): {emotion} ({conf:.2f})")
-            return {"emotion": emotion, "confidence": conf, "source": "trained_model"}
+            return {
+                "emotion": emotion,
+                "confidence": conf,
+                "source": "trained_model" if face_found else "trained_model_full_frame",
+                "details": None if face_found else "No explicit face box; used full-frame fallback.",
+            }
 
         # 2️⃣  DeepFace
         try:
@@ -112,22 +133,37 @@ def _analyze_face_emotion_full(image_base64):
             raw = result_df["dominant_emotion"]
             df_map = {
                 "happy": "Happy", "sad": "Sad", "angry": "Angry",
-                "neutral": "Calm", "fear": "Anxious",
+                "neutral": "Neutral", "fear": "Anxious",
                 "surprise": "Excited", "disgust": "Angry",
             }
-            emotion = df_map.get(raw.lower(), "Calm")
+            emotion = df_map.get(raw.lower(), "Neutral")
             conf    = float(result_df["emotion"].get(raw, 50)) / 100.0
             print(f"✅ Face (DeepFace): {raw} → {emotion} ({conf:.2f})")
-            return {"emotion": emotion, "confidence": conf, "source": "deepface"}
+            return {
+                "emotion": emotion,
+                "confidence": conf,
+                "source": "deepface" if face_found else "deepface_full_frame",
+                "details": None if face_found else "No explicit face box; used DeepFace full-frame fallback.",
+            }
         except Exception:
             pass
 
         # 3️⃣  Brightness heuristic
-        return _basic_face_detection_full(face_gray)
+        heuristic = _basic_face_detection_full(face_gray)
+        if not face_found:
+            heuristic["source"] = "heuristic_full_frame"
+            heuristic["details"] = "No explicit face box; used brightness full-frame fallback."
+            heuristic["confidence"] = min(float(heuristic.get("confidence", 0.0)), 0.3)
+        return heuristic
 
     except Exception as e:
         print(f"❌ Face analysis error: {e}")
-        return {"emotion": "Calm", "confidence": 0.0, "source": "error"}
+        return {
+            "emotion": "Neutral",
+            "confidence": 0.0,
+            "source": "error",
+            "details": str(e),
+        }
 def _basic_face_detection_full(face_gray):
     """Brightness heuristic on an already-cropped face ROI."""
     avg_brightness = float(np.mean(face_gray))
@@ -136,7 +172,7 @@ def _basic_face_detection_full(face_gray):
     elif avg_brightness < 80:
         mood, conf = "Sad", 0.40
     else:
-        mood, conf = "Calm", 0.35
+        mood, conf = "Neutral", 0.35
     print(f"✅ Face (brightness heuristic): brightness={avg_brightness:.1f} → {mood}")
     return {"emotion": mood, "confidence": conf, "source": "heuristic"}
 

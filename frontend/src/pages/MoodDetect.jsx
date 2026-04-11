@@ -21,6 +21,9 @@ function MoodDetect() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState("Analyzing your mood...");
+  const [faceDiagnostics, setFaceDiagnostics] = useState([]);
+  const [lastFaceSummary, setLastFaceSummary] = useState("");
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -39,6 +42,25 @@ function MoodDetect() {
     { id: "text", label: "Text", short: "Written context", hint: "Describe how you feel" },
     { id: "chat", label: "Guided Chat", short: "Structured prompts", hint: "Short mood interview" },
   ];
+
+  const FACE_CAPTURE_SAMPLES = 3;
+  const FACE_CAPTURE_GAP_MS = 250;
+  const MIN_FACE_CONFIDENCE = {
+    trained_model: 0.28,
+    trained_model_full_frame: 0.22,
+    deepface: 0.26,
+    deepface_full_frame: 0.22,
+    heuristic: 0.55,
+    heuristic_full_frame: 0.2,
+  };
+  const SOURCE_WEIGHT = {
+    trained_model: 1,
+    trained_model_full_frame: 0.82,
+    deepface: 0.95,
+    deepface_full_frame: 0.8,
+    heuristic: 0.55,
+    heuristic_full_frame: 0.35,
+  };
 
   const getModeIcon = (id) => {
     switch (id) {
@@ -143,29 +165,100 @@ const capturePhoto = async () => {
   const canvas = canvasRef.current;
   const ctx = canvas.getContext("2d");
 
-  canvas.width = videoRef.current.videoWidth;
-  canvas.height = videoRef.current.videoHeight;
+  const captureFrame = () => {
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    ctx.drawImage(videoRef.current, 0, 0);
+    return canvas.toDataURL("image/jpeg");
+  };
 
-  ctx.drawImage(videoRef.current, 0, 0);
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const base64Image = canvas.toDataURL("image/jpeg");
+  const isUsableFaceResult = (result) => {
+    if (!result?.mood || !result?.source) return false;
+    if (result.source === "error") return false;
+    const threshold = MIN_FACE_CONFIDENCE[result.source] ?? 0.35;
+    const confidence = Number(result.confidence || 0);
+    return confidence >= threshold;
+  };
+
+  const isVoteCandidate = (result) => {
+    if (!result?.mood || !result?.source) return false;
+    return result.source !== "error";
+  };
 
   setLoading(true);
+  setAnalysisMessage("Reading real-time facial expressions...");
+  setFaceDiagnostics([]);
+  setLastFaceSummary("");
   try {
-    const res = await detectFace({ image: base64Image });
+    const samples = [];
+    const voteCandidates = [];
+    const sampleRecords = [];
 
-    if (res.error || !res.mood) {
-      throw new Error(res.error || "Face detection failed");
+    for (let i = 0; i < FACE_CAPTURE_SAMPLES; i += 1) {
+      const frame = captureFrame();
+      try {
+        const res = await detectFace({ image: frame });
+        const accepted = isUsableFaceResult(res);
+        sampleRecords.push({
+          frame: i + 1,
+          mood: res?.mood || "-",
+          source: res?.source || "unknown",
+          confidence: Number(res?.confidence || 0),
+          accepted,
+        });
+        if (isVoteCandidate(res)) {
+          voteCandidates.push(res);
+        }
+        if (accepted) {
+          samples.push(res);
+        }
+      } catch (err) {
+        sampleRecords.push({
+          frame: i + 1,
+          mood: "-",
+          source: "request_error",
+          confidence: 0,
+          accepted: false,
+          details: err?.message || "Request failed",
+        });
+      }
+
+      setFaceDiagnostics([...sampleRecords]);
+      if (i < FACE_CAPTURE_SAMPLES - 1) {
+        await wait(FACE_CAPTURE_GAP_MS);
+      }
     }
-    
-    localStorage.setItem("detected_mood", res.mood);
-    saveMood(res.mood);                                            // #18 context
-    showToast(`Detected: ${res.mood}`, "success");
+
+    const pool = samples.length > 0 ? samples : voteCandidates;
+    if (pool.length === 0) {
+      throw new Error("Face detection request failed for all frames. Please retry once after camera stabilizes.");
+    }
+
+    const scoreByMood = pool.reduce((acc, item) => {
+      const sourceWeight = SOURCE_WEIGHT[item.source] ?? 0.7;
+      const confidence = Number(item.confidence || 0);
+      const effectiveConfidence = item.source === "no_face" ? Math.max(confidence, 0.08) : confidence;
+      const weightedScore = effectiveConfidence * sourceWeight;
+      acc[item.mood] = (acc[item.mood] || 0) + weightedScore;
+      return acc;
+    }, {});
+
+    const [detectedMood] = Object.entries(scoreByMood)
+      .sort((a, b) => b[1] - a[1])[0];
+
+    setLastFaceSummary(`Accepted ${samples.length}/${FACE_CAPTURE_SAMPLES} frames. Used ${pool.length} frames for final mood: ${detectedMood}`);
+
+    localStorage.setItem("detected_mood", detectedMood);
+    saveMood(detectedMood);                                            // #18 context
+    showToast(`Detected: ${detectedMood}`, "success");
     setTimeout(() => navigate("/music"), 1500);
   } catch (err) {
     console.error("Face detection error:", err);
     showToast(err.message || "Face detection failed", "error");
   } finally {
+    setAnalysisMessage("Analyzing your mood...");
     setLoading(false);
     stopCamera();
   }
@@ -600,6 +693,23 @@ const capturePhoto = async () => {
                   {loading ? "Analyzing" : "Waiting"}
                 </span>
               </div>
+
+              {(faceDiagnostics.length > 0 || lastFaceSummary) && (
+                <div className="mb-6 rounded-2xl border border-slate-700 bg-slate-950/70 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400 mb-2">Face Signal Debug</p>
+                  {lastFaceSummary && <p className="text-xs text-emerald-300 mb-2">{lastFaceSummary}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {faceDiagnostics.map((row) => (
+                      <div key={`${row.frame}-${row.source}`} className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-200">
+                        <p>Frame {row.frame}: {row.accepted ? "accepted" : "rejected"}</p>
+                        <p>Source: {row.source}</p>
+                        <p>Mood: {row.mood}</p>
+                        <p>Confidence: {(Number(row.confidence || 0) * 100).toFixed(1)}%</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div className="flex gap-4 justify-center flex-wrap">
                 <motion.button
@@ -867,6 +977,7 @@ const capturePhoto = async () => {
                 className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full mx-auto mb-4"
               />
               <p className="text-xl font-bold text-violet-300">Analyzing your mood...</p>
+              <p className="text-sm text-slate-300 mt-2">{analysisMessage}</p>
             </div>
           </motion.div>
         )}

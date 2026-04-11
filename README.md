@@ -162,6 +162,13 @@ ML_SERVICE_PORT=5001
 
 ### Quick Start
 
+**One Command (Windows PowerShell)**:
+```powershell
+.\start-all.ps1
+```
+
+This command starts ML, backend, and frontend in separate PowerShell windows and performs basic health checks.
+
 **Terminal 1** - Frontend:
 ```bash
 cd frontend

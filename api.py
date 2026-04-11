@@ -314,6 +314,13 @@ def detect_face():
         result = analyzer_full(image_data)
         inference_ms = round((time.perf_counter() - start_t) * 1000, 2)
 
+        if result.get("source") == "error":
+            return response_error(
+                "Face could not be analyzed",
+                422,
+                result.get("details") or "No clear face detected. Please adjust camera framing and lighting.",
+            )
+
         logger.info(
             "[detect-face] source=%s emotion=%s confidence=%.4f inference_ms=%.2f",
             result["source"], result["emotion"], result["confidence"], inference_ms,
