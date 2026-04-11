@@ -23,6 +23,8 @@ services:
         sync: false
       - key: OPENWEATHER_API_KEY
         sync: false
+      - key: WEATHER_API_KEY
+        sync: false
 
   # ML Service (Python)
   - type: web
@@ -31,7 +33,7 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: cd ml && python api.py
+    startCommand: python api.py
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

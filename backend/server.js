@@ -20,6 +20,24 @@ const mlRoutes = require("./routes/mlRoutes");
 const wellnessRoutes = require("./routes/wellnessRoutes");
 const musicIntelRoutes = require("./routes/musicIntelRoutes");
 
+function isValidMongoUri(uri) {
+  if (!uri || typeof uri !== "string") return false;
+  const value = uri.trim();
+  if (!(value.startsWith("mongodb://") || value.startsWith("mongodb+srv://"))) return false;
+  if (value.includes("<") || value.includes(">")) return false;
+  if (/your|example|placeholder/i.test(value)) return false;
+  return true;
+}
+
+function isIgnorableMongoRejection(reason) {
+  if (!reason) return false;
+  const name = String(reason.name || "");
+  const message = String(reason.message || "");
+  const isMongoNamedError = name.startsWith("Mongo");
+  const mentionsMongo = /mongodb|mongo/i.test(message);
+  return isMongoNamedError || mentionsMongo;
+}
+
 // ─── Port availability check ───────────────────────────────────────────────
 function checkPortAvailable(port) {
   return new Promise((resolve) => {
@@ -58,7 +76,9 @@ app.use(rateLimit({
 }));
 
 // MongoDB (optional — never blocks startup)
-if (config.mongoUri && config.mongoUri.trim() !== "") {
+const hasUsableMongoUri = isValidMongoUri(config.mongoUri);
+
+if (hasUsableMongoUri) {
   mongoose
     .connect(config.mongoUri, {
       serverSelectionTimeoutMS: 5000,
@@ -78,7 +98,11 @@ if (config.mongoUri && config.mongoUri.trim() !== "") {
     console.warn("⚠️  MongoDB disconnected — will retry automatically");
   });
 } else {
-  console.log("ℹ️  MongoDB not configured — using in-memory storage");
+  if (config.mongoUri && String(config.mongoUri).trim() !== "") {
+    console.warn("⚠️  Invalid MONGODB_URI format — using in-memory storage");
+  } else {
+    console.log("ℹ️  MongoDB not configured — using in-memory storage");
+  }
 }
 
 // CORS
@@ -141,7 +165,7 @@ const memorySessionMiddleware = session({
 let mongoSessionMiddleware = null;
 let mongoSessionStoreHealthy = false;
 
-if (config.mongoUri && config.mongoUri.trim() !== "") {
+if (hasUsableMongoUri) {
   try {
     const mongoStore = MongoStore.create({
       mongoUrl: config.mongoUri,
@@ -171,6 +195,8 @@ if (config.mongoUri && config.mongoUri.trim() !== "") {
     console.warn("⚠️  Failed to initialize Mongo session store:", err.message);
     console.warn("   Using in-memory sessions");
   }
+} else if (config.mongoUri && String(config.mongoUri).trim() !== "") {
+  console.warn("⚠️  Skipping Mongo session store due to invalid MONGODB_URI format");
 }
 
 app.use((req, res, next) => {
@@ -473,7 +499,7 @@ process.on("uncaughtException", (error) => {
 });
 
 process.on("unhandledRejection", (reason) => {
-  if (reason && reason.name === "MongoServerSelectionError") {
+  if (isIgnorableMongoRejection(reason)) {
     console.warn("⚠️  Ignoring MongoDB rejection in optional mode:", reason.message);
     return;
   }

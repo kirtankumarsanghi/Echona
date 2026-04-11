@@ -20,6 +20,8 @@
 
 [Features](#features) • [Tech Stack](#tech-stack) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation)
 
+Quick Deploy Guide: [DEPLOY_EASY.md](DEPLOY_EASY.md)
+
 </div>
 
 ---
