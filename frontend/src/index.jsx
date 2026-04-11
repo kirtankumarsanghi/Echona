@@ -9,6 +9,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { MoodProvider } from "./context/MoodContext";
 import OnboardingTour from "./components/OnboardingTour";
 import { initializeTheme } from "./utils/theme";
+import { GOOGLE_CLIENT_ID } from "./config/authConfig";
 import "./index.css";
 
 initializeTheme();
@@ -17,7 +18,6 @@ window.addEventListener("unhandledrejection", (event) => {
   console.error("[Unhandled Promise Rejection]", event.reason);
 });
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 if (!GOOGLE_CLIENT_ID) {
   console.error("[Auth] Missing VITE_GOOGLE_CLIENT_ID. Google Sign-In is disabled.");
 }

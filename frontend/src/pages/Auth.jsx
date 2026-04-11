@@ -9,6 +9,7 @@ import { saveUser, clearUser, getUser } from "../utils/auth";
 import { useAuth } from "../context/AuthContext";
 import SEO from "../components/SEO";
 import { MOTION } from "../utils/motion";
+import { hasGoogleClientId } from "../config/authConfig";
 
 function Auth() {
   const [error, setError] = useState("");
@@ -16,7 +17,6 @@ function Auth() {
   const [googleUnavailable, setGoogleUnavailable] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
-  const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
   useEffect(() => {
     if (getUser()) navigate("/dashboard");
