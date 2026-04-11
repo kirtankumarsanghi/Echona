@@ -9,6 +9,33 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function getWithRetry(url, options = {}) {
+  const retries = options.retries ?? config.maxRetries ?? 2;
+  const delayMs = options.delayMs ?? config.retryBaseDelayMs ?? 300;
+  const timeout = options.timeout ?? config.healthTimeoutMs;
+
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await axios.get(url, { timeout });
+    } catch (error) {
+      lastError = error;
+      const shouldRetry =
+        !error.response ||
+        error.code === "ECONNABORTED" ||
+        error.code === "ECONNREFUSED" ||
+        (error.response && error.response.status >= 500 && error.response.status < 600);
+
+      if (!shouldRetry || attempt === retries) {
+        break;
+      }
+      await wait(delayMs * (attempt + 1));
+    }
+  }
+
+  throw lastError;
+}
+
 async function postWithRetry(url, payload, options = {}) {
   const retries = options.retries ?? config.maxRetries ?? 2;
   const delayMs = options.delayMs ?? config.retryBaseDelayMs ?? 300;
@@ -80,8 +107,10 @@ async function proxyJsonRoute(req, res, endpoint) {
 
 router.get("/health", async (req, res) => {
   try {
-    const response = await axios.get(`${config.mlServiceUrl}/health`, {
-      timeout: config.healthTimeoutMs,
+    const response = await getWithRetry(`${config.mlServiceUrl}/health`, {
+      timeout: config.nodeEnv === "production" ? 20000 : config.healthTimeoutMs,
+      retries: config.nodeEnv === "production" ? 2 : 1,
+      delayMs: config.nodeEnv === "production" ? 2000 : 300,
     });
 
     res.json({
@@ -91,12 +120,15 @@ router.get("/health", async (req, res) => {
     });
   } catch (error) {
     const isConnectionRefused = error.code === "ECONNREFUSED";
+    const isTimeout = error.code === "ECONNABORTED";
     res.status(503).json({
       success: false,
       error: "ML service unavailable",
       message: isConnectionRefused
         ? `ML service is not running. Start it on port ${config.mlPort}`
-        : `ML service health check failed: ${error.message}`,
+        : isTimeout
+          ? "ML service is waking up on Render. Retry in 20-60 seconds."
+          : `ML service health check failed: ${error.message}`,
       mlServiceUrl: config.mlServiceUrl,
     });
   }

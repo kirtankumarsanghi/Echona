@@ -110,7 +110,10 @@ const config = {
   requestTimeoutMs: parseTimeout(process.env.REQUEST_TIMEOUT_MS, shared?.timeouts?.request || 12000),
   mlTimeoutMs: parseTimeout(process.env.ML_TIMEOUT_MS, shared?.timeouts?.ml || 15000),
   spotifyTimeoutMs: parseTimeout(process.env.SPOTIFY_TIMEOUT_MS, shared?.timeouts?.spotify || 10000),
-  healthTimeoutMs: parseTimeout(process.env.HEALTH_TIMEOUT_MS, shared?.timeouts?.health || 4000),
+  healthTimeoutMs: parseTimeout(
+    process.env.HEALTH_TIMEOUT_MS,
+    process.env.NODE_ENV === "production" ? 20000 : (shared?.timeouts?.health || 4000)
+  ),
 
   // Retry
   maxRetries: Number(process.env.MAX_RETRIES) || shared?.retry?.maxAttempts || 3,
