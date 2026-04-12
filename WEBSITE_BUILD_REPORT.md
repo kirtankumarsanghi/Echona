@@ -1,788 +1,389 @@
-# The Complete Beginner's Book: How Websites Are Built (From Zero to Deployment)
+# ECHONA Website Build Report (Viva Edition)
 
-## Preface
+## 1. Project Summary
 
-If you are reading this with no technical background, this guide is written for you.
+ECHONA is a full-stack mental wellness platform that combines:
 
-This is not a short summary. This is a step-by-step learning book that explains:
+- multimodal emotion detection (face, voice, text),
+- mood tracking and analytics,
+- music therapy recommendations,
+- Spotify integration,
+- wellness and planner workflows,
+- and intelligent support modules.
 
-- what a website reall/y is,
-- how each part works,
-- why each technology exists,
-- how all parts connect,
-- and how to take a project from your laptop to a live domain on the internet.
+The system is split into three runtime services:
 
-By the end, you should not only memorize terms, but actually build a complete mental model.
-
----
-
-## Chapter 1: What Is a Website, Really?
-
-A website is a system that lets users view information and perform actions through a browser.
-
-A modern website usually has 3 major parts:
-
-1. Frontend (what users see and interact with)
-2. Backend (the brain that processes logic)
-3. Database (where information is stored)
-
-Think of it like a restaurant:
-
-- Frontend = menu + dining area
-- Backend = kitchen + manager
-- Database = ingredient storage + records
-
-When you click a button in a website, it is like placing an order.
+1. Frontend (React + Vite) for UI and user interaction.
+2. Backend API (Node.js + Express) for auth, business logic, and orchestration.
+3. ML Service (Flask + Python) for emotion inference and music recommendation logic.
 
 ---
 
-## Chapter 2: How the Internet Delivers a Website
+## 2. High-Level Architecture
 
-Before coding, understand the journey of one request.
+### Frontend
 
-### 2.1 Important words
+- Technology: React 18, Vite, Tailwind, Framer Motion, Chart.js.
+- Routing: protected and public routes.
+- State: Auth context + Mood context.
+- Network layer: a centralized Axios client with:
+  - CSRF token injection,
+  - retry logic for transient failures,
+  - session-expiry handling,
+  - user-friendly error normalization.
 
-- Browser: app like Chrome or Edge
-- Server: remote computer hosting website/app
-- IP Address: machine address on internet
-- Domain: human-readable name (example.com)
-- DNS: internet phonebook (domain -> IP)
-- HTTP: communication protocol
-- HTTPS: secure HTTP (encrypted)
+### Backend (Orchestrator Layer)
 
-### 2.2 What happens when you open a website
+- Technology: Express + middleware stack.
+- Security controls:
+  - Helmet headers,
+  - global and auth-specific rate limits,
+  - CSRF double-submit cookie pattern,
+  - session-based auth.
+- Data routing:
+  - mood routes,
+  - auth/profile routes,
+  - spotify routes,
+  - wellness routes,
+  - music-intel routes,
+  - ML proxy routes.
 
-1. You type a domain in browser.
-2. Browser asks DNS: where is this domain?
-3. DNS replies with server IP.
-4. Browser opens connection to that server.
-5. If HTTPS, TLS encryption handshake happens.
-6. Browser sends request (GET /).
-7. Server processes request.
-8. Server sends response (HTML/CSS/JS or JSON).
-9. Browser renders page.
-10. JavaScript may request more data afterward.
+### ML Service
 
-This process repeats for every user action.
-
----
-
-## Chapter 3: Frontend Fundamentals (HTML, CSS, JavaScript)
-
-Frontend means user interface.
-
-### 3.1 HTML: Structure
-
-HTML gives meaning and structure to content.
-
-Without HTML, browser has nothing meaningful to display.
-
-Example:
-
-```html
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My First Page</title>
-</head>
-<body>
-  <header>
-    <h1>Welcome to My Website</h1>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/about">About</a>
-    </nav>
-  </header>
-
-  <main>
-    <section>
-      <h2>Contact Form</h2>
-      <form>
-        <label>
-          Name
-          <input type="text" required />
-        </label>
-
-        <label>
-          Email
-          <input type="email" required />
-        </label>
-
-        <button type="submit">Submit</button>
-      </form>
-    </section>
-  </main>
-
-  <footer>Copyright 2026</footer>
-</body>
-</html>
-```
-
-Basic tags you should know first:
-
-- h1 to h6: headings
-- p: paragraph
-- a: link
-- img: image
-- form, input, button: user input
-- div: generic block container
-- span: inline container
-
-Semantic tags (very important):
-
-- header
-- nav
-- main
-- section
-- article
-- footer
-
-They improve readability, accessibility, and SEO.
-
-### 3.2 CSS: Style and Layout
-
-CSS controls appearance.
-
-You use CSS for:
-
-- colors
-- spacing
-- fonts
-- responsive layouts
-- visual hierarchy
-
-Example:
-
-```css
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 16px;
-}
-
-button {
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-}
-```
-
-#### The box model
-
-Every element has:
-
-- content
-- padding (inside spacing)
-- border
-- margin (outside spacing)
-
-#### Flexbox and Grid
-
-Flexbox: best for one-dimensional alignment (row or column).
-
-```css
-.row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-```
-
-Grid: best for two-dimensional layouts.
-
-```css
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-```
-
-#### Responsive design
-
-Use media queries:
-
-```css
-@media (max-width: 768px) {
-  .cards {
-    grid-template-columns: 1fr;
-  }
-}
-```
-
-### 3.3 JavaScript: Behavior and Interaction
-
-JavaScript makes pages interactive.
-
-You can:
-
-- respond to button clicks
-- validate forms
-- call APIs
-- update content without page reload
-
-Example:
-
-```javascript
-const form = document.querySelector("form");
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const payload = {
-    name: "Alice",
-    email: "alice@example.com"
-  };
-
-  const response = await fetch("/api/contact", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (response.ok) {
-    alert("Message sent");
-  } else {
-    alert("Error sending message");
-  }
-});
-```
-
-Core JS basics you must master:
-
-- variables (let, const)
-- functions
-- arrays and objects
-- if/else
-- loops
-- events
-- async/await
+- Technology: Flask + Python ML modules.
+- Capabilities:
+  - face detection endpoint,
+  - voice detection endpoint,
+  - text detection endpoint,
+  - multimodal fusion endpoint,
+  - recommendation endpoint.
+- Reliability:
+  - lazy loading of analyzers,
+  - per-endpoint error handling,
+  - structured prediction logs,
+  - fallback inference strategies when models are unavailable.
 
 ---
 
-## Chapter 4: Modern Frontend Frameworks (React, Angular, Vue)
+## 3. End-to-End Request Flow
 
-As projects grow, plain JavaScript gets hard to manage.
+Typical mood detection flow:
 
-Frameworks solve that with:
+1. User opens Mood Detection page and chooses face/voice/text/chat mode.
+2. Frontend captures raw input and sends request to backend `/api/ml/*` endpoints.
+3. Backend `mlRoutes` validates payload and proxies request to Flask ML service with retry and timeout strategy.
+4. ML service runs model inference (or fallback path) and returns emotion + confidence + source.
+5. Frontend normalizes response (`mood = mood || emotion`) and stores detected mood.
+6. Mood is persisted via mood context to backend mood routes.
+7. User is redirected to music and dashboard flows for recommendations and analytics.
 
-- components
-- reusable UI
-- state management
-- routing
+Why this architecture is strong for viva:
 
-### 4.1 React
-
-React builds UI using components.
-
-```jsx
-import { useState } from "react";
-
-function Counter() {
-  const [count, setCount] = useState(0);
-
-  return (
-    <button onClick={() => setCount(count + 1)}>
-      Count: {count}
-    </button>
-  );
-}
-```
-
-### 4.2 Angular
-
-Angular is a full framework with strong architecture and TypeScript.
-
-```ts
-@Component({
-  selector: "app-counter",
-  template: `<button (click)="inc()">Count: {{ count }}</button>`
-})
-export class CounterComponent {
-  count = 0;
-  inc() {
-    this.count++;
-  }
-}
-```
-
-### 4.3 Vue
-
-Vue is simple to start and powerful for production.
-
-```vue
-<template>
-  <button @click="count++">Count: {{ count }}</button>
-</template>
-
-<script setup>
-import { ref } from 'vue'
-const count = ref(0)
-</script>
-```
+- frontend stays simple,
+- backend centralizes policy and resiliency,
+- ML service remains independently deployable and scalable.
 
 ---
 
-## Chapter 5: Backend Fundamentals (Server Side)
+## 4. ML Integration: Technical Details
 
-Backend handles business logic.
+## 4.1 ML API Layer (Flask)
 
-Frontend should never directly control important logic like:
+Main endpoints:
 
-- password checks
-- payment calculations
-- permission rules
+- `POST /detect-face`
+- `POST /detect-voice`
+- `POST /detect-text`
+- `POST /detect-multimodal`
+- `GET /recommend`
+- `GET /health`
 
-### 5.1 What backend does
+Each endpoint returns standardized JSON with `success`, `emotion/mood`, `confidence`, and `source` metadata.
 
-- receives requests from frontend
-- validates data
-- applies logic
-- connects to database
-- sends response
+The service writes prediction traces into `ml/logs/predictions.json` for observability and debugging.
 
-### 5.2 Backend technologies
+## 4.2 Face Emotion Pipeline
 
-#### Node.js with Express
+Input: base64 image.
 
-```javascript
-import express from "express";
+Pipeline:
 
-const app = express();
-app.use(express.json());
+1. Decode image.
+2. Convert to grayscale.
+3. Detect face using Haar cascade.
+4. If no face box: use full-frame fallback ROI.
+5. Run priority chain:
+   - Trained Keras CNN model (`face_emotion_model.h5`), else
+   - DeepFace fallback (if installed), else
+   - brightness heuristic fallback.
+6. Map 7-class face output into app mood labels.
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+Output includes confidence and inference source (`trained_model`, `deepface`, `heuristic`, etc.).
 
-app.listen(5000, () => {
-  console.log("API running on port 5000");
-});
-```
+## 4.3 Voice Emotion Pipeline
 
-#### Python (Flask or Django)
+Input: uploaded audio or base64 audio.
 
-Flask sample:
+Pipeline:
 
-```python
-from flask import Flask, jsonify
+1. Normalize clip to fixed duration and sample rate.
+2. Extract acoustic features via Librosa:
+   - MFCC (mean/std),
+   - chroma,
+   - spectral contrast,
+   - mel-spectrogram statistics,
+   - zero-crossing rate,
+   - RMS energy.
+3. Run trained sklearn classifier from `voice_emotion_model.pkl`.
+4. If unavailable/fails, fallback to energy+tempo+pitch heuristic.
 
-app = Flask(__name__)
+Output: emotion + confidence + source.
 
-@app.route('/api/health')
-def health():
-    return jsonify({'status': 'ok'})
-```
+## 4.4 Text Emotion Pipeline
 
-#### Java (Spring Boot)
+Input: plain text from journal/chat/manual text.
 
-```java
-@RestController
-@RequestMapping("/api")
-public class HealthController {
-  @GetMapping("/health")
-  public Map<String, String> health() {
-    return Map.of("status", "ok");
-  }
-}
-```
+Priority cascade:
 
----
+1. Fine-tuned transformer model from local folder `text_emotion_model/` (if present).
+2. Trained TF-IDF + LogisticRegression model (`text_emotion_model.pkl`).
+3. Pretrained HuggingFace emotion model.
+4. Keyword-based heuristic classifier.
 
-## Chapter 6: APIs and the Request-Response Cycle
+Extra calibration:
 
-API means Application Programming Interface.
+- A post-rule adjusts lonely-related false negatives (common anxious/lonely confusion).
 
-In web development, API is the communication bridge between frontend and backend.
+Output: emotion + confidence + source (`fine_tuned`, `sklearn`, `pretrained_hf`, `keyword`, etc.).
 
-### 6.1 REST basics
+## 4.5 Multimodal Fusion
 
-Common methods:
+Inputs: any subset of face, voice, text.
 
-- GET: read
-- POST: create
-- PUT/PATCH: update
-- DELETE: remove
+Fusion strategy:
 
-Examples:
-
-- GET /api/users
-- POST /api/users
-- GET /api/users/7
-- DELETE /api/users/7
-
-### 6.2 Request and response structure
-
-Request includes:
-
-- method
-- URL
-- headers
-- body (optional)
+1. Convert each modality output to a probability vector across 10 app emotions.
+2. If all three modalities exist and meta-model is available:
+   - use trained fusion classifier (`fusion_model.pkl`),
+   - method reported as `dynamic`.
+3. Otherwise fallback to weighted vote:
+   - face weight = 0.40,
+   - voice weight = 0.30,
+   - text weight = 0.30,
+   - method reported as `weighted`.
 
 Response includes:
 
-- status code (200, 404, 500)
-- headers
-- data (often JSON)
+- final emotion,
+- confidence,
+- per-emotion vote distribution,
+- modalities breakdown.
 
 ---
 
-## Chapter 7: Authentication and Authorization
+## 5. How Models Were Trained (What To Say In Viva)
 
-These two are different:
+Important truth from current repository state:
 
-- Authentication: Who are you?
-- Authorization: What can you do?
+- This repository stores trained model artifacts (`.h5`, `.pkl`) and metrics logs.
+- Training scripts are not currently present in this workspace.
+- So the deployed app is an inference-serving codebase with persisted trained models.
 
-### 7.1 Login methods
+How to explain training process correctly:
 
-#### Session-based auth
+1. Data collection and labeling were done offline per modality.
+2. Feature engineering/model selection done per modality:
+   - face: CNN on facial expression images,
+   - voice: handcrafted acoustic features + sklearn classifier,
+   - text: TF-IDF + LogisticRegression and optional transformer fine-tune,
+   - fusion: meta-classifier on stacked modality probabilities.
+3. Models serialized to `ml/models/`.
+4. Evaluation metrics exported to `ml/logs/*_model_metrics.json`.
+5. Runtime only loads those artifacts lazily for fast startup and memory efficiency.
 
-- server creates session
-- browser stores session cookie
+### Metrics Evidence (from your logs)
 
-#### JWT-based auth
+- Face model:
+  - samples: 7,178
+  - classes: 7
+  - accuracy: 0.635
+  - epochs: 30
 
-- server issues token
-- client sends token in each request header
+- Voice model:
+  - samples: 576
+  - classes: 6
+  - best model: SVM (RBF)
+  - accuracy: 0.9549
 
-### 7.2 Security must-haves
+- Text model:
+  - samples: 31,684
+  - classes: 10
+  - vectorizer: TF-IDF (1,2)-gram, 50k
+  - classifier: LogisticRegression
+  - accuracy: 0.4463
 
-- hash passwords with bcrypt/argon2
-- do not store plain text passwords
-- use httpOnly + secure cookies
-- validate all user input
-- apply rate limits to login routes
+- Fusion model:
+  - samples: 800
+  - classes: 10
+  - best model: LogisticRegression
+  - accuracy: 0.9587
 
----
+Viva note:
 
-## Chapter 8: Database Systems
-
-Database stores and retrieves app data.
-
-### 8.1 SQL vs NoSQL
-
-SQL:
-
-- table structure
-- strong schema
-- powerful joins and transactions
-- examples: PostgreSQL, MySQL
-
-NoSQL:
-
-- flexible schema
-- document based storage
-- example: MongoDB
-
-### 8.2 CRUD operations
-
-CRUD means:
-
-- Create
-- Read
-- Update
-- Delete
-
-SQL example:
-
-```sql
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL
-);
-
-INSERT INTO users (email, password_hash)
-VALUES ('alice@example.com', 'hashed_pw');
-
-SELECT * FROM users WHERE email = 'alice@example.com';
-
-UPDATE users SET email = 'alice2@example.com' WHERE id = 1;
-
-DELETE FROM users WHERE id = 1;
-```
-
-Mongo example:
-
-```javascript
-db.users.insertOne({ email: "alice@example.com" });
-db.users.find({ email: "alice@example.com" });
-db.users.updateOne({ email: "alice@example.com" }, { $set: { email: "alice2@example.com" } });
-db.users.deleteOne({ email: "alice2@example.com" });
-```
-
-### 8.3 Backend connection examples
-
-Node and PostgreSQL:
-
-```javascript
-import { Pool } from "pg";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
-
-const result = await pool.query("SELECT * FROM users WHERE id = $1", [1]);
-```
-
-Node and MongoDB:
-
-```javascript
-import mongoose from "mongoose";
-await mongoose.connect(process.env.MONGO_URL);
-```
+- The high fusion score is expected because combining modalities reduces single-model ambiguity.
+- Text is hardest due to language ambiguity and class overlap.
 
 ---
 
-## Chapter 9: Full Stack Integration (Everything Together)
+## 6. Feature-by-Feature Technical Working
 
-This is where real apps come alive.
+## 6.1 Authentication and Session Management
 
-### Example flow: user signup and login
+- Google login and profile endpoints on `/api/auth/*`.
+- Session cookies (not pure token-only auth flow).
+- CSRF token issued and validated for state-changing requests.
+- Frontend auto-refreshes auth state via `/api/auth/me`.
 
-1. User fills signup form on frontend.
-2. Frontend sends POST request to backend.
-3. Backend validates fields.
-4. Backend hashes password.
-5. Backend saves user in database.
-6. User logs in.
-7. Backend verifies password.
-8. Backend creates session or token.
-9. Frontend stores auth state.
-10. Protected pages call APIs with credentials.
+## 6.2 Mood Detection
 
-Now frontend, backend, and database are connected.
+- UI mode selection: Face, Voice, Text, Guided Chat.
+- Face mode samples multiple frames and performs weighted voting to improve stability.
+- Voice mode records in-browser, converts blob to base64, sends to ML API.
+- Text/chat mode sends sanitized text to text detector.
+- Final mood stored in local context + backend mood history.
 
----
+## 6.3 Mood Tracking and Dashboard
 
-## Chapter 10: Version Control with Git and GitHub
+- Mood records persisted through `/api/mood/add`, fetched via `/api/mood/history`.
+- Dashboard computes trend deltas, streaks, dominant mood, averages.
+- Chart.js visualizes timeline and mood composition.
 
-Git tracks changes in your project.
+## 6.4 Music Recommendation and Therapy
 
-GitHub stores your repo online and enables collaboration.
+- Mood feeds recommendation logic.
+- ML recommendation endpoint maps emotion to therapy context and song pool.
+- Energy filter and random sampling used for variety.
+- Therapy context explains goal/strategy/tags per mood.
 
-### 10.1 Basic commands
+## 6.5 Spotify Integration
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin <repo-url>
-git push -u origin main
-```
+- OAuth flow via `/api/spotify/login` and callback.
+- Access user profile, playlists, top artists/tracks, recent plays.
+- Playback control endpoint allows in-app play commands.
+- Frontend has retry logic for search/play reliability.
 
-### 10.2 Normal workflow
+## 6.6 Music Intelligence Features
 
-1. Pull latest code.
-2. Create feature branch.
-3. Write code and test.
-4. Commit cleanly.
-5. Push branch.
-6. Open pull request.
-7. Review and merge.
+Backend module `/api/music-intel/*` powers:
 
----
+- advanced search,
+- recommendation controls,
+- mood transition/rescue suggestions,
+- impact logging and weekly summaries,
+- healing room collaboration (create/join/message/close).
 
-## Chapter 11: Deployment and Hosting
+## 6.7 Wellness Intelligence Hub
 
-Deployment means making your app publicly accessible.
+Backend module `/api/wellness/*` powers:
 
-### 11.1 Typical deployment flow
+- wellness state retrieval,
+- habits capture,
+- mood synchronization from history,
+- copilot conversation and reply generation,
+- journal CRUD,
+- planner item CRUD.
 
-1. Push code to GitHub.
-2. Connect repo to hosting platform.
-3. Add environment variables.
-4. Build and deploy.
-5. Connect domain.
-6. Enable HTTPS.
+## 6.8 Planner and Productivity
 
-### 11.2 Popular platforms
+- Todo planner reads/writes through wellness planner endpoints.
+- Supports metadata such as status, effort, tags and workflow-friendly views.
 
-- Vercel: excellent for frontend apps
-- Netlify: great for static/jamstack sites
-- AWS: very scalable but complex
-- Heroku/Render-like: easy backend deployment
+## 6.9 Surprise and Mini Challenges
 
-### 11.3 Domain and DNS
-
-- Domain: your readable web address
-- DNS: maps domain to server
-- Hosting: where your app files and backend run
+- Surprise route serves dynamic content with optional mood-aware variant.
+- Game routes track mini challenge score submissions.
 
 ---
 
-## Chapter 12: Performance Optimization
+## 7. Reliability, Performance, and Security
 
-Fast websites keep users.
+## Reliability
 
-### 12.1 Practical improvements
+- ML proxy retries for transient errors and cold starts.
+- Distinct health endpoints for frontend-backend-ML diagnostics.
+- Graceful shutdown and port conflict detection.
+- Fallback inference in ML modules to avoid hard downtime.
 
-- code splitting and lazy loading
-- image compression and modern formats
-- minified CSS and JS
-- browser caching
-- CDN for static assets
-- database indexing
+## Performance
 
-### 12.2 Measurement tools
+- Lazy loading for large models and lazy-loaded React routes.
+- Caching for recommendation responses in ML service.
+- Request timeouts and controlled retries.
 
-- Lighthouse
-- Web Vitals
-- Browser DevTools
+## Security
 
----
-
-## Chapter 13: Security Basics You Must Know
-
-### 13.1 Core protections
-
-- HTTPS everywhere
-- password hashing
-- input validation
-- proper auth checks
-
-### 13.2 Common attacks
-
-SQL Injection:
-
-- attacker injects SQL commands into input
-- fix: parameterized queries
-
-XSS:
-
-- attacker injects script into page
-- fix: output escaping and CSP
-
-CSRF:
-
-- attacker tricks browser into sending unwanted request
-- fix: CSRF token + SameSite cookies
-
-Always also do:
-
-- rate limiting
-- secure headers
-- secret management
-- dependency updates
+- Helmet, CORS policy, rate limits.
+- Session cookies with environment-aware security flags.
+- CSRF token validation on unsafe HTTP methods.
 
 ---
 
-## Chapter 14: Real Project Walkthrough (Mini Login App)
+## 8. Deployment and Operations
 
-Now we combine everything.
+Local startup:
 
-### 14.1 Stack
+- `start-all.ps1` starts ML, backend, frontend in separate windows.
+- Script checks service health and waits until ready.
 
-- Frontend: React
-- Backend: Express
-- DB: MongoDB
-- Auth: JWT
+Production behavior:
 
-### 14.2 Backend sample
-
-```javascript
-import express from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-
-const app = express();
-app.use(express.json());
-
-app.post("/api/auth/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  // 1. find user by email
-  // 2. compare password hash
-  // 3. create token
-
-  const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-    expiresIn: "1h"
-  });
-
-  res.json({ token });
-});
-```
-
-### 14.3 Frontend sample
-
-```jsx
-async function login(email, password) {
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password })
-  });
-
-  const data = await res.json();
-  localStorage.setItem("token", data.token);
-}
-```
-
-### 14.4 Runtime flow
-
-1. User submits login form.
-2. Frontend sends credentials.
-3. Backend validates.
-4. Backend returns JWT.
-5. Frontend stores JWT.
-6. Protected requests include JWT.
-7. Backend grants access if token is valid.
-
-### 14.5 Deployment steps
-
-1. Deploy frontend to Vercel/Netlify.
-2. Deploy backend to backend host.
-3. Configure env vars:
-   - MONGO_URL
-   - JWT_SECRET
-   - FRONTEND_URL
-4. Configure CORS.
-5. Add custom domain.
-6. Verify HTTPS and login flow.
+- backend has keep-alive ping support in production mode.
+- ML proxy uses longer timeouts in production to survive cold starts.
 
 ---
 
-## Final Mental Model
+## 9. Suggested Viva Talking Script (Short)
 
-By this point, you should have a complete mental model of:
+Use this 60-90 second script:
 
-- How a browser talks to servers through DNS, HTTP, HTTPS.
-- How frontend, backend, and database each serve distinct roles.
-- How APIs connect all parts.
-- How authentication, security, and performance are handled.
-- How to deploy a real app from local machine to production.
+"ECHONA is a three-service architecture: React frontend, Express backend, and Flask ML microservice. The frontend never directly calls models in production; it talks to backend ML proxy routes. The backend handles validation, retries, security, sessions, and CSRF. The ML service performs modality-specific inference for face, voice, and text, then fuses them with a dynamic meta-classifier when all modalities exist, otherwise weighted fusion with 40/30/30 weights. Trained model artifacts are persisted as .h5/.pkl files, and model performance logs are stored in JSON. After mood detection, the app powers dashboard analytics, music therapy recommendations, Spotify integration, wellness planner features, and intelligence modules."
 
 ---
 
-## Beginner Learning Path (What to Learn First)
+## 10. Viva Questions You May Get
 
-Follow this order:
+### Q1: Why use a separate ML service?
 
-1. HTML basics and semantic structure
-2. CSS layout and responsive design
-3. JavaScript fundamentals and DOM
-4. React basics and components
-5. Node.js + Express API creation
-6. One database deeply (PostgreSQL or MongoDB)
-7. Authentication and security fundamentals
-8. Full-stack project build
-9. Git and collaboration workflow
-10. Deployment and monitoring
+Because Python ML dependencies are heavy and isolated from Node runtime concerns. This improves deployability, scaling flexibility, and cleaner separation of concerns.
 
-If you follow this sequence with projects, you will build a strong real-world full-stack foundation.
+### Q2: Why do you need backend proxy to ML?
+
+To centralize validation, retries, auth/session compatibility, cold-start handling, and consistent API contracts to frontend.
+
+### Q3: Why multimodal fusion?
+
+Single modality can be noisy. Fusion combines complementary signals and generally improves reliability, as reflected by higher fusion metrics.
+
+### Q4: What if model fails in production?
+
+There are fallback paths (DeepFace/heuristics/keyword), retry mechanisms, and health checks. So service degrades gracefully instead of crashing.
+
+### Q5: What are current limitations?
+
+- Text model quality can still improve.
+- Training scripts are not packaged in this repo.
+- Some classes are harder due to overlap (for example anxious vs lonely).
+
+---
+
+## 11. Future Improvements
+
+1. Add reproducible training pipelines and dataset versioning into repo.
+2. Add calibration and confidence thresholds per modality for better uncertainty handling.
+3. Add model drift monitoring and periodic retraining jobs.
+4. Add multilingual text emotion model fine-tuning.
+5. Add real-time streaming fusion for continuous mood tracking.
+
+---
+
+This report is intentionally technical and viva-oriented so you can explain design decisions, implementation flow, and ML integration clearly under questioning.
