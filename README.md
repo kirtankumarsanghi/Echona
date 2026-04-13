@@ -18,6 +18,10 @@
 - **Backend API**: [https://echona.onrender.com](https://echona.onrender.com)
 -  **ML Service**: [https://echona-ml.onrender.com](https://echona-ml.onrender.com)
 
+### 📽️ **Project Presentation (PPT)**
+
+- **Slides**: [ECHONA Project PPT](https://onedrive.live.com/:p:/g/personal/01e12439c7dbdf5a/IQCNVafGM2u7Taz3CMj52PYcAcB1sSM9WRkvmiojFsDFFr4?rtime=t7uN9MmW3kg&redeem=aHR0cHM6Ly8xZHJ2Lm1zL3AvYy8wMWUxMjQzOWM3ZGJkZjVhL0lRQ05WYWZHTTJ1N1RhejNDTWo1MlBZY0FjQjFzU005V1Jrdm1pb2pGc0RGRnI0P2U9TTNtcWhy)
+
 [Features](#features) • [Tech Stack](#tech-stack) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation)
 
 Quick Deploy Guide: [DEPLOY_EASY.md](DEPLOY_EASY.md)
